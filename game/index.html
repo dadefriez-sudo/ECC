@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#0b1026" />
+<title>Gravity Dash</title>
+<style>
+  :root{
+    --bg0:#070a1a; --bg1:#0e1430; --ink:#eaf2ff; --muted:#9fb0d8;
+    --accent:#37e6c9; --accent2:#6a8bff; --gold:#ffcc44; --danger:#ff4d6d;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg0);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); user-select:none; -webkit-user-select:none; touch-action:none;}
+  #wrap{position:fixed; inset:0; display:flex; align-items:center; justify-content:center;}
+  canvas{display:block; width:100%; height:100%; touch-action:none;}
+
+  .overlay{position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:24px;
+    background:radial-gradient(120% 90% at 50% 0%, rgba(20,28,66,.75), rgba(7,10,26,.94));
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);}
+  .hidden{display:none !important;}
+  .title{font-size:clamp(38px,12vw,84px); font-weight:900; letter-spacing:-.02em; line-height:.95;
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text;
+    background-clip:text; color:transparent; filter:drop-shadow(0 6px 30px rgba(55,230,201,.35)); margin:0;}
+  .sub{color:var(--muted); margin:14px 0 26px; font-size:clamp(14px,3.6vw,18px); max-width:24ch;}
+  .btn{appearance:none; border:0; cursor:pointer; font-weight:800; color:#05221f;
+    background:linear-gradient(180deg,#4ff3d6,#20cbb0); padding:16px 30px; border-radius:16px;
+    font-size:clamp(16px,4.6vw,20px); box-shadow:0 10px 30px rgba(55,230,201,.35), inset 0 1px 0 rgba(255,255,255,.5);
+    transition:transform .08s ease; min-width:200px;}
+  .btn:active{transform:translateY(2px) scale(.99);}
+  .btn.ghost{background:rgba(255,255,255,.07); color:var(--ink); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+  .btn.gold{background:linear-gradient(180deg,#ffd873,#f4b13a); color:#3a2600; box-shadow:0 10px 30px rgba(255,183,58,.35), inset 0 1px 0 rgba(255,255,255,.6);}
+  .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center; margin-top:12px;}
+  .stat{display:flex; gap:26px; margin:6px 0 22px; color:var(--muted); font-size:14px;}
+  .stat b{display:block; color:var(--ink); font-size:26px; font-weight:900;}
+  .pill{display:inline-flex; align-items:center; gap:8px; background:rgba(255,204,68,.14);
+    color:var(--gold); padding:8px 14px; border-radius:999px; font-weight:800; font-size:15px;
+    box-shadow:inset 0 0 0 1px rgba(255,204,68,.3);}
+  .adslot{margin-top:22px; width:min(360px,92vw); height:56px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center; color:#6b7aa8; font-size:12px;
+    letter-spacing:.14em; text-transform:uppercase; background:repeating-linear-gradient(45deg,rgba(255,255,255,.03),rgba(255,255,255,.03) 10px,rgba(255,255,255,.06) 10px,rgba(255,255,255,.06) 20px);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
+
+  /* HUD */
+  #hud{position:absolute; inset:0; pointer-events:none; padding:calc(env(safe-area-inset-top,0) + 16px) 18px 0;}
+  #score{font-size:clamp(34px,10vw,62px); font-weight:900; text-align:center;
+    text-shadow:0 3px 24px rgba(106,139,255,.5); font-variant-numeric:tabular-nums;}
+  #coinHud{position:absolute; top:calc(env(safe-area-inset-top,0) + 18px); right:18px;
+    display:flex; align-items:center; gap:7px; font-weight:900; color:var(--gold); font-size:18px;}
+  #mute{position:absolute; top:calc(env(safe-area-inset-top,0) + 14px); left:16px; pointer-events:auto;
+    width:42px; height:42px; border-radius:12px; border:0; cursor:pointer; color:var(--ink);
+    background:rgba(255,255,255,.07); box-shadow:inset 0 0 0 1px rgba(255,255,255,.12); font-size:18px;}
+  .coin-ico{width:16px; height:16px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff3c4,#ffcc44 55%,#e0a200);
+    box-shadow:0 0 10px rgba(255,204,68,.6); display:inline-block;}
+  .hint{position:absolute; bottom:14%; left:0; right:0; text-align:center; color:var(--muted);
+    font-size:15px; animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+  .skins{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:8px 0 6px; max-width:340px;}
+  .skin{width:52px; height:52px; border-radius:14px; cursor:pointer; position:relative;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center;}
+  .skin.sel{box-shadow:inset 0 0 0 2px var(--accent), 0 0 16px rgba(55,230,201,.5);}
+  .skin .lock{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(4,7,20,.66); border-radius:14px; font-size:11px; font-weight:800; color:var(--gold);}
+  .tiny{color:#6b7aa8; font-size:12px; margin-top:16px;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+
+  <!-- HUD (in-game) -->
+  <div id="hud" class="hidden">
+    <div id="score">0</div>
+    <div id="coinHud"><span class="coin-ico"></span><span id="coinRun">0</span></div>
+    <button id="mute" aria-label="Mute">🔊</button>
+    <div id="hint" class="hint">Tap to flip gravity</div>
+  </div>
+
+  <!-- Start screen -->
+  <div id="startScreen" class="overlay">
+    <h1 class="title">GRAVITY<br>DASH</h1>
+    <p class="sub">One thumb. Flip gravity. Dodge the spikes and grab the coins.</p>
+    <div class="pill"><span class="coin-ico"></span> <span id="bankStart">0</span> coins</div>
+    <div class="skins" id="skinsStart"></div>
+    <button class="btn" id="playBtn">▶ Play</button>
+    <div class="row">
+      <button class="btn ghost" id="shopBtn">🛍️ Shop</button>
+    </div>
+    <div class="adslot">Banner ad slot · 320×50</div>
+    <div class="tiny">Best: <span id="bestStart">0</span></div>
+  </div>
+
+  <!-- Game over screen -->
+  <div id="overScreen" class="overlay hidden">
+    <h1 class="title" style="font-size:clamp(30px,9vw,60px)">GAME OVER</h1>
+    <div class="stat">
+      <div>SCORE<b id="finalScore">0</b></div>
+      <div>BEST<b id="finalBest">0</b></div>
+      <div>COINS<b id="finalCoins">0</b></div>
+    </div>
+    <button class="btn gold" id="reviveBtn">📺 Revive &amp; keep going</button>
+    <div class="row">
+      <button class="btn" id="againBtn">↻ Play again</button>
+      <button class="btn ghost" id="doubleBtn">📺 2× coins</button>
+    </div>
+    <button class="btn ghost" id="homeBtn" style="margin-top:12px;min-width:0;padding:12px 22px">Home</button>
+    <div class="adslot">Banner ad slot · 320×50</div>
+  </div>
+
+  <!-- Shop screen -->
+  <div id="shopScreen" class="overlay hidden">
+    <h1 class="title" style="font-size:clamp(30px,9vw,58px)">SHOP</h1>
+    <div class="pill"><span class="coin-ico"></span> <span id="bankShop">0</span> coins</div>
+    <div class="skins" id="skinsShop" style="margin-top:18px"></div>
+    <p class="sub" id="shopMsg" style="min-height:20px;margin:10px 0 18px"></p>
+    <button class="btn gold" id="freeCoinsBtn">📺 Watch ad · +50 coins</button>
+    <div class="row">
+      <button class="btn ghost" id="noAdsBtn">✦ Remove ads · $2.99</button>
+      <button class="btn ghost" id="coinPackBtn">💰 500 coins · $1.99</button>
+    </div>
+    <button class="btn ghost" id="shopBackBtn" style="margin-top:14px;min-width:0;padding:12px 22px">Back</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   GRAVITY DASH — a self-contained mobile arcade game.
+   Monetization is isolated in the `Ads` + `IAP` objects below so you can
+   drop in AdMob / Unity Ads / AppLovin / AdSense with a single edit each.
+   ========================================================================= */
+
+/* ------------------------------ Storage ------------------------------ */
+const SAVE_KEY = "gravitydash.v1";
+const Store = {
+  data: { coins: 0, best: 0, noAds: false, skin: "aqua", owned: ["aqua"], muted: false },
+  load(){ try{ Object.assign(this.data, JSON.parse(localStorage.getItem(SAVE_KEY)||"{}")); }catch(e){} },
+  save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); }catch(e){} }
+};
+Store.load();
+
+/* ---------------------------- Monetization ----------------------------
+   Replace the bodies of these stubs with your ad SDK calls. Each rewarded
+   method resolves(true) when the reward should be granted. Keeping every
+   ad touchpoint here means the game logic never changes when you go live. */
+const Ads = {
+  deathsSinceInterstitial: 0,
+  interstitialEvery: 3,
+
+  // Rewarded video. Wire to e.g. admob.rewarded.show(). Resolve true on complete.
+  rewarded(reason){
+    return new Promise((resolve)=>{
+      // ---- DEMO fallback: simulate a completed ad view ----
+      const ok = window.confirm("[Rewarded Ad — "+reason+"]\n\nIn production this plays a video.\nOK = reward granted, Cancel = skipped.");
+      resolve(!!ok);
+    });
+  },
+
+  // Full-screen interstitial, gated by frequency + Remove-Ads purchase.
+  maybeInterstitial(){
+    if(Store.data.noAds) return Promise.resolve();
+    this.deathsSinceInterstitial++;
+    if(this.deathsSinceInterstitial < this.interstitialEvery) return Promise.resolve();
+    this.deathsSinceInterstitial = 0;
+    return new Promise((resolve)=>{
+      // ---- DEMO fallback ----
+      // In production: admob.interstitial.show().then(resolve)
+      setTimeout(resolve, 0); // silent in demo to avoid nagging; real SDK shows the ad
+    });
+  }
+};
+
+const IAP = {
+  // Wire to StoreKit / Google Play Billing. Resolve true on successful purchase.
+  buy(product){
+    return new Promise((resolve)=>{
+      const ok = window.confirm("[In-App Purchase — "+product.id+"]\n\n"+product.name+" for "+product.price+"\n\nOK = purchased (sandbox), Cancel = abort.");
+      resolve(!!ok);
+    });
+  }
+};
+
+/* ------------------------------- Skins ------------------------------- */
+const SKINS = [
+  { id:"aqua",   name:"Aqua",   price:0,   c1:"#4ff3d6", c2:"#1fb7a0" },
+  { id:"violet", name:"Violet", price:150, c1:"#b388ff", c2:"#6a3df0" },
+  { id:"ember",  name:"Ember",  price:250, c1:"#ff9a5a", c2:"#ff4d6d" },
+  { id:"gold",   name:"Gold",   price:500, c1:"#ffe08a", c2:"#f4b13a" },
+];
+const skinById = id => SKINS.find(s=>s.id===id) || SKINS[0];
+
+/* ------------------------------- Audio ------------------------------- */
+const Sfx = {
+  ctx:null,
+  ensure(){ if(!this.ctx){ try{ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } },
+  blip(freq, dur=0.08, type="triangle", gain=0.05){
+    if(Store.data.muted) return; this.ensure(); if(!this.ctx) return;
+    const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq,t);
+    g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(this.ctx.destination); o.start(t); o.stop(t+dur);
+  },
+  flip(){ this.blip(520,0.07,"square",0.04); },
+  coin(){ this.blip(880,0.06,"sine",0.05); this.blip(1320,0.05,"sine",0.04); },
+  die(){ this.blip(160,0.35,"sawtooth",0.06); }
+};
+
+/* ------------------------------- Canvas ------------------------------ */
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+let W=0, H=0, DPR=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = Math.floor(W*DPR); canvas.height = Math.floor(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener("resize", resize); resize();
+
+/* ------------------------------- Game -------------------------------- */
+const G = {
+  state:"start",              // start | playing | dead
+  player:null, obstacles:[], coins:[], particles:[], stars:[],
+  scrollX:0, speed:0, baseSpeed:0, spawnX:0, coinRun:0, score:0,
+  shake:0, t:0, gravSign:1, invuln:0
+};
+const GROUND = () => H*0.86;
+const CEIL   = () => H*0.14;
+const PLAYER_X = () => Math.min(W*0.26, 150);
+const PR = 16; // player radius
+
+function makeStars(){
+  G.stars=[]; const n=Math.floor((W*H)/16000);
+  for(let i=0;i<n;i++) G.stars.push({x:Math.random()*W,y:Math.random()*H,z:Math.random()*.8+.2,r:Math.random()*1.6+.3});
+}
+makeStars();
+
+function resetRun(){
+  G.obstacles=[]; G.coins=[]; G.particles=[]; G.scrollX=0;
+  G.baseSpeed = Math.max(4.6, W*0.006); G.speed=G.baseSpeed;
+  G.spawnX = W + 200; G.coinRun=0; G.score=0; G.shake=0; G.t=0;
+  G.gravSign=1; G.invuln=0;
+  G.player = { x:PLAYER_X(), y:GROUND()-PR, vy:0, onGround:true, trail:[] };
+}
+
+function flip(){
+  if(G.state!=="playing") return;
+  G.gravSign *= -1; G.player.vy = 0; Sfx.flip();
+  // burst at feet
+  for(let i=0;i<10;i++) G.particles.push({
+    x:G.player.x, y:G.player.y, vx:(Math.random()-.5)*3, vy:(Math.random()-.5)*3,
+    life:1, r:Math.random()*3+1, c:skinById(Store.data.skin).c1 });
+}
+
+/* ---- spawning ---- */
+function spawnColumn(){
+  const gap = 220 + Math.random()*90 - Math.min(G.score*0.6, 90);
+  const onCeil = Math.random()<0.5;
+  const kind = Math.random();
+  const baseY = onCeil ? CEIL() : GROUND();
+  // spikes: a small cluster of triangles
+  const count = 1 + (Math.random()<0.5?1:0) + (G.score>25 && Math.random()<0.4?1:0);
+  for(let i=0;i<count;i++){
+    G.obstacles.push({ x:G.spawnX + i*30, base:baseY, ceil:onCeil, w:30, h:34+Math.random()*22, passed:false });
+  }
+  // coin arc between hazards (reward for threading)
+  if(Math.random()<0.8){
+    const cy = onCeil ? CEIL()+gap*0.5 : GROUND()-gap*0.5;
+    const cn = 3 + Math.floor(Math.random()*3);
+    for(let i=0;i<cn;i++){
+      G.coins.push({ x:G.spawnX+120+i*34, y:cy - Math.sin(i/cn*Math.PI)*46, r:9, got:false });
+    }
+  }
+  G.spawnX += gap*0.62 + 190;
+}
+
+/* ---- update ---- */
+function update(dt){
+  if(G.state!=="playing") return;
+  G.t += dt;
+  G.speed = G.baseSpeed + Math.min(G.t*0.35, G.baseSpeed*1.8); // ramp difficulty
+  const dx = G.speed;
+  G.scrollX += dx;
+
+  // player physics
+  const p = G.player;
+  const grav = 0.9 * G.gravSign;
+  p.vy += grav;
+  p.y += p.vy;
+  const floorY = GROUND()-PR, ceilY = CEIL()+PR;
+  if(G.gravSign>0 && p.y>=floorY){ p.y=floorY; p.vy=0; p.onGround=true; }
+  else if(G.gravSign<0 && p.y<=ceilY){ p.y=ceilY; p.vy=0; p.onGround=true; }
+  else p.onGround=false;
+
+  // trail
+  p.trail.unshift({x:p.x,y:p.y}); if(p.trail.length>14) p.trail.pop();
+
+  // spawn
+  while(G.spawnX - G.scrollX < W + 300) spawnColumn();
+
+  // obstacles
+  if(G.invuln>0) G.invuln -= dt;
+  for(const o of G.obstacles){
+    const sx = o.x - G.scrollX;
+    if(!o.passed && sx + o.w < p.x){ o.passed=true; G.score++; Sfx.blip(660,0.03,"sine",0.02); }
+    // collision (player circle vs spike box, generous)
+    if(G.invuln<=0 && sx < p.x+PR*0.7 && sx+o.w > p.x-PR*0.7){
+      const top = o.ceil ? o.base : o.base - o.h;
+      const bot = o.ceil ? o.base + o.h : o.base;
+      if(p.y+PR*0.6 > top && p.y-PR*0.6 < bot){ die(); return; }
+    }
+  }
+  // cull
+  G.obstacles = G.obstacles.filter(o=> o.x - G.scrollX > -80);
+
+  // coins
+  for(const cn of G.coins){
+    if(cn.got) continue;
+    const sx = cn.x - G.scrollX;
+    const d = Math.hypot(sx-p.x, cn.y-p.y);
+    if(d < PR+cn.r+4){
+      cn.got=true; G.coinRun++; Store.data.coins++; Sfx.coin();
+      for(let i=0;i<8;i++) G.particles.push({x:sx,y:cn.y,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,life:1,r:Math.random()*2+1,c:"#ffcc44"});
+    }
+  }
+  G.coins = G.coins.filter(cn=> !cn.got && cn.x - G.scrollX > -40);
+
+  // particles
+  for(const pt of G.particles){ pt.x+=pt.vx; pt.y+=pt.vy; pt.vy+=0.06; pt.life-=dt*2.2; }
+  G.particles = G.particles.filter(pt=>pt.life>0);
+
+  // stars parallax
+  for(const s of G.stars){ s.x -= dx*s.z*0.25; if(s.x< -2){ s.x=W+2; s.y=Math.random()*H; } }
+
+  if(G.shake>0) G.shake*=0.86;
+
+  // HUD
+  scoreEl.textContent = G.score;
+  coinRunEl.textContent = G.coinRun;
+  if(G.t>1.2) hintEl.classList.add("hidden");
+}
+
+/* ---- draw ---- */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // bg gradient
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,"#0a0f28"); bg.addColorStop(1,"#05070f");
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  // stars
+  for(const s of G.stars){ ctx.globalAlpha=s.z; ctx.fillStyle="#9fb0d8"; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.fill(); }
+  ctx.globalAlpha=1;
+
+  ctx.save();
+  if(G.shake>0.4){ ctx.translate((Math.random()-.5)*G.shake,(Math.random()-.5)*G.shake); }
+
+  // rails
+  const skin = skinById(Store.data.skin);
+  drawRail(GROUND()); drawRail(CEIL());
+
+  // coins
+  for(const cn of G.coins){ if(cn.got) continue; const sx=cn.x-G.scrollX; if(sx<-20||sx>W+20)continue;
+    ctx.save(); ctx.translate(sx,cn.y);
+    const r=cn.r*(0.9+0.1*Math.sin(G.t*6+cn.x));
+    const g=ctx.createRadialGradient(-r*0.3,-r*0.3,1,0,0,r);
+    g.addColorStop(0,"#fff3c4"); g.addColorStop(.6,"#ffcc44"); g.addColorStop(1,"#e0a200");
+    ctx.fillStyle=g; ctx.shadowColor="rgba(255,204,68,.7)"; ctx.shadowBlur=14;
+    ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fill(); ctx.restore();
+  }
+
+  // obstacles (spikes)
+  for(const o of G.obstacles){ const sx=o.x-G.scrollX; if(sx<-40||sx>W+40)continue;
+    ctx.fillStyle="#ff4d6d"; ctx.shadowColor="rgba(255,77,109,.6)"; ctx.shadowBlur=12;
+    ctx.beginPath();
+    if(o.ceil){ ctx.moveTo(sx,o.base); ctx.lineTo(sx+o.w,o.base); ctx.lineTo(sx+o.w/2,o.base+o.h); }
+    else{ ctx.moveTo(sx,o.base); ctx.lineTo(sx+o.w,o.base); ctx.lineTo(sx+o.w/2,o.base-o.h); }
+    ctx.closePath(); ctx.fill(); ctx.shadowBlur=0;
+  }
+
+  // player trail + body (only exists during/after a run)
+  const p=G.player;
+  if(p){
+    for(let i=p.trail.length-1;i>=0;i--){ const tr=p.trail[i]; const a=(1-i/p.trail.length)*0.5;
+      ctx.globalAlpha=a; ctx.fillStyle=skin.c1; ctx.beginPath(); ctx.arc(tr.x,tr.y,PR*(1-i/p.trail.length*0.6),0,7); ctx.fill(); }
+    ctx.globalAlpha=1;
+
+    ctx.save(); ctx.translate(p.x,p.y);
+    const pg=ctx.createRadialGradient(-6,-6,2,0,0,PR);
+    pg.addColorStop(0,skin.c1); pg.addColorStop(1,skin.c2);
+    ctx.fillStyle=pg; ctx.shadowColor=skin.c1; ctx.shadowBlur=G.invuln>0?26:16;
+    if(G.invuln>0) ctx.globalAlpha = 0.55+0.45*Math.sin(G.t*20);
+    ctx.beginPath(); ctx.arc(0,0,PR,0,7); ctx.fill();
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+    ctx.fillStyle="rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(-5,-5,3.4,0,7); ctx.fill();
+    ctx.restore();
+  }
+
+  // particles
+  for(const pt of G.particles){ ctx.globalAlpha=Math.max(0,pt.life); ctx.fillStyle=pt.c;
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,pt.r,0,7); ctx.fill(); }
+  ctx.globalAlpha=1;
+
+  ctx.restore();
+}
+function drawRail(y){
+  ctx.strokeStyle="rgba(106,139,255,.5)"; ctx.lineWidth=3;
+  ctx.shadowColor="rgba(106,139,255,.6)"; ctx.shadowBlur=10;
+  ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); ctx.shadowBlur=0;
+}
+
+/* ---- loop ---- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min((now-last)/1000, 0.033); last=now;
+  try{ update(dt); draw(); }catch(err){ /* never let one bad frame kill the loop */ console.error(err); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---- lifecycle ---- */
+function startGame(){
+  resetRun(); G.state="playing";
+  hide(startScreen); hide(overScreen); hide(shopScreen); show(hud);
+  hintEl.classList.remove("hidden");
+  Sfx.ensure();
+}
+function die(){
+  G.state="dead"; Sfx.die(); G.shake=22;
+  if(G.score>Store.data.best) Store.data.best=G.score;
+  Store.save();
+  for(let i=0;i<26;i++) G.particles.push({x:G.player.x,y:G.player.y,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,life:1,r:Math.random()*3+1,c:skinById(Store.data.skin).c1});
+  // interstitial (frequency-capped, respects Remove Ads) then show results
+  Ads.maybeInterstitial().finally(()=>{
+    finalScoreEl.textContent=G.score;
+    finalBestEl.textContent=Store.data.best;
+    finalCoinsEl.textContent=G.coinRun;
+    hide(hud); show(overScreen);
+  });
+}
+function revive(){
+  // clear nearby hazards, grant brief invulnerability, resume
+  G.obstacles = G.obstacles.filter(o=> o.x - G.scrollX > W*0.9);
+  G.player.vy=0; G.player.y = G.gravSign>0 ? GROUND()-PR : CEIL()+PR;
+  G.invuln = 1.6; G.state="playing";
+  hide(overScreen); show(hud);
+}
+
+/* ------------------------------- UI wiring ------------------------------- */
+const $ = id => document.getElementById(id);
+const startScreen=$("startScreen"), overScreen=$("overScreen"), shopScreen=$("shopScreen"), hud=$("hud");
+const scoreEl=$("score"), coinRunEl=$("coinRun"), hintEl=$("hint");
+const finalScoreEl=$("finalScore"), finalBestEl=$("finalBest"), finalCoinsEl=$("finalCoins");
+const muteBtn=$("mute");
+const show=el=>el.classList.remove("hidden"), hide=el=>el.classList.add("hidden");
+
+function refreshMenus(){
+  $("bankStart").textContent=Store.data.coins;
+  $("bestStart").textContent=Store.data.best;
+  $("bankShop").textContent=Store.data.coins;
+  muteBtn.textContent = Store.data.muted ? "🔇" : "🔊";
+  buildSkins($("skinsStart"), false);
+  buildSkins($("skinsShop"), true);
+}
+function buildSkins(container, isShop){
+  container.innerHTML="";
+  for(const s of SKINS){
+    const owned = Store.data.owned.includes(s.id);
+    const el=document.createElement("div");
+    el.className="skin"+(Store.data.skin===s.id?" sel":"");
+    el.style.background=`linear-gradient(135deg,${s.c1},${s.c2})`;
+    if(!owned) el.innerHTML=`<div class="lock">${s.price}</div>`;
+    el.onclick=()=>{
+      if(owned){ Store.data.skin=s.id; Sfx.blip(700,0.05); }
+      else if(Store.data.coins>=s.price){ Store.data.coins-=s.price; Store.data.owned.push(s.id); Store.data.skin=s.id; Sfx.coin();
+        if(isShop) $("shopMsg").textContent=`Unlocked ${s.name}! 🎉`; }
+      else if(isShop){ $("shopMsg").textContent=`Need ${s.price-Store.data.coins} more coins.`; }
+      Store.save(); refreshMenus();
+    };
+    container.appendChild(el);
+  }
+}
+
+/* input: tap / click / space to flip */
+function onTap(e){
+  if(G.state==="playing"){ e.preventDefault(); flip(); }
+}
+canvas.addEventListener("pointerdown", onTap);
+window.addEventListener("keydown", e=>{ if(e.code==="Space"||e.code==="ArrowUp"){ e.preventDefault(); flip(); } });
+
+muteBtn.onclick=()=>{ Store.data.muted=!Store.data.muted; Store.save(); muteBtn.textContent=Store.data.muted?"🔇":"🔊"; };
+
+$("playBtn").onclick=startGame;
+$("againBtn").onclick=startGame;
+$("homeBtn").onclick=()=>{ G.state="start"; hide(overScreen); show(startScreen); refreshMenus(); };
+$("shopBtn").onclick=()=>{ hide(startScreen); show(shopScreen); $("shopMsg").textContent=""; refreshMenus(); };
+$("shopBackBtn").onclick=()=>{ hide(shopScreen); show(startScreen); refreshMenus(); };
+
+/* Rewarded: revive */
+$("reviveBtn").onclick=()=>{
+  Ads.rewarded("revive").then(ok=>{ if(ok) revive(); });
+};
+/* Rewarded: double the run's coins */
+$("doubleBtn").onclick=(e)=>{
+  Ads.rewarded("2x coins").then(ok=>{
+    if(ok){ Store.data.coins += G.coinRun; G.coinRun*=2; Store.save();
+      finalCoinsEl.textContent=G.coinRun; e.target.disabled=true; e.target.textContent="✓ Doubled"; refreshMenus(); }
+  });
+};
+/* Rewarded: free coins in shop */
+$("freeCoinsBtn").onclick=()=>{
+  Ads.rewarded("+50 coins").then(ok=>{ if(ok){ Store.data.coins+=50; Store.save(); $("shopMsg").textContent="+50 coins added!"; refreshMenus(); } });
+};
+/* IAP: remove ads */
+$("noAdsBtn").onclick=()=>{
+  IAP.buy({id:"remove_ads", name:"Remove Ads", price:"$2.99"}).then(ok=>{
+    if(ok){ Store.data.noAds=true; Store.save(); $("shopMsg").textContent="Ads removed. Thank you! ✦"; }
+  });
+};
+/* IAP: coin pack */
+$("coinPackBtn").onclick=()=>{
+  IAP.buy({id:"coins_500", name:"500 Coins", price:"$1.99"}).then(ok=>{
+    if(ok){ Store.data.coins+=500; Store.save(); $("shopMsg").textContent="+500 coins added! 💰"; refreshMenus(); }
+  });
+};
+
+/* prevent iOS double-tap zoom / scroll bounce */
+document.addEventListener("gesturestart", e=>e.preventDefault());
+document.addEventListener("touchmove", e=>e.preventDefault(), {passive:false});
+window.addEventListener("orientationchange", ()=>setTimeout(()=>{ resize(); makeStars(); },200));
+
+refreshMenus();
+</script>
+</body>
+</html>
