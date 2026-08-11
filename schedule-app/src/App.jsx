@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import TabBar from './components/TabBar.jsx';
@@ -13,22 +13,30 @@ import { CLERK_ENABLED } from './data/clerkConfig.js';
 import { AI_ENABLED } from './data/aiConfig.js';
 import { setSyncStatus } from './data/syncStatus.js';
 import { useToast } from './data/toast.jsx';
-import HomePage from './pages/HomePage.jsx';
-import GoalsPage from './pages/GoalsPage.jsx';
-import GoalHistoryPage from './pages/GoalHistoryPage.jsx';
-import PlannerPage from './pages/PlannerPage.jsx';
-import ContactsPage from './pages/ContactsPage.jsx';
-import ContactDetailPage from './pages/ContactDetailPage.jsx';
-import ContactTimelinePage from './pages/ContactTimelinePage.jsx';
-import MapPage from './pages/MapPage.jsx';
-import RoutePlannerPage from './pages/RoutePlannerPage.jsx';
-import MorePage from './pages/MorePage.jsx';
-import SharedCalendarsPage from './pages/SharedCalendarsPage.jsx';
-import SharedCalendarDetailPage from './pages/SharedCalendarDetailPage.jsx';
-import SharedCalendarJoinPage from './pages/SharedCalendarJoinPage.jsx';
-import PricingPage from './pages/PricingPage.jsx';
-import SearchPage from './pages/SearchPage.jsx';
 import { useStore, useActions } from './data/store.jsx';
+// Home stays a static import — it's the default landing route (and where
+// the first-run tutorial always starts), so it needs to be there on first
+// paint with no extra chunk fetch in between; see the "no launch splash"
+// comment below. Every other page is only ever needed once someone
+// actually navigates to it, so it's loaded on demand instead of bundled
+// into the one chunk everyone downloads up front — Map alone pulls in all
+// of Leaflet, which no one visiting just Planner/Contacts/Goals should
+// have to pay for.
+import HomePage from './pages/HomePage.jsx';
+const GoalsPage = lazy(() => import('./pages/GoalsPage.jsx'));
+const GoalHistoryPage = lazy(() => import('./pages/GoalHistoryPage.jsx'));
+const PlannerPage = lazy(() => import('./pages/PlannerPage.jsx'));
+const ContactsPage = lazy(() => import('./pages/ContactsPage.jsx'));
+const ContactDetailPage = lazy(() => import('./pages/ContactDetailPage.jsx'));
+const ContactTimelinePage = lazy(() => import('./pages/ContactTimelinePage.jsx'));
+const MapPage = lazy(() => import('./pages/MapPage.jsx'));
+const RoutePlannerPage = lazy(() => import('./pages/RoutePlannerPage.jsx'));
+const MorePage = lazy(() => import('./pages/MorePage.jsx'));
+const SharedCalendarsPage = lazy(() => import('./pages/SharedCalendarsPage.jsx'));
+const SharedCalendarDetailPage = lazy(() => import('./pages/SharedCalendarDetailPage.jsx'));
+const SharedCalendarJoinPage = lazy(() => import('./pages/SharedCalendarJoinPage.jsx'));
+const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
+const SearchPage = lazy(() => import('./pages/SearchPage.jsx'));
 
 // Keeps state.settings.isPro (read all over the app already) in sync with
 // the real subscription status from the backend, once someone's signed in.
@@ -469,24 +477,32 @@ export default function App() {
       {CLERK_ENABLED && <DataSync />}
       <ArrivalWatch />
       <main className="app-main" key={location.pathname}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/goals/:id/history" element={<GoalHistoryPage />} />
-          <Route path="/planner" element={<PlannerPage />} />
-          <Route path="/contacts" element={<ContactsPage />} />
-          <Route path="/contacts/:id" element={<ContactDetailPage />} />
-          <Route path="/contacts/:id/timeline" element={<ContactTimelinePage />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/plan-day" element={<RoutePlannerPage />} />
-          <Route path="/more" element={<MorePage />} />
-          <Route path="/shared-calendars" element={<SharedCalendarsPage />} />
-          <Route path="/shared-calendars/join/:token" element={<SharedCalendarJoinPage />} />
-          <Route path="/shared-calendars/:id" element={<SharedCalendarDetailPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        {/* Fallback is deliberately blank rather than a spinner: lazy chunks
+            for pages already visited this session are browser-cached and
+            resolve within a frame or two, and the "no launch splash" stance
+            above applies just as much to every other page as it does to
+            Home — a flash of loading UI would be a worse look than the
+            near-instant blank gap it'd be covering up. */}
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/goals/:id/history" element={<GoalHistoryPage />} />
+            <Route path="/planner" element={<PlannerPage />} />
+            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/contacts/:id" element={<ContactDetailPage />} />
+            <Route path="/contacts/:id/timeline" element={<ContactTimelinePage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/plan-day" element={<RoutePlannerPage />} />
+            <Route path="/more" element={<MorePage />} />
+            <Route path="/shared-calendars" element={<SharedCalendarsPage />} />
+            <Route path="/shared-calendars/join/:token" element={<SharedCalendarJoinPage />} />
+            <Route path="/shared-calendars/:id" element={<SharedCalendarDetailPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </main>
       <TabBar />
       {/* AI_ENABLED is the real switch — buried for now, see aiConfig.js.
