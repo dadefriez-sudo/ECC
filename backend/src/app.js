@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { clerkMiddleware } from '@clerk/express';
+import { apiLimiter } from './middleware/rateLimit.js';
 import meRoutes from './routes/me.js';
 import billingRoutes from './routes/billing.js';
 import dataRoutes from './routes/data.js';
@@ -12,16 +13,33 @@ import clerkWebhookRouter from './routes/webhooksClerk.js';
 export function createApp() {
   const app = express();
 
+  // Render (see README §4) puts exactly one reverse proxy in front of this
+  // process. Without this, every request's req.ip is the proxy's own
+  // address — every user would collapse into one IP-based rate-limit
+  // bucket, and everyone would get throttled together instead of only
+  // whoever's actually misbehaving. `1` trusts only that one hop's
+  // X-Forwarded-For entry, not an arbitrary client-supplied header.
+  app.set('trust proxy', 1);
+
   app.use(cors({ origin: process.env.FRONTEND_URL || true }));
 
   // Webhooks need the raw request body for signature verification — mount
-  // them before express.json() touches the stream.
+  // them before express.json() touches the stream. Left outside apiLimiter:
+  // they're server-to-server from Stripe/Clerk, already signature-verified,
+  // and rate-limiting them risks dropping a retry of a webhook that matters.
   app.use('/api/webhooks/stripe', stripeWebhookRouter);
   app.use('/api/webhooks/clerk', clerkWebhookRouter);
 
   // Liveness probe — must not depend on Clerk/DB being configured, since
-  // hosting platforms hit this before/without any of that being ready.
+  // hosting platforms hit this before/without any of that being ready, and
+  // must not be rate-limited, since some platforms poll it every few
+  // seconds — so it's mounted ahead of apiLimiter, not behind it.
   app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+  // A blunt, IP-keyed backstop against a runaway client or a scrape — see
+  // middleware/rateLimit.js. Specific write endpoints layer a tighter,
+  // per-user limit on top of this once requireUser has run.
+  app.use(apiLimiter);
 
   // Higher than Express's 100kb default: the synced data blob can include
   // contact/profile photos as inline data URLs.

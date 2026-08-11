@@ -153,6 +153,27 @@ half-applied.
   per process — if you ever run more than one instance, move it to the
   database or a shared cache.
 
+### Rate limiting
+
+Everything else now sits behind `express-rate-limit` (`src/middleware/
+rateLimit.js`), which the assistant's own hand-rolled throttle above
+predates:
+
+- A blunt, IP-keyed limit of 300 requests / 15 min applies to all of
+  `/api/*` except `/api/health` (hosting platforms poll that too often to
+  rate-limit) and the two webhook routes (server-to-server from Stripe/
+  Clerk, already signature-verified — throttling them risks dropping a
+  retry that matters).
+- Calendar creation, invite creation, shared-event creation, and the
+  full-blob `PUT /api/data` additionally get a tighter, per-*user* limit
+  (keyed by `req.dbUser.id`, mounted after `requireUser`) so one account
+  can't flood those regardless of how many IPs it uses.
+- Like the in-memory state above, both are per-process — same caveat
+  applies if you ever scale past one instance.
+- `app.set('trust proxy', 1)` is required for any of this to key by the
+  real client IP rather than Render's own proxy address; don't remove it
+  without replacing it if you change hosts.
+
 ## Known gaps / next steps
 
 - **The lifetime-purchase migration hasn't been run.** Pro switched from a

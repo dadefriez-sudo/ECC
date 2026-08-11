@@ -1,11 +1,21 @@
 import { Router } from 'express';
 import { requireUser } from '../middleware/requireUser.js';
+import { perUserLimiter } from '../middleware/rateLimit.js';
 import { prisma } from '../db.js';
 
 const router = Router();
 
 const INVITE_TTL_DAYS = 7;
 const EDIT_ROLES = new Set(['owner', 'editor']);
+
+// These three create rows an owner could otherwise script into a flood
+// (calendars, invites — which also spend an email address's goodwill if a
+// provider ever gets wired up, see README — and events). Update/delete
+// don't get the same treatment: they're bounded by how many rows already
+// exist, not by how fast a client can call the endpoint.
+const createCalendarLimiter = perUserLimiter({ windowMs: 60 * 60 * 1000, limit: 20 });
+const inviteLimiter = perUserLimiter({ windowMs: 60 * 60 * 1000, limit: 30 });
+const createEventLimiter = perUserLimiter({ windowMs: 60 * 60 * 1000, limit: 120 });
 
 async function getMembership(calendarId, userId) {
   return prisma.sharedCalendarMember.findUnique({
@@ -70,7 +80,7 @@ router.get('/', requireUser, async (req, res, next) => {
   }
 });
 
-router.post('/', requireUser, async (req, res, next) => {
+router.post('/', requireUser, createCalendarLimiter, async (req, res, next) => {
   const name = (req.body?.name || '').trim();
   if (!name) return res.status(400).json({ error: 'name is required' });
   const color = typeof req.body?.color === 'string' ? req.body.color : undefined;
@@ -173,7 +183,7 @@ router.get('/:id/invites', requireUser, requireMember, requireOwner, async (req,
   }
 });
 
-router.post('/:id/invites', requireUser, requireMember, requireEditRole, async (req, res, next) => {
+router.post('/:id/invites', requireUser, requireMember, requireEditRole, inviteLimiter, async (req, res, next) => {
   const email = (req.body?.email || '').trim().toLowerCase();
   if (!email) return res.status(400).json({ error: 'email is required' });
   const role = req.body?.role === 'viewer' ? 'viewer' : 'editor';
@@ -230,7 +240,7 @@ router.post('/invites/:token/accept', requireUser, async (req, res, next) => {
 // --- Events --------------------------------------------------------------
 // Deliberately simple (no recurrence) — see the schema comment for why.
 
-router.post('/:id/events', requireUser, requireMember, requireEditRole, async (req, res, next) => {
+router.post('/:id/events', requireUser, requireMember, requireEditRole, createEventLimiter, async (req, res, next) => {
   const { title, date, start, end } = req.body || {};
   if (!title?.trim() || !date || !start || !end) {
     return res.status(400).json({ error: 'title, date, start, and end are required' });
