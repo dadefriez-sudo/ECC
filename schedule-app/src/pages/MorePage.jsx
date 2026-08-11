@@ -13,7 +13,7 @@ import {
   requestNotificationPermission,
 } from '../data/notifications.js';
 import { downloadICS, parseICS } from '../data/ics.js';
-import { formatTime, EVENT_TYPE_KINDS, DEFAULT_KIND_COLORS } from '../data/helpers.js';
+import { formatTime, EVENT_TYPE_KINDS, DEFAULT_KIND_COLORS, normalizeEventTypeOrder } from '../data/helpers.js';
 import ReorderToggleList from '../components/ReorderToggleList.jsx';
 import SettingsGroup from '../components/SettingsGroup.jsx';
 import SettingsSection from '../components/SettingsSection.jsx';
@@ -134,8 +134,7 @@ const SETTINGS_INDEX = [
     label: 'Calendar',
     groups: [
       { id: 'g8', title: 'Calendar settings', keywords: 'day start end hour zoom week 24 templates duration reminder default' },
-      { id: 'g16', title: 'Event colors', keywords: 'call text in person email other category colour color type' },
-      { id: 'g15', title: 'Custom event types', keywords: 'add create new type category colour color custom' },
+      { id: 'g15', title: 'Event types', keywords: 'call text in person travel email other category colour color custom add create new reorder remove drag' },
       { id: 'g3', title: 'Calendar import / export', keywords: 'ics subscribe google apple outlook download' },
     ],
   },
@@ -347,6 +346,27 @@ export default function MorePage() {
     if (editingEventType.id) actions.updateCustomEventType({ id: editingEventType.id, label, color: editingEventType.color });
     else actions.addCustomEventType({ label, color: editingEventType.color });
     setEditingEventType(null);
+  };
+
+  // The fixed kinds and someone's own custom types, combined into the one
+  // reorderable/hideable list Settings → Calendar → Event types shows.
+  // Tapping a row opens whichever editor actually fits it — a fixed kind
+  // only ever has its color to change, a custom type has its label too
+  // (and can be deleted outright, unlike a fixed kind, which can only be
+  // hidden — see EVENT_TYPE_KINDS in helpers.js for why).
+  const eventTypeList = [
+    ...EVENT_TYPE_KINDS.map((k) => ({ id: k.value, label: k.label, swatch: kindColors[k.value] })),
+    ...(state.customEventTypes || []).map((t) => ({ id: t.id, label: t.label, swatch: t.color })),
+  ];
+  const eventTypeOrder = normalizeEventTypeOrder(state.settings?.eventTypeOrder, state.customEventTypes);
+  const openEventTypeEditor = (id) => {
+    const fixed = EVENT_TYPE_KINDS.find((k) => k.value === id);
+    if (fixed) {
+      setEditingKindColor({ value: fixed.value, label: fixed.label, color: kindColors[fixed.value] });
+      return;
+    }
+    const custom = (state.customEventTypes || []).find((t) => t.id === id);
+    if (custom) setEditingEventType({ ...custom });
   };
 
   const counts = {
@@ -780,51 +800,50 @@ export default function MorePage() {
           />
         </div>
       </SettingsGroup>
-      <SettingsGroup {...grp('g16')}>
-        <span className="detail-label">Event colors</span>
-        <p className="muted small">Color used for each event type on the calendar.</p>
-        <ul className="status-list">
-          {EVENT_TYPE_KINDS.map((k) => (
-            <li key={k.value}>
-              <button
-                className="status-item"
-                onClick={() => setEditingKindColor({ value: k.value, label: k.label, color: kindColors[k.value] })}
-              >
-                <span className="swatch" style={{ background: kindColors[k.value] }} />
-                <span>{k.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </SettingsGroup>
       <SettingsGroup {...grp('g15')}>
-        <div className="section-head">
-          <span className="detail-label">Custom event types {!isPro && '· Pro'}</span>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => requirePro(() => setEditingEventType({ label: '', color: PRESET_COLORS[0] }))}
-          >
-            + Add
-          </button>
-        </div>
+        <span className="detail-label">Event types</span>
         <p className="muted small">
-          Extra types beyond Call/Text/In Person/Email/Other, for anything with its own look on
-          the calendar — a label and a color, nothing more.
+          Colors for calendar events. Everyone can recolor Call/Text/In Person/Travel/Email/Other
+          — reordering, hiding, and adding your own types beyond those is Pro.
         </p>
-        <ul className="status-list">
-          {(state.customEventTypes || []).map((t) => (
-            <li key={t.id}>
-              <button className="status-item" onClick={() => requirePro(() => setEditingEventType({ ...t }))}>
-                <span className="swatch" style={{ background: t.color }} />
-                <span>{t.label}</span>
-                <span className="muted count-tag">
-                  {state.events.filter((e) => e.kind === t.id).length}
-                </span>
-              </button>
-            </li>
-          ))}
-          {(state.customEventTypes || []).length === 0 && <li className="muted small">No custom types yet.</li>}
-        </ul>
+        {isPro ? (
+          <>
+            <ReorderToggleList
+              items={eventTypeOrder}
+              types={eventTypeList}
+              onChange={(next) => actions.setSettings({ eventTypeOrder: next })}
+              onItemClick={openEventTypeEditor}
+            />
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setEditingEventType({ label: '', color: PRESET_COLORS[0] })}
+            >
+              + Custom event
+            </button>
+          </>
+        ) : (
+          <>
+            <ul className="status-list">
+              {EVENT_TYPE_KINDS.map((k) => (
+                <li key={k.value}>
+                  <button
+                    className="status-item"
+                    onClick={() => setEditingKindColor({ value: k.value, label: k.label, color: kindColors[k.value] })}
+                  >
+                    <span className="swatch" style={{ background: kindColors[k.value] }} />
+                    <span>{k.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="bubble-reorder-locked" onClick={() => navigate('/pricing')}>
+              <span className="bubble-reorder-lock-hint">
+                <LockIcon /> Unlock to reorder, hide, or add your own types
+              </span>
+            </button>
+          </>
+        )}
       </SettingsGroup>
       <SettingsGroup {...grp('g3')}>
         <span className="detail-label">Calendar import / export</span>

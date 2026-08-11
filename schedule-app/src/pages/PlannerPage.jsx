@@ -44,6 +44,7 @@ import {
   makeContactColor,
   EVENT_TYPE_KINDS,
   resolveKindColors,
+  normalizeEventTypeOrder,
 } from '../data/helpers.js';
 import AddressField from '../components/AddressField.jsx';
 import Icon from '../components/Icon.jsx';
@@ -2560,10 +2561,23 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
   const [scheduling, setScheduling] = useState(false);
   const recurringMaster = !!editing?.id && !!editing?.repeat && editing.repeat !== 'none';
   const kindColors = resolveKindColors(settings, customEventTypes);
-  const kindOptions = [
-    ...EVENT_TYPE_KINDS.map((k) => ({ ...k, color: kindColors[k.value] })),
-    ...(customEventTypes || []).map((t) => ({ value: t.id, label: t.label, color: t.color })),
-  ];
+  const allKindOptions = new Map([
+    ...EVENT_TYPE_KINDS.map((k) => [k.value, { value: k.value, label: k.label, color: kindColors[k.value] }]),
+    ...(customEventTypes || []).map((t) => [t.id, { value: t.id, label: t.label, color: t.color }]),
+  ]);
+  // Same order/enabled list Settings → Calendar → Event types edits — a type
+  // toggled off there stops being offered to *new* picks, but an event
+  // already carrying one (draft.kind) keeps showing its real label/color
+  // here rather than silently reading as "None" the moment its Type field
+  // is opened, so re-saving without touching this field can't accidentally
+  // drop it either.
+  const kindOptions = normalizeEventTypeOrder(settings?.eventTypeOrder, customEventTypes)
+    .filter((o) => o.enabled)
+    .map((o) => allKindOptions.get(o.id))
+    .filter(Boolean);
+  if (draft?.kind && !kindOptions.some((o) => o.value === draft.kind) && allKindOptions.has(draft.kind)) {
+    kindOptions.unshift(allKindOptions.get(draft.kind));
+  }
 
   const key = editing ? `${editing.id || 'new'}|${editing.recDate || editing.date}|${editing.start}` : null;
   const keyRef = useRef(null);

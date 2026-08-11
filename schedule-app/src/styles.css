@@ -4427,6 +4427,7 @@ textarea {
   text-align: left;
 }
 .swatch {
+  display: inline-block;
   width: 20px;
   height: 20px;
   border-radius: 6px;
@@ -4499,6 +4500,16 @@ textarea {
 .bubble-reorder-label {
   font-weight: 600;
   margin-right: auto;
+}
+.bubble-reorder-label--btn {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  margin: -4px auto -4px 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 .bubble-reorder-locked {
   width: 100%;

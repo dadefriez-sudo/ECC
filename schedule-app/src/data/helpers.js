@@ -366,10 +366,47 @@ export const EVENT_TYPE_KINDS = [
   { value: 'call', label: 'Call', color: '#2e9e6b' },
   { value: 'text', label: 'Text', color: '#1f5f8b' },
   { value: 'inPerson', label: 'In Person', color: '#8a5cd1' },
+  { value: 'travel', label: 'Travel', color: '#3a9188' },
   { value: 'email', label: 'Email', color: '#e08a1e' },
   { value: 'other', label: 'Other', color: '#6b7280' },
 ];
 export const DEFAULT_KIND_COLORS = Object.fromEntries(EVENT_TYPE_KINDS.map((k) => [k.value, k.color]));
+
+// Settings → Calendar → Event types lets someone reorder this whole list
+// (fixed kinds and their own custom types together) and toggle any of them
+// off the event editor's Type dropdown, stored as `settings.eventTypeOrder`
+// — [{id, enabled}], id being a fixed kind's `value` or a custom type's id.
+// Toggling a fixed kind off only hides it as a future choice; it doesn't
+// touch eventColor() or events that already carry it, so nothing already on
+// the calendar changes color or loses its label just because the option was
+// hidden. Mirrors normalizeTabOrder()/normalizeHomeBlocks() — merges a
+// stored (possibly stale, e.g. missing the newly-added Travel kind, or
+// carrying a since-deleted custom type's id) order with the current known
+// set, preserving order/enabled where a stored entry still matches, and
+// appending anything new.
+export function normalizeEventTypeOrder(list, customEventTypes) {
+  const known = new Set([...EVENT_TYPE_KINDS.map((k) => k.value), ...(customEventTypes || []).map((t) => t.id)]);
+  const seen = new Set();
+  const out = [];
+  for (const item of Array.isArray(list) ? list : []) {
+    if (!item || !known.has(item.id) || seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push({ id: item.id, enabled: item.enabled !== false });
+  }
+  for (const k of EVENT_TYPE_KINDS) {
+    if (!seen.has(k.value)) {
+      seen.add(k.value);
+      out.push({ id: k.value, enabled: true });
+    }
+  }
+  for (const t of customEventTypes || []) {
+    if (!seen.has(t.id)) {
+      seen.add(t.id);
+      out.push({ id: t.id, enabled: true });
+    }
+  }
+  return out;
+}
 
 // Merges the fixed kinds' colours (defaults, then any Settings overrides)
 // with custom event types' own colours into the one map eventColor() below

@@ -5,9 +5,14 @@ import Icon from './Icon.jsx';
 // Shared drag-to-reorder + enable toggle list, used anywhere the app lets a
 // user reorder/hide a fixed set of named items — Settings' bubble/tab lists,
 // and the Home page's own inline block editor. `items` is [{id, enabled}]
-// in display order; `types` supplies each id's label (and optional icon);
-// `lockedIds` marks ids whose toggle is forced on and non-interactive (e.g.
-// the nav tab that's the only way back to Settings).
+// in display order; `types` supplies each id's label (and optional icon or
+// swatch color — `type.swatch` renders a color dot instead of an icon, for
+// lists of colored categories rather than app sections); `lockedIds` marks
+// ids whose toggle is forced on and non-interactive (e.g. the nav tab
+// that's the only way back to Settings). `onItemClick(id)`, if given, makes
+// the label/swatch area (not the drag handle or toggle, which keep their
+// own gestures) open whatever per-item editor the caller wants — e.g. a
+// color picker.
 //
 // The drag deliberately does *not* reorder `items` as your finger moves. It
 // used to, and every crossing re-rendered the list in its new order with no
@@ -18,7 +23,7 @@ import Icon from './Icon.jsx';
 // and the real reorder is committed once on release. That also makes the
 // landing unambiguous, since the gap you're about to drop into is visibly
 // open the whole time.
-export default function ReorderToggleList({ items, types, onChange, lockedIds = [] }) {
+export default function ReorderToggleList({ items, types, onChange, lockedIds = [], onItemClick }) {
   // { from, to, dy } while dragging, else null.
   const [drag, setDrag] = useState(null);
   const dragRef = useRef(null);
@@ -128,12 +133,24 @@ export default function ReorderToggleList({ items, types, onChange, lockedIds = 
             >
               <DragHandleIcon />
             </button>
-            {type?.icon && (
+            {type?.swatch ? (
               <span className="bubble-reorder-icon">
-                <Icon name={type.icon} size={20} />
+                <span className="swatch" style={{ background: type.swatch }} />
               </span>
+            ) : (
+              type?.icon && (
+                <span className="bubble-reorder-icon">
+                  <Icon name={type.icon} size={20} />
+                </span>
+              )
             )}
-            <span className="bubble-reorder-label">{type?.label}</span>
+            {onItemClick ? (
+              <button type="button" className="bubble-reorder-label bubble-reorder-label--btn" onClick={() => onItemClick(it.id)}>
+                {type?.label}
+              </button>
+            ) : (
+              <span className="bubble-reorder-label">{type?.label}</span>
+            )}
             {locked ? (
               <span className="muted small">Always shown</span>
             ) : (
