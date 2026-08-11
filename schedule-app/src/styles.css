@@ -4441,6 +4441,12 @@ textarea {
   flex-direction: column;
   gap: 8px;
 }
+/* An "+ Add" button (e.g. "+ Custom event") right after the list should sit
+   the same distance from the last row as the rows sit from each other,
+   instead of butting up against it with no gap at all. */
+.bubble-reorder-list + .btn {
+  margin-top: 8px;
+}
 .bubble-reorder-row {
   width: 100%;
   display: flex;
