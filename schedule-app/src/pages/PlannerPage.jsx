@@ -43,7 +43,7 @@ import {
   eventColor,
   makeContactColor,
   EVENT_TYPE_KINDS,
-  DEFAULT_KIND_COLORS,
+  resolveKindColors,
 } from '../data/helpers.js';
 import AddressField from '../components/AddressField.jsx';
 import Icon from '../components/Icon.jsx';
@@ -148,7 +148,7 @@ const PENDING_DRAFT_KEY = 'keystone.pendingEventDraft';
 export default function PlannerPage() {
   const { state } = useStore();
   const actions = useActions();
-  const kindColors = { ...DEFAULT_KIND_COLORS, ...(state.settings?.eventKindColors || {}) };
+  const kindColors = resolveKindColors(state.settings, state.customEventTypes);
   const showToast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1055,6 +1055,7 @@ export default function PlannerPage() {
         goals={state.goals || []}
         tasks={state.tasks || []}
         settings={state.settings}
+        customEventTypes={state.customEventTypes}
         onClose={() => setEditing(null)}
         onSave={saveEvent}
         onDelete={deleteEvent}
@@ -2553,13 +2554,16 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, onClo
 
 // --- Event editor (full-page sheet) -----------------------------------------
 
-function EventEditor({ editing, events, contacts, goals, tasks, settings, onClose, onSave, onDelete, onSkipOccurrence, setSettings, onSelectLocation }) {
+function EventEditor({ editing, events, contacts, goals, tasks, settings, customEventTypes, onClose, onSave, onDelete, onSkipOccurrence, setSettings, onSelectLocation }) {
   const [draft, setDraft] = useState(null);
   const [initialJson, setInitialJson] = useState('');
   const [scheduling, setScheduling] = useState(false);
   const recurringMaster = !!editing?.id && !!editing?.repeat && editing.repeat !== 'none';
-  const kindColors = { ...DEFAULT_KIND_COLORS, ...(settings?.eventKindColors || {}) };
-  const kindOptions = EVENT_TYPE_KINDS.map((k) => ({ ...k, color: kindColors[k.value] }));
+  const kindColors = resolveKindColors(settings, customEventTypes);
+  const kindOptions = [
+    ...EVENT_TYPE_KINDS.map((k) => ({ ...k, color: kindColors[k.value] })),
+    ...(customEventTypes || []).map((t) => ({ value: t.id, label: t.label, color: t.color })),
+  ];
 
   const key = editing ? `${editing.id || 'new'}|${editing.recDate || editing.date}|${editing.start}` : null;
   const keyRef = useRef(null);
@@ -2700,6 +2704,7 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, onClos
           setDraft={setDraft}
           events={events}
           settings={settings}
+          customEventTypes={customEventTypes}
           onDone={() => setScheduling(false)}
         />
       ) : (
@@ -2971,12 +2976,12 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, onClos
 
 const SCHED_PX_PER_HOUR = 64;
 
-function ScheduleCalendarView({ draft, setDraft, events, settings, onDone }) {
+function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTypes, onDone }) {
   const bodyRef = useRef(null);
   const dragRef = useRef(null); // { mode, startClientY, startS, startE }
   const dayStart = settings?.timelineStartHour ?? DAY_START;
   const dayEnd = settings?.timelineEndHour ?? DAY_END;
-  const kindColors = { ...DEFAULT_KIND_COLORS, ...(settings?.eventKindColors || {}) };
+  const kindColors = resolveKindColors(settings, customEventTypes);
   const pxPerHour = SCHED_PX_PER_HOUR;
   const pxPerMin = pxPerHour / 60;
 

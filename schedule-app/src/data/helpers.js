@@ -347,13 +347,21 @@ export function goalFreezesLeft(goal, isPro) {
 }
 
 // The event's "type" is really just its interaction medium — what kind of
-// contact touchpoint it is. There's no separate, user-manageable list of
-// types to pick from; an event just carries one of these `kind` values
-// directly, which is also how the event detail view knows to surface a
-// linked contact's phone (call/text) or email (email). The label and id are
-// fixed; only the colour is user-customizable (Settings → Calendar → Event
-// colors), stored as `settings.eventKindColors` and layered over these
-// defaults everywhere a kind's colour is resolved.
+// contact touchpoint it is. An event carries one of these fixed `kind`
+// values directly, which is also how the event detail view knows to surface
+// a linked contact's phone (call/text) or email (email). The label and id
+// are fixed; only the colour is user-customizable (Settings → Calendar →
+// Event colors), stored as `settings.eventKindColors` and layered over
+// these defaults everywhere a kind's colour is resolved.
+//
+// A user can also add their own custom types (Settings → Calendar → Custom
+// event types, `state.customEventTypes`) — those are purely a label + a
+// colour, offered as extra options alongside these fixed ones in the event
+// editor's Type dropdown. They deliberately don't get an interaction-medium
+// meaning: a custom "Gym" type won't surface a contact's phone number the
+// way Call does, because there's no medium to infer one from. See
+// resolveKindColors() below for where the two lists get merged into one
+// colour map.
 export const EVENT_TYPE_KINDS = [
   { value: 'call', label: 'Call', color: '#2e9e6b' },
   { value: 'text', label: 'Text', color: '#1f5f8b' },
@@ -362,6 +370,20 @@ export const EVENT_TYPE_KINDS = [
   { value: 'other', label: 'Other', color: '#6b7280' },
 ];
 export const DEFAULT_KIND_COLORS = Object.fromEntries(EVENT_TYPE_KINDS.map((k) => [k.value, k.color]));
+
+// Merges the fixed kinds' colours (defaults, then any Settings overrides)
+// with custom event types' own colours into the one map eventColor() below
+// expects — custom types have no default to override, they just carry
+// whatever colour they were created with. Centralized here rather than
+// spelled out at each of the half-dozen call sites, the same reasoning as
+// eventColor() itself.
+export function resolveKindColors(settings, customEventTypes) {
+  return {
+    ...DEFAULT_KIND_COLORS,
+    ...(settings?.eventKindColors || {}),
+    ...Object.fromEntries((customEventTypes || []).map((t) => [t.id, t.color])),
+  };
+}
 
 // The colour an event should be drawn in, in priority order: a colour set
 // on the event itself, then its kind's colour (user-customized if set, else
@@ -374,9 +396,9 @@ export const DEFAULT_KIND_COLORS = Object.fromEntries(EVENT_TYPE_KINDS.map((k) =
 // real colour everywhere else.
 // `contactColor` is an optional (id) => color|undefined lookup — pages that
 // have the contact and status lists build it once with makeContactColor().
-// `kindColors` is an optional { call, text, ... } override map — pages that
-// have settings pass `settings.eventKindColors`; omitted, the defaults above
-// apply.
+// `kindColors` is an optional { call, text, ... } override map — pages
+// build it with resolveKindColors(settings, customEventTypes); omitted, the
+// fixed defaults above apply (with no custom types resolved).
 export function eventColor(event, contactColor, fallback = 'var(--accent)', kindColors) {
   if (event?.color) return event.color;
   const colors = kindColors || DEFAULT_KIND_COLORS;

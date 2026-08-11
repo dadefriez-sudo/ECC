@@ -135,6 +135,7 @@ const SETTINGS_INDEX = [
     groups: [
       { id: 'g8', title: 'Calendar settings', keywords: 'day start end hour zoom week 24 templates duration reminder default' },
       { id: 'g16', title: 'Event colors', keywords: 'call text in person email other category colour color type' },
+      { id: 'g15', title: 'Custom event types', keywords: 'add create new type category colour color custom' },
       { id: 'g3', title: 'Calendar import / export', keywords: 'ics subscribe google apple outlook download' },
     ],
   },
@@ -180,6 +181,7 @@ export default function MorePage() {
   const navigate = useNavigate();
   const [editingStatus, setEditingStatus] = useState(null);
   const [editingKindColor, setEditingKindColor] = useState(null); // { value, label, color } | null
+  const [editingEventType, setEditingEventType] = useState(null); // { id?, label, color } | null
   const [confirm, setConfirm] = useState(null); // 'reset' | 'clear' | 'clearCache' | 'clearContacts' | null
   const [feedback, setFeedback] = useState(null); // string | null
   const [editingProfile, setEditingProfile] = useState(null);
@@ -337,6 +339,14 @@ export default function MorePage() {
   const saveKindColor = () => {
     actions.setSettings({ eventKindColors: { ...kindColors, [editingKindColor.value]: editingKindColor.color } });
     setEditingKindColor(null);
+  };
+
+  const saveEventType = () => {
+    const label = editingEventType.label.trim();
+    if (!label) return;
+    if (editingEventType.id) actions.updateCustomEventType({ id: editingEventType.id, label, color: editingEventType.color });
+    else actions.addCustomEventType({ label, color: editingEventType.color });
+    setEditingEventType(null);
   };
 
   const counts = {
@@ -787,6 +797,35 @@ export default function MorePage() {
           ))}
         </ul>
       </SettingsGroup>
+      <SettingsGroup {...grp('g15')}>
+        <div className="section-head">
+          <span className="detail-label">Custom event types {!isPro && '· Pro'}</span>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => requirePro(() => setEditingEventType({ label: '', color: PRESET_COLORS[0] }))}
+          >
+            + Add
+          </button>
+        </div>
+        <p className="muted small">
+          Extra types beyond Call/Text/In Person/Email/Other, for anything with its own look on
+          the calendar — a label and a color, nothing more.
+        </p>
+        <ul className="status-list">
+          {(state.customEventTypes || []).map((t) => (
+            <li key={t.id}>
+              <button className="status-item" onClick={() => requirePro(() => setEditingEventType({ ...t }))}>
+                <span className="swatch" style={{ background: t.color }} />
+                <span>{t.label}</span>
+                <span className="muted count-tag">
+                  {state.events.filter((e) => e.kind === t.id).length}
+                </span>
+              </button>
+            </li>
+          ))}
+          {(state.customEventTypes || []).length === 0 && <li className="muted small">No custom types yet.</li>}
+        </ul>
+      </SettingsGroup>
       <SettingsGroup {...grp('g3')}>
         <span className="detail-label">Calendar import / export</span>
         <p className="muted small">Move events to or from other calendar apps using the .ics format.</p>
@@ -1160,6 +1199,63 @@ export default function MorePage() {
                     className={`color-dot${editingKindColor.color === c ? ' color-dot--on' : ''}`}
                     style={{ background: c }}
                     onClick={() => setEditingKindColor({ ...editingKindColor, color: c })}
+                    aria-label={`Choose ${c}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Custom event type editor */}
+      <Modal
+        open={!!editingEventType}
+        title={editingEventType?.id ? 'Edit event type' : 'New event type'}
+        onClose={() => setEditingEventType(null)}
+        fullPage
+        footer={
+          <div className="modal-actions">
+            {editingEventType?.id && (
+              <button
+                className="btn btn-danger-ghost"
+                onClick={() => {
+                  actions.deleteCustomEventType(editingEventType.id);
+                  setEditingEventType(null);
+                }}
+              >
+                Delete
+              </button>
+            )}
+            <button className="btn btn-primary" onClick={saveEventType}>
+              Save
+            </button>
+          </div>
+        }
+      >
+        {editingEventType && (
+          <div className="form">
+            <label className="field">
+              <span>Label</span>
+              <input
+                autoFocus
+                value={editingEventType.label}
+                onChange={(e) => setEditingEventType({ ...editingEventType, label: e.target.value })}
+                placeholder="e.g. Gym, Doctor, Errand"
+              />
+            </label>
+            <div className="field">
+              <span>Color</span>
+              <div className="color-grid">
+                {(PRESET_COLORS.includes(editingEventType.color)
+                  ? PRESET_COLORS
+                  : [...PRESET_COLORS, editingEventType.color]
+                ).map((c) => (
+                  <button
+                    key={c}
+                    className={`color-dot${editingEventType.color === c ? ' color-dot--on' : ''}`}
+                    style={{ background: c }}
+                    onClick={() => setEditingEventType({ ...editingEventType, color: c })}
                     aria-label={`Choose ${c}`}
                   />
                 ))}

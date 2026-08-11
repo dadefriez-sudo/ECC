@@ -370,6 +370,20 @@ function reducer(state, action) {
         ),
       };
 
+    // Custom event types (user-defined label + colour, offered alongside
+    // the fixed interaction-medium kinds — see EVENT_TYPE_KINDS in
+    // helpers.js for why those two lists stay separate).
+    case 'ADD_CUSTOM_EVENT_TYPE':
+      return { ...state, customEventTypes: [...(state.customEventTypes || []), action.eventType] };
+    case 'UPDATE_CUSTOM_EVENT_TYPE':
+      return { ...state, customEventTypes: upsert(state.customEventTypes || [], action.eventType) };
+    case 'DELETE_CUSTOM_EVENT_TYPE':
+      return {
+        ...state,
+        customEventTypes: (state.customEventTypes || []).filter((t) => t.id !== action.id),
+        events: state.events.map((e) => (e.kind === action.id ? { ...e, kind: '' } : e)),
+      };
+
     // Settings & data management
     case 'SET_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.settings } };
@@ -389,6 +403,7 @@ function reducer(state, action) {
         interactions: [],
         templates: [],
         statuses: state.statuses,
+        customEventTypes: state.customEventTypes,
         settings: state.settings,
       };
 
@@ -495,6 +510,11 @@ export function useActions() {
     addStatus: (data) => dispatch({ type: 'ADD_STATUS', status: { id: uid('st'), ...data } }),
     updateStatus: (status) => dispatch({ type: 'UPDATE_STATUS', status }),
     deleteStatus: (id) => dispatch({ type: 'DELETE_STATUS', id }),
+
+    addCustomEventType: (data) =>
+      dispatch({ type: 'ADD_CUSTOM_EVENT_TYPE', eventType: { id: uid('et'), ...data } }),
+    updateCustomEventType: (eventType) => dispatch({ type: 'UPDATE_CUSTOM_EVENT_TYPE', eventType }),
+    deleteCustomEventType: (id) => dispatch({ type: 'DELETE_CUSTOM_EVENT_TYPE', id }),
 
     setSettings: (settings) => dispatch({ type: 'SET_SETTINGS', settings }),
     importData: (data) => dispatch({ type: 'IMPORT_DATA', data }),
