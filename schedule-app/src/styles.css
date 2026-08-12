@@ -4355,7 +4355,6 @@ textarea {
   flex: none;
 }
 .pro-bubble-lg--active {
-  cursor: default;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -4365,6 +4364,67 @@ textarea {
 }
 .pro-bubble-lg--active p {
   color: #c9a962;
+}
+.pro-bubble-lg--active .pro-bubble-lg-arrow {
+  color: #c9a962;
+}
+
+/* --- Pro page (/pro) ------------------------------------------------------ */
+.pro-thanks {
+  text-align: center;
+  padding: 12px 0 4px;
+}
+.pro-thanks h1 {
+  margin: 10px 0 4px;
+}
+.pro-thanks p {
+  max-width: 320px;
+  margin: 0 auto;
+}
+.pro-feature-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pro-feature-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.pro-feature-row-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.pro-feature-row-body {
+  flex: 1;
+  min-width: 0;
+}
+.pro-feature-row-body strong {
+  display: block;
+  font-size: 15px;
+}
+.pro-feature-row-body p {
+  margin: 2px 0 0;
+}
+.pro-feature-row-arrow {
+  flex: none;
+  color: var(--muted);
 }
 .profile-row {
   display: flex;

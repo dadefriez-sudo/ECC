@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, useUser, useClerk, UserButton } from '@clerk/clerk-react';
 import { useStore, useActions } from '../data/store.jsx';
 import Modal from '../components/Modal.jsx';
@@ -178,6 +178,7 @@ export default function MorePage() {
   const { state } = useStore();
   const actions = useActions();
   const navigate = useNavigate();
+  const location = useLocation();
   const [editingStatus, setEditingStatus] = useState(null);
   const [editingKindColor, setEditingKindColor] = useState(null); // { value, label, color } | null
   const [editingEventType, setEditingEventType] = useState(null); // { id?, label, color } | null
@@ -185,7 +186,12 @@ export default function MorePage() {
   const [feedback, setFeedback] = useState(null); // string | null
   const [editingProfile, setEditingProfile] = useState(null);
   const [, setPermTick] = useState(0); // re-render after permission change
-  const [query, setQuery] = useState('');
+  // Lets a link elsewhere in the app (the Pro page's feature tiles) jump
+  // straight to a matching card via /more?q=..., reusing the same search
+  // that opens matching cards and hides the rest — read once on arrival,
+  // not kept in sync with the URL afterwards, so typing in the box doesn't
+  // fight with it.
+  const [query, setQuery] = useState(() => new URLSearchParams(location.search).get('q') || '');
   // Which settings cards are expanded. All collapsed on arrival, so the page
   // opens as a scannable index rather than one long scroll; kept in component
   // state rather than persisted, since "where I left the accordion" isn't a
@@ -415,7 +421,7 @@ export default function MorePage() {
       </header>
 
       {!searching && (isPro ? (
-        <section className="pro-bubble-lg pro-bubble-lg--active">
+        <button className="pro-bubble-lg pro-bubble-lg--active" onClick={() => navigate('/pro')}>
           <span className="pro-bubble-lg-crown"><Icon name="crown" size={22} /></span>
           <div>
             <strong>Keystone Pro</strong>
@@ -425,7 +431,8 @@ export default function MorePage() {
                 : 'You have Pro (demo mode) active.'}
             </p>
           </div>
-        </section>
+          <span className="pro-bubble-lg-arrow">›</span>
+        </button>
       ) : (
         <button className="pro-bubble-lg" onClick={() => navigate('/pricing')}>
           <span className="pro-bubble-lg-crown"><Icon name="crown" size={22} /></span>

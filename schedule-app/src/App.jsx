@@ -36,6 +36,7 @@ const SharedCalendarsPage = lazy(() => import('./pages/SharedCalendarsPage.jsx')
 const SharedCalendarDetailPage = lazy(() => import('./pages/SharedCalendarDetailPage.jsx'));
 const SharedCalendarJoinPage = lazy(() => import('./pages/SharedCalendarJoinPage.jsx'));
 const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
+const ProPage = lazy(() => import('./pages/ProPage.jsx'));
 const SearchPage = lazy(() => import('./pages/SearchPage.jsx'));
 
 // Keeps state.settings.isPro (read all over the app already) in sync with
@@ -499,6 +500,7 @@ export default function App() {
             <Route path="/shared-calendars/join/:token" element={<SharedCalendarJoinPage />} />
             <Route path="/shared-calendars/:id" element={<SharedCalendarDetailPage />} />
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/pro" element={<ProPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
