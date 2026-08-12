@@ -14,6 +14,7 @@ import { directionsTarget, openMaps } from '../data/maps.js';
 import { resolveMapStyle, MAP_STYLE_OPTIONS } from '../data/mapStyles.js';
 import { eventPinIdentity } from '../data/pinLabel.js';
 import { ROUTE_PLANNER_ENABLED } from '../data/routePlannerConfig.js';
+import { geoAvailable, getCurrentPosition, isLocationGranted } from '../data/geo.js';
 import Icon from '../components/Icon.jsx';
 import AddressField from '../components/AddressField.jsx';
 
@@ -290,17 +291,13 @@ export default function MapPage() {
     // already granted in a past session — this only fires without a
     // permission prompt; if it's still undecided or was denied, the view
     // above (last-viewed spot, or pins) stands.
-    if (!pickModeRef.current && navigator.permissions?.query) {
-      navigator.permissions
-        .query({ name: 'geolocation' })
-        .then((status) => {
-          if (status.state !== 'granted' || !mapRef.current) return;
-          navigator.geolocation.getCurrentPosition(
-            (pos) => mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15),
-            () => {} // denied/unavailable at the OS level after all — keep the fallback view
-          );
-        })
-        .catch(() => {});
+    if (!pickModeRef.current) {
+      isLocationGranted().then((granted) => {
+        if (!granted || !mapRef.current) return;
+        getCurrentPosition()
+          .then((pos) => mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15))
+          .catch(() => {}); // denied/unavailable at the OS level after all — keep the fallback view
+      });
     }
 
     layerRef.current = L.layerGroup().addTo(map);
@@ -444,11 +441,10 @@ export default function MapPage() {
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const locateMe = () => {
-    if (!navigator.geolocation) return alert('Location is not available in this browser.');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15),
-      () => alert('Could not get your location. Check your browser permissions.')
-    );
+    if (!geoAvailable()) return alert('Location is not available in this browser.');
+    getCurrentPosition()
+      .then((pos) => mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15))
+      .catch(() => alert('Could not get your location. Check your location permissions.'));
   };
 
   // openExternal, not window.open — see data/maps.js for why the latter

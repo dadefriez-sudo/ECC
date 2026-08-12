@@ -2,6 +2,8 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { Capacitor } from '@capacitor/core';
+import { SplashScreen } from '@capacitor/splash-screen';
 import App from './App.jsx';
 import { StoreProvider } from './data/store.jsx';
 import { ToastProvider } from './data/toast.jsx';
@@ -31,6 +33,15 @@ createRoot(document.getElementById('root')).render(
     </Root>
   </React.StrictMode>
 );
+
+// The app has deliberately never had a launch splash of its own (see the
+// comment in App.jsx) — the native shell's splash screen (shown instantly by
+// the OS before any web content can paint) should hand off the moment
+// there's something to show, not linger for its own default duration.
+// autoHide is off in capacitor.config.ts so this is the only thing hiding it.
+if (Capacitor.isNativePlatform()) {
+  SplashScreen.hide().catch(() => {});
+}
 
 // Register the service worker for offline support (production only).
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

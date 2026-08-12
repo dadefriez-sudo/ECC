@@ -1,10 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import TabBar from './components/TabBar.jsx';
 import Tutorial from './components/Tutorial.jsx';
 import AssistantBubble from './components/AssistantBubble.jsx';
-import { runReminderScan, notify, notificationPermission } from './data/notifications.js';
+import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
+import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
 import { setUse24hFormat, setSundayWeekStart, distanceMeters } from './data/helpers.js';
 import { setHapticsEnabled } from './data/haptics.js';
@@ -204,7 +207,7 @@ function ArrivalWatch() {
   const hasArmedPins = armedPins.length > 0;
 
   useEffect(() => {
-    if (!enabled || !hasArmedPins || !navigator.geolocation) return undefined;
+    if (!enabled || !hasArmedPins || !geoAvailable()) return undefined;
 
     const onPosition = (pos) => {
       const { latitude, longitude } = pos.coords;
@@ -226,14 +229,14 @@ function ArrivalWatch() {
       }
     };
 
-    const watchId = navigator.geolocation.watchPosition(onPosition, () => {}, {
-      enableHighAccuracy: false,
-      maximumAge: 20000,
-      timeout: 20000,
-    });
-    watchIdRef.current = watchId;
+    const watch = watchPosition(
+      { enableHighAccuracy: false, maximumAge: 20000, timeout: 20000 },
+      onPosition,
+      () => {}
+    );
+    watchIdRef.current = watch;
     return () => {
-      navigator.geolocation.clearWatch(watchId);
+      watch.clear();
       watchIdRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,7 +257,16 @@ export default function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
   useEffect(() => {
-    const scan = () => runReminderScan(stateRef.current);
+    // Refreshes the day's native-scheduled reminders (see notifications.js)
+    // on the same cadence as the foreground scan below — a no-op on the web
+    // (scheduleNativeReminders() returns immediately there), and cheap
+    // enough natively (a local, on-device call, not a network request) to
+    // just piggyback on the existing timer rather than inventing a separate
+    // "did the reminder-bearing data change" check.
+    const scan = () => {
+      runReminderScan(stateRef.current);
+      scheduleNativeReminders(stateRef.current);
+    };
     scan();
     const id = setInterval(scan, 30000);
     const onVisible = () => document.visibilityState === 'visible' && scan();
@@ -443,6 +455,15 @@ export default function App() {
       // the first frame; this keeps it right when the theme changes later.
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', dark ? '#0f141a' : '#eef1f4');
+      // The native status bar has no equivalent of a <meta theme-color> tag
+      // to fall back on, so it needs the same dark/light decision pushed to
+      // it explicitly. Style.Light means light (white) status bar content —
+      // for a dark background — which reads backwards from the theme name
+      // it's paired with; Style.Dark is dark content, for the light theme.
+      if (Capacitor.isNativePlatform()) {
+        StatusBar.setStyle({ style: dark ? Style.Light : Style.Dark }).catch(() => {});
+        StatusBar.setBackgroundColor({ color: dark ? '#0f141a' : '#eef1f4' }).catch(() => {});
+      }
     };
     apply();
     if (theme === 'system') {

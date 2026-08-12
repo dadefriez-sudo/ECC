@@ -49,17 +49,50 @@ The app already has a source icon at `appstore-assets/icon-1024.png` (and `publi
 Capacitor's companion tool, `@capacitor/assets`, generates every required native icon and splash
 size from one source image — not run yet; that's the next step once the app ID above is settled.
 
-## What this scaffolding doesn't cover yet
+## Native plugins (wired up)
 
-This is the native *shell* — the following are separate, larger pieces of work (see the
-Development Finalization & QA phase of the launch roadmap):
+Five official Capacitor plugins are installed and in use — each one branches on
+`Capacitor.isNativePlatform()` so the existing web behavior is untouched when running in a
+browser, and only takes the native path inside the app shell:
 
-- **Native plugins** — Haptics, Status Bar, Splash Screen, Push Notifications, and Geolocation
-  all have official Capacitor plugins that make reminders, arrival alerts, and the app's existing
-  haptic feedback behave natively instead of falling back to web APIs.
+- **Haptics** (`data/haptics.js`) — the biggest single fix here. iOS Safari has never exposed
+  `navigator.vibrate`, so haptics silently did nothing on iPhone before this; native `Haptics`
+  goes through `UIFeedbackGenerator` instead.
+- **Status Bar** (`App.jsx`) — synced to the same dark/light decision that already drives the
+  `<meta theme-color>` tag, so the native status bar matches the theme instead of sitting at
+  whatever the OS default is.
+- **Splash Screen** (`main.jsx`, `capacitor.config.ts`) — the app has deliberately never had a
+  launch splash of its own; this hides the native one the instant React has rendered instead of
+  waiting out its default ~3s timer.
+- **Geolocation** (`data/geo.js`) — a single wrapper module now used by all four call sites
+  (arrival reminders' background watch, both Map "locate me" paths, the route planner's start
+  point) instead of each one calling `navigator.geolocation` directly.
+- **Local Notifications** (`data/notifications.js`) — schedules today's remaining goal/event/task
+  reminders as real OS-level notifications, so they fire even if Keystone is fully closed. This
+  needed no server, FCM, or APNs setup — it's genuinely local scheduling, not push. The schedule
+  refreshes every time the app opens or returns to the foreground; go more than about a day
+  without opening it and the schedule goes stale until the next open, which is a documented
+  tradeoff in the code, not a bug to chase.
+
+Two things worth a real device test once you can build (none of this could be exercised on an
+actual simulator/device from this environment — only verified by build and by confirming the web
+fallback paths still behave correctly):
+
+- Confirm the status bar style reads correctly against both themes on a real notch/Dynamic Island
+  device — style vs. background-color interacts differently across iOS versions.
+- Confirm a scheduled local notification actually surfaces with the app fully killed, not just
+  backgrounded, on both platforms.
+
+## What this scaffolding still doesn't cover
+
 - **In-app purchase** — the Pro unlock currently sells through Stripe web checkout inside the
   app, which risks App Store rejection (guideline 3.1.1). Needs StoreKit (iOS) and Play Billing
   (Android) wired up, validating against the same `isPro` flag the backend already uses.
 - **Offline behavior inside the native WebView** — worth verifying explicitly rather than
   assuming: Capacitor serves the bundled web assets from local disk inside the native app, which
   is a different loading path than the PWA's service worker (`public/sw.js`) was written for.
+- **True background location** — the arrival-reminder watch above only runs while Keystone is
+  foregrounded or freshly backgrounded, on native same as on web. Actual background tracking
+  needs additional OS-level configuration (an `UIBackgroundModes: location` entitlement on iOS, a
+  foreground service + persistent notification on Android) that has real permission-prompt and
+  battery-usage tradeoffs — a deliberate product decision, not something to add silently.

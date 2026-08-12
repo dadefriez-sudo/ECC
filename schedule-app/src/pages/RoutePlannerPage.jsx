@@ -12,6 +12,7 @@ import { mapsLinkProps, webTarget } from '../data/maps.js';
 import { eventPinIdentity } from '../data/pinLabel.js';
 import { todayISO, expandEventOnDay, formatTime } from '../data/helpers.js';
 import { ROUTE_PLANNER_ENABLED } from '../data/routePlannerConfig.js';
+import { geoAvailable, getCurrentPosition } from '../data/geo.js';
 import Icon from '../components/Icon.jsx';
 
 export default function RoutePlannerPage() {
@@ -94,7 +95,7 @@ export default function RoutePlannerPage() {
 
   const findStart = () =>
     new Promise((resolve) => {
-      if (!navigator.geolocation) return resolve(null);
+      if (!geoAvailable()) return resolve(null);
       // Raced against our own timer rather than trusting getCurrentPosition's
       // `timeout` option. That option only starts counting *after* the
       // permission prompt is answered — dismiss the prompt (or leave it
@@ -109,17 +110,15 @@ export default function RoutePlannerPage() {
         resolve(v);
       };
       const timer = setTimeout(() => finish(null), LOCATE_TIMEOUT_MS);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
+      getCurrentPosition({ enableHighAccuracy: false, timeout: LOCATE_TIMEOUT_MS })
+        .then((pos) => {
           clearTimeout(timer);
           finish({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        },
-        () => {
+        })
+        .catch(() => {
           clearTimeout(timer);
           finish(null);
-        },
-        { enableHighAccuracy: false, timeout: LOCATE_TIMEOUT_MS }
-      );
+        });
     });
 
   const planRoute = async () => {

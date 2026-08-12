@@ -14,6 +14,7 @@ import {
 } from '../data/notifications.js';
 import { downloadICS, parseICS } from '../data/ics.js';
 import { formatTime, EVENT_TYPE_KINDS, DEFAULT_KIND_COLORS, normalizeEventTypeOrder } from '../data/helpers.js';
+import { geoAvailable } from '../data/geo.js';
 import ReorderToggleList from '../components/ReorderToggleList.jsx';
 import SettingsGroup from '../components/SettingsGroup.jsx';
 import SettingsSection from '../components/SettingsSection.jsx';
@@ -990,15 +991,15 @@ export default function MorePage() {
             onClick={() =>
               actions.setSettings({ locationRemindersEnabled: !state.settings?.locationRemindersEnabled })
             }
-            disabled={!navigator.geolocation}
+            disabled={!geoAvailable()}
           >
             <span className="toggle-knob" />
           </button>
         </div>
         <p className="muted small">
-          {navigator.geolocation
-            ? 'Get notified when you’re near a place you’ve pinned on the Map with a reminder radius set. Only works while Keystone is open — a web app can’t track your location in the background.'
-            : 'This browser doesn’t support location.'}
+          {geoAvailable()
+            ? 'Get notified when you’re near a place you’ve pinned on the Map with a reminder radius set. Only works while Keystone is open or freshly backgrounded — true background tracking needs a permission this build doesn’t request yet.'
+            : 'This device doesn’t support location.'}
         </p>
       </SettingsGroup>
 
