@@ -5032,6 +5032,10 @@ body.is-scrolled .page-head::before {
   border-radius: 12px;
   background: color-mix(in srgb, var(--warn) 12%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
+  /* Draggable away in any direction (see ConflictItem in PlannerPage.jsx) —
+     without this, a vertical drag also scrolls the page underneath it,
+     same reason the Undo toast sets this. */
+  touch-action: none;
 }
 .conflict-icon {
   font-size: 15px;

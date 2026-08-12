@@ -10,7 +10,7 @@ import { Brand } from '../components/Logo.jsx';
 import { confirmTick, selectTick, warnTick } from '../data/haptics.js';
 import { useBackDismiss } from '../data/useBackDismiss.js';
 import { useTodayResync } from '../data/useTodayResync.js';
-import { useToast } from '../data/toast.jsx';
+import { useToast, DISMISS_DRAG_PX, FLY_OUT_MS } from '../data/toast.jsx';
 import {
   requestNotificationPermission,
   notificationsSupported,
@@ -691,7 +691,11 @@ export default function PlannerPage() {
         : state.settings?.warnTravelTime !== false
     );
   }, [mode, state, cursor]);
-  const shownConflicts = conflicts.filter((c) => !dismissedConflicts.has(c.id));
+  // Capped at 2 on screen at once — floating warnings stacking up over the
+  // timeline gets noisy fast. Sliced rather than dropped: swiping/dismissing
+  // one of the visible two lets the next-earliest one in the queue take its
+  // place instead of just permanently hiding it.
+  const shownConflicts = conflicts.filter((c) => !dismissedConflicts.has(c.id)).slice(0, 2);
 
   // Dismissals are per-conflict and deliberately not persisted: they last
   // for this visit so a warning you've consciously accepted stops shouting,
@@ -818,27 +822,7 @@ export default function PlannerPage() {
       {shownConflicts.length > 0 && (
         <ul className="conflict-list">
           {shownConflicts.map((c) => (
-            <li key={c.id} className={`conflict conflict--${c.kind}`}>
-              <span className="conflict-icon" aria-hidden="true">
-                <Icon name={c.kind === 'overlap' ? 'warning' : 'car'} size={16} />
-              </span>
-              <span className="conflict-body">
-                <span className="conflict-text">{c.text}</span>
-                <span className="conflict-detail">{c.detail}</span>
-                {c.kind === 'travel' && (
-                  <button className="conflict-action" onClick={() => addTravelBuffer(c)}>
-                    + Add travel block
-                  </button>
-                )}
-              </span>
-              <button
-                className="conflict-dismiss"
-                onClick={() => dismissConflict(c.id)}
-                aria-label="Dismiss this warning"
-              >
-                ×
-              </button>
-            </li>
+            <ConflictItem key={c.id} c={c} onDismiss={dismissConflict} onAddTravelBuffer={addTravelBuffer} />
           ))}
         </ul>
       )}
@@ -3182,6 +3166,80 @@ function TodayIcon() {
       <path d="M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <circle cx="12" cy="15" r="2.1" fill="currentColor" />
     </svg>
+  );
+}
+// A conflict warning, draggable away in any direction exactly like the
+// Undo toast (data/toast.jsx) — same distance threshold, same fling-out
+// timing, so the two floating dismissible cards in this app feel like one
+// gesture rather than two similar-but-different ones. The × button and
+// "Add travel block" stay as the precise, no-ambiguity way to do the same
+// two things.
+function ConflictItem({ c, onDismiss, onAddTravelBuffer }) {
+  const [drag, setDrag] = useState(null); // { dx, dy, dragging, flying } | null
+  const dragStartRef = useRef(null); // { x, y, pointerId }
+  const flyTimerRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(flyTimerRef.current), []);
+
+  const onPointerDown = (e) => {
+    if (e.target.closest('.conflict-action, .conflict-dismiss')) return;
+    dragStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    setDrag({ dx: 0, dy: 0, dragging: true, flying: false });
+  };
+  const onPointerMove = (e) => {
+    const start = dragStartRef.current;
+    if (!start || start.pointerId !== e.pointerId) return;
+    setDrag({ dx: e.clientX - start.x, dy: e.clientY - start.y, dragging: true, flying: false });
+  };
+  const onPointerUp = (e) => {
+    const start = dragStartRef.current;
+    if (!start || start.pointerId !== e.pointerId) return;
+    dragStartRef.current = null;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (Math.hypot(dx, dy) > DISMISS_DRAG_PX) {
+      confirmTick();
+      setDrag({ dx: dx * 3, dy: dy * 3, dragging: false, flying: true });
+      flyTimerRef.current = setTimeout(() => onDismiss(c.id), FLY_OUT_MS);
+    } else {
+      setDrag(null);
+    }
+  };
+
+  const dragStyle = drag
+    ? {
+        transform: `translate(${drag.dx}px, ${drag.dy}px)`,
+        transition: drag.dragging ? 'none' : `transform ${FLY_OUT_MS}ms ease, opacity ${FLY_OUT_MS}ms ease`,
+        opacity: drag.flying ? 0 : 1,
+      }
+    : undefined;
+
+  return (
+    <li
+      className={`conflict conflict--${c.kind}`}
+      style={dragStyle}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <span className="conflict-icon" aria-hidden="true">
+        <Icon name={c.kind === 'overlap' ? 'warning' : 'car'} size={16} />
+      </span>
+      <span className="conflict-body">
+        <span className="conflict-text">{c.text}</span>
+        <span className="conflict-detail">{c.detail}</span>
+        {c.kind === 'travel' && (
+          <button className="conflict-action" onClick={() => onAddTravelBuffer(c)}>
+            + Add travel block
+          </button>
+        )}
+      </span>
+      <button className="conflict-dismiss" onClick={() => onDismiss(c.id)} aria-label="Dismiss this warning">
+        ×
+      </button>
+    </li>
   );
 }
 function Chevron({ dir }) {

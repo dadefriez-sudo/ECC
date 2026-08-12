@@ -8,8 +8,10 @@ const CLOSE_ANIM_MS = 220;
 // How far, in any direction, a drag has to travel before letting go counts
 // as "throw it away" rather than "snap back" — same distance SwipeRow and
 // the Planner's day-swipe already use for a released gesture to commit.
-const DISMISS_DRAG_PX = 60;
-const FLY_OUT_MS = 200;
+// Exported so other floating, drag-to-dismiss cards (the Planner's conflict
+// warnings) can match this exact feel instead of picking their own numbers.
+export const DISMISS_DRAG_PX = 60;
+export const FLY_OUT_MS = 200;
 
 // A single bottom toast (above the tab bar) with an optional action button —
 // used for "Task deleted · Undo" style confirmations so a delete is always
