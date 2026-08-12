@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useClerk } from '@clerk/clerk-react';
 import { useStore, useActions } from '../data/store.jsx';
 import { Brand } from '../components/Logo.jsx';
 import { CLERK_ENABLED } from '../data/clerkConfig.js';
-import { startCheckout, openBillingPortal, backendConfigured } from '../data/api.js';
+import { startCheckout, openBillingPortal, backendConfigured, fetchMe } from '../data/api.js';
+import { iapAvailable, initIAP, purchasePro, restorePurchases } from '../data/iap.js';
 import Icon from '../components/Icon.jsx';
 
 // Pro is a one-time purchase. This is the only place the price is written
@@ -78,7 +79,11 @@ export default function PricingPage() {
       </section>
 
       {CLERK_ENABLED ? (
-        <RealPricingCTA isPro={isPro} settings={state.settings} />
+        iapAvailable() ? (
+          <NativePricingCTA isPro={isPro} />
+        ) : (
+          <RealPricingCTA isPro={isPro} settings={state.settings} />
+        )
       ) : (
         <DemoPricingCTA isPro={isPro} />
       )}
@@ -146,6 +151,84 @@ function RealPricingCTA({ isPro, settings }) {
         <button className="btn btn-primary full pricing-cta" onClick={handleUpgrade} disabled={busy}>
           {isSignedIn ? `Unlock Pro — ${PRO_PRICE} once` : 'Sign in to unlock Pro'}
         </button>
+      )}
+      {error && <p className="muted small center-pad pricing-disclaimer">{error}</p>}
+    </>
+  );
+}
+
+// StoreKit / Play Billing flow — used instead of Stripe Checkout inside the
+// native app shell (App Store guideline 3.1.1 requires digital goods bought
+// in-app to go through the platform's own purchase system).
+function NativePricingCTA({ isPro }) {
+  const { isSignedIn, getToken } = useAuth();
+  const clerk = useClerk();
+  const actions = useActions();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  // Re-pulls /api/me the same way SubscriptionSync (App.jsx) does on sign-
+  // in — a purchase just verified server-side needs that same refresh to
+  // actually flip isPro in local state.
+  const refreshMe = async () => {
+    try {
+      const me = await fetchMe(getToken);
+      actions.setSettings({ isPro: me.isPro, isLifetime: !!me.isLifetime, subscriptionStatus: me.subscriptionStatus });
+    } catch {
+      /* the periodic SubscriptionSync poll will catch up regardless */
+    }
+  };
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    initIAP(getToken, refreshMe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn]);
+
+  const handlePurchase = async () => {
+    if (!isSignedIn) return clerk.openSignIn();
+    setError('');
+    setBusy(true);
+    try {
+      await purchasePro();
+      // The store's `approved` event (wired in initIAP) does the actual
+      // verify + refresh once the purchase clears — this just clears the
+      // spinner once the order has been placed, not once it's finished.
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      await restorePurchases();
+      await refreshMe();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      {isPro ? (
+        <div className="detail-section pricing-active">
+          <span><Icon name="check" size={16} /> You own Keystone Pro</span>
+        </div>
+      ) : (
+        <>
+          <button className="btn btn-primary full pricing-cta" onClick={handlePurchase} disabled={busy}>
+            {isSignedIn ? `Unlock Pro — ${PRO_PRICE} once` : 'Sign in to unlock Pro'}
+          </button>
+          <button className="btn btn-ghost full" onClick={handleRestore} disabled={busy}>
+            Restore purchases
+          </button>
+        </>
       )}
       {error && <p className="muted small center-pad pricing-disclaimer">{error}</p>}
     </>

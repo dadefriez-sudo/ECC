@@ -24,6 +24,13 @@ model User {
   lifetimePurchasedAt  DateTime?
   lifetimeSessionId    String?   @unique // Stripe Checkout Session, for idempotency
 
+  // In-app purchase (StoreKit 2 / Play Billing) — an alternate path to the
+  // same lifetimePurchasedAt grant above, for anyone who buys Pro through
+  // the App Store or Play Store instead of Stripe. isPro doesn't care which
+  // path set the flag.
+  iapPlatform          String?   // 'ios' | 'android'
+  iapTransactionId     String?   @unique // original transaction id / purchase token, for idempotency
+
   // Legacy subscription (pre-lifetime buyers only).
   stripeSubscriptionId String?   @unique
   subscriptionStatus   String? // active | trialing | past_due | canceled | incomplete | unpaid

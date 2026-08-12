@@ -37,6 +37,9 @@ export const deleteAccount = (getToken) => request('/api/me', { getToken, method
 export const startCheckout = (getToken) =>
   request('/api/billing/checkout', { getToken, method: 'POST' });
 export const openBillingPortal = (getToken) => request('/api/billing/portal', { getToken, method: 'POST' });
+// Native in-app purchase (StoreKit 2 / Play Billing) — see data/iap.js.
+export const verifyPurchase = (getToken, body) =>
+  request('/api/billing/verify-purchase', { getToken, method: 'POST', body });
 
 // Whole-app-data sync: mirrors the same object shape kept in localStorage.
 export const fetchSyncedData = (getToken) => request('/api/data', { getToken });

@@ -83,11 +83,15 @@ fallback paths still behave correctly):
 - Confirm a scheduled local notification actually surfaces with the app fully killed, not just
   backgrounded, on both platforms.
 
+## In-app purchase (wired up)
+
+Pro sells through StoreKit 2 / Play Billing on native instead of Stripe web checkout, satisfying
+App Store guideline 3.1.1 — see **`appstore-assets/IAP.md`** for the full setup (App Store
+Connect / Play Console product creation, backend credentials) and, same as above, what's
+genuinely untestable without a real device and real store credentials.
+
 ## What this scaffolding still doesn't cover
 
-- **In-app purchase** — the Pro unlock currently sells through Stripe web checkout inside the
-  app, which risks App Store rejection (guideline 3.1.1). Needs StoreKit (iOS) and Play Billing
-  (Android) wired up, validating against the same `isPro` flag the backend already uses.
 - **Offline behavior inside the native WebView** — worth verifying explicitly rather than
   assuming: Capacitor serves the bundled web assets from local disk inside the native app, which
   is a different loading path than the PWA's service worker (`public/sw.js`) was written for.
