@@ -28,7 +28,7 @@ import {
   DEFAULT_CONTACT_SWIPE_LEFT,
   DEFAULT_CONTACT_SWIPE_RIGHT,
 } from '../data/contactSwipe.js';
-import { backendConfigured } from '../data/api.js';
+import { backendConfigured, deleteAccount } from '../data/api.js';
 import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
 import Icon from '../components/Icon.jsx';
 
@@ -170,6 +170,7 @@ const SETTINGS_INDEX = [
         : []),
       { id: 'g16', title: 'Feedback', keywords: 'bug idea suggest contact support tour tutorial replay' },
       { id: 'g17', title: 'Your data', keywords: 'backup export import json reset clear cache delete storage' },
+      { id: 'g18', title: 'Legal', keywords: 'privacy policy terms of service data collection legal' },
     ],
   },
 ];
@@ -1137,6 +1138,17 @@ export default function MorePage() {
           </button>
         </div>
       </SettingsGroup>
+      <SettingsGroup {...grp('g18')}>
+        <span className="detail-label">Legal</span>
+        <div className="stack-btns">
+          <button className="btn btn-ghost full" onClick={() => navigate('/privacy')}>
+            Privacy Policy
+          </button>
+          <button className="btn btn-ghost full" onClick={() => navigate('/terms')}>
+            Terms of Service
+          </button>
+        </div>
+      </SettingsGroup>
 
 
       {searching && shown.size === 0 && (
@@ -1398,21 +1410,73 @@ export default function MorePage() {
 }
 
 function AccountSection() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const clerk = useClerk();
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDeleteAccount = async () => {
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      await deleteAccount(getToken);
+      await clerk.signOut();
+      navigate('/', { replace: true });
+    } catch (err) {
+      setDeleteError(err.message);
+      setDeleting(false);
+    }
+  };
 
   return (
     <section className="detail-section">
       <span className="detail-label">Account</span>
       {isSignedIn ? (
-        <div className="profile-row">
-          <UserButton afterSignOutUrl="/" />
-          <div>
-            <strong>{user?.primaryEmailAddress?.emailAddress || 'Signed in'}</strong>
-            <p className="muted small">Your Pro purchase is tied to this account.</p>
+        <>
+          <div className="profile-row">
+            <UserButton afterSignOutUrl="/" />
+            <div>
+              <strong>{user?.primaryEmailAddress?.emailAddress || 'Signed in'}</strong>
+              <p className="muted small">Your Pro purchase is tied to this account.</p>
+            </div>
           </div>
-        </div>
+          <button
+            type="button"
+            className="btn btn-danger-ghost full"
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete account
+          </button>
+          <Modal
+            open={confirmDelete}
+            title="Delete your account?"
+            onClose={() => (deleting ? null : setConfirmDelete(false))}
+            footer={
+              <div className="modal-actions">
+                <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                  Cancel
+                </button>
+                <button className="btn btn-danger" onClick={handleDeleteAccount} disabled={deleting}>
+                  {deleting ? 'Deleting…' : 'Delete account'}
+                </button>
+              </div>
+            }
+          >
+            <p>
+              This permanently deletes your Keystone account, your Pro purchase record, and
+              everything stored on the server for it — cloud-synced data and any shared calendars
+              you own. It can't be undone.
+            </p>
+            <p className="muted small">
+              Data already saved on this device isn't touched — that's a separate, local action
+              under Settings → Your data if you want it gone too.
+            </p>
+            {deleteError && <p className="muted small">{deleteError}</p>}
+          </Modal>
+        </>
       ) : (
         <>
           <p className="muted small">

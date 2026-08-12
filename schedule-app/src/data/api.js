@@ -27,6 +27,11 @@ async function request(path, { getToken, method = 'GET', body } = {}) {
 }
 
 export const fetchMe = (getToken) => request('/api/me', { getToken });
+// Deletes the Clerk account and every server-side trace of it (cloud sync
+// blob, owned shared calendars, memberships) — not the copy of the data
+// still sitting in this device's local storage, which is a separate, more
+// reversible action already covered by Settings → Your data.
+export const deleteAccount = (getToken) => request('/api/me', { getToken, method: 'DELETE' });
 // Pro is a single one-time purchase, so there's no plan to choose — the
 // server holds the only price.
 export const startCheckout = (getToken) =>
