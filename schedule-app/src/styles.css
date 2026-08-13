@@ -1535,6 +1535,13 @@ textarea {
   flex-wrap: wrap;
 }
 
+.import-review-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
 /* --- Forms -------------------------------------------------------------- */
 .form {
   display: flex;

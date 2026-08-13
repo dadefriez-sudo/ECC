@@ -27,6 +27,7 @@ import {
 } from '../data/contactSwipe.js';
 import Icon from '../components/Icon.jsx';
 import GroupPicker from '../components/GroupPicker.jsx';
+import ImportAddressReview from '../components/ImportAddressReview.jsx';
 
 // Sort comparators for the list — dates compare fine as their own ISO
 // strings, so "missing" just needs a fallback that sorts to the right end
@@ -59,6 +60,9 @@ export default function ContactsPage() {
   const [selected, setSelected] = useState(new Set());
   const [bulkTagText, setBulkTagText] = useState('');
   const [bulkTagOpen, setBulkTagOpen] = useState(false);
+  // Contacts from the most recent vCard import that didn't come out the
+  // other side with a pin — reviewed one at a time via ImportAddressReview.
+  const [addressReview, setAddressReview] = useState([]);
 
   const toggleSelected = (id) => {
     setSelected((prev) => {
@@ -243,24 +247,47 @@ export default function ContactsPage() {
         // Nominatim's public endpoint enforces roughly one request per
         // second, and firing every contact's lookup at once (the previous
         // behaviour) meant only the first one or two ever got served; the
-        // rest were silently rate-limited, and a failed geocode is
-        // deliberately a no-op rather than an error (see geocodeAddress),
-        // so importing a dozen contacts quietly auto-pinned just one of
-        // them with nothing on screen to explain why. Sequenced with a gap
-        // between requests, every address actually gets geocoded — just
-        // progressively rather than all at once.
+        // rest were silently rate-limited. Every contact with an address
+        // gets a real attempt this way, sequenced rather than all at once,
+        // and anyone who came out the other side without a pin — no address
+        // on the card, or one that didn't geocode — is queued for a quick
+        // manual review instead of just staying silently unpinned.
         (async () => {
+          const needsReview = [];
           for (const contact of newContacts) {
-            if (!contact.address) continue;
-            await syncContactAddressPin(contact, state, actions);
+            if (!contact.address) {
+              needsReview.push({ id: contact.id, name: contact.name, address: '', reason: 'missing' });
+              continue;
+            }
+            const loc = await syncContactAddressPin(contact, state, actions);
+            if (!loc) {
+              needsReview.push({ id: contact.id, name: contact.name, address: contact.address, reason: 'unresolved' });
+            }
             await new Promise((r) => setTimeout(r, 1100));
           }
+          if (needsReview.length) setAddressReview(needsReview);
         })();
       } catch {
         alert('That file could not be read as a vCard (.vcf) file.');
       }
     };
     reader.readAsText(file);
+  };
+
+  // A contact from the address review — either a corrected/typed address
+  // (geocoded on demand) or a pin dropped by hand — is saved to the
+  // contact and pinned in one go via the same helper the rest of the app
+  // uses, then the review moves to the next one in the queue.
+  const resolveAddressReview = (contactId, { address, addressLat, addressLng }) => {
+    const contact = state.contacts.find((c) => c.id === contactId);
+    setAddressReview((q) => q.filter((c) => c.id !== contactId));
+    if (!contact) return;
+    const updated = { ...contact, address, addressLat, addressLng };
+    actions.updateContact(updated);
+    syncContactAddressPin(updated, state, actions);
+  };
+  const skipAddressReview = (contactId) => {
+    setAddressReview((q) => q.filter((c) => c.id !== contactId));
   };
 
   return (
@@ -473,6 +500,15 @@ export default function ContactsPage() {
           />
         </label>
       </Modal>
+
+      {addressReview.length > 0 && (
+        <ImportAddressReview
+          queue={addressReview}
+          onResolve={resolveAddressReview}
+          onSkip={skipAddressReview}
+          onClose={() => setAddressReview([])}
+        />
+      )}
 
       <EditorSheet open={!!adding} title="Add person" dirty={addDirty} onSave={saveNew} onDiscard={() => setAdding(null)}>
         {adding && (

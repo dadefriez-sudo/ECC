@@ -65,22 +65,30 @@ export async function suggestAddresses(query, { signal } = {}) {
 //
 // If the address came from a picked suggestion the contact carries its exact
 // coordinates, and those are used as-is — re-geocoding the text would throw
-// away the disambiguation the user just did.
+// away the disambiguation the user just did. Picked coordinates also stand
+// on their own without any address text — a pin dropped by hand on the map
+// is a complete location even when nobody typed a street address for it.
+//
+// Returns the resolved { lat, lng } on success, or null if there was
+// nothing to pin (no address, no picked coordinates) or the geocode came up
+// empty — callers that need to know whether the pin actually landed (e.g. to
+// flag it for review) read this return value; existing callers that don't
+// care are unaffected.
 export async function syncContactAddressPin(contact, state, actions) {
   const address = contact.address?.trim();
-  const existing = (state.pins || []).find(
-    (p) => p.contactId === contact.id && p.source === 'contact-address'
-  );
-  if (!address) {
-    if (existing) actions.deletePin(existing.id);
-    return;
-  }
   const picked =
     typeof contact.addressLat === 'number' && typeof contact.addressLng === 'number'
       ? { lat: contact.addressLat, lng: contact.addressLng }
       : null;
+  const existing = (state.pins || []).find(
+    (p) => p.contactId === contact.id && p.source === 'contact-address'
+  );
+  if (!address && !picked) {
+    if (existing) actions.deletePin(existing.id);
+    return null;
+  }
   const loc = picked || (await geocodeAddress(address));
-  if (!loc) return;
+  if (!loc) return null;
   if (existing) {
     actions.updatePin({ ...existing, lat: loc.lat, lng: loc.lng, label: contact.name });
   } else {
@@ -94,4 +102,5 @@ export async function syncContactAddressPin(contact, state, actions) {
       source: 'contact-address',
     });
   }
+  return loc;
 }
