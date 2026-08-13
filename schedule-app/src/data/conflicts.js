@@ -1,4 +1,4 @@
-import { distanceMeters, timeToMinutes, formatTime } from './helpers.js';
+import { distanceMeters, timeToMinutes, formatTime, eventContactIds } from './helpers.js';
 
 // Catches the two mistakes a day plan can contain that the planner is in a
 // position to notice on the user's behalf: two things booked at once, and two
@@ -46,9 +46,12 @@ export function eventCoords(event, state) {
   if (typeof event.locLat === 'number' && typeof event.locLng === 'number') {
     return { lat: event.locLat, lng: event.locLng };
   }
-  if (event.contactId) {
+  // Multiple people can be linked now — the first stands in for "where this
+  // event is" here, same policy as the block's own color (eventColor()).
+  const primaryContactId = eventContactIds(event)[0];
+  if (primaryContactId) {
     const pin = (state.pins || []).find(
-      (p) => p.contactId === event.contactId && p.source === 'contact-address'
+      (p) => p.contactId === primaryContactId && p.source === 'contact-address'
     );
     if (pin && typeof pin.lat === 'number' && typeof pin.lng === 'number') {
       return { lat: pin.lat, lng: pin.lng };

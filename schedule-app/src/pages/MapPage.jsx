@@ -7,7 +7,7 @@ import { useToast } from '../data/toast.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import Select from '../components/Select.jsx';
 import Modal from '../components/Modal.jsx';
-import { todayISO, expandEventOnDay, formatTime } from '../data/helpers.js';
+import { todayISO, expandEventOnDay, formatTime, eventContactIds } from '../data/helpers.js';
 import { confirmTick, selectTick } from '../data/haptics.js';
 import { geocodeAddress } from '../data/geocode.js';
 import { directionsTarget, openMaps } from '../data/maps.js';
@@ -74,15 +74,20 @@ export default function MapPage() {
     return state.events
       .flatMap((e) => expandEventOnDay(e, iso))
       .filter((o) => typeof o.locLat === 'number' && typeof o.locLng === 'number')
-      .map((o) => ({
-        id: `event:${o.id}:${o.recDate || iso}`,
-        ...eventPinIdentity(o, { contact: byId[o.contactId], eventKind: o.kind }),
-        lat: o.locLat,
-        lng: o.locLng,
-        contactId: o.contactId || '',
-        isEvent: true,
-        start: o.start,
-      }));
+      .map((o) => {
+        // A pin can only stand for one person — the first linked contact,
+        // same policy as the event block's own color (eventColor()).
+        const primaryContactId = eventContactIds(o)[0] || '';
+        return {
+          id: `event:${o.id}:${o.recDate || iso}`,
+          ...eventPinIdentity(o, { contact: byId[primaryContactId], eventKind: o.kind }),
+          lat: o.locLat,
+          lng: o.locLng,
+          contactId: primaryContactId,
+          isEvent: true,
+          start: o.start,
+        };
+      });
   }, [state.events, state.contacts]);
 
   const pins = useMemo(() => {

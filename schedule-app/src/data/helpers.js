@@ -447,12 +447,44 @@ export function resolveKindLabels(customEventTypes) {
 // `kindColors` is an optional { call, text, ... } override map — pages
 // build it with resolveKindColors(settings, customEventTypes); omitted, the
 // fixed defaults above apply (with no custom types resolved).
+// An event can be linked to more than one person (contactIds, the canonical
+// field going forward) — this reads that array, falling back to the older
+// single contactId field for events stored before multi-linking existed, so
+// nothing needs a one-time migration pass over already-saved data.
+export function eventContactIds(event) {
+  if (Array.isArray(event?.contactIds)) return event.contactIds.filter(Boolean);
+  return event?.contactId ? [event.contactId] : [];
+}
+
+// Every write path that sets contactIds should run the result through this
+// so `contactId` — kept only for any reader that hasn't been updated to the
+// plural field — stays truthfully "the first linked person" rather than
+// silently going stale.
+export function withContactIds(fields, contactIds) {
+  const ids = (contactIds || []).filter(Boolean);
+  return { ...fields, contactIds: ids, contactId: ids[0] || '' };
+}
+
+// Comma-joined display names for eventContactIds()'s result — the plural
+// counterpart to the several one-off `contactName(id)` lookups that used to
+// be redefined per-file; centralized here so "how do multiple linked people
+// read on screen" only has one answer to change.
+export function contactNames(ids, contacts) {
+  return (ids || [])
+    .map((id) => contacts.find((c) => c.id === id)?.name)
+    .filter(Boolean)
+    .join(', ');
+}
+
 export function eventColor(event, contactColor, fallback = 'var(--accent)', kindColors) {
   if (event?.color) return event.color;
   const colors = kindColors || DEFAULT_KIND_COLORS;
   if (event?.kind && colors[event.kind]) return colors[event.kind];
-  if (event?.contactId && contactColor) {
-    const c = contactColor(event.contactId);
+  // A block can only carry one accent — the first linked person (also
+  // what `contactId` mirrors, see withContactIds()) stands in for the rest.
+  const primaryContactId = eventContactIds(event)[0];
+  if (primaryContactId && contactColor) {
+    const c = contactColor(primaryContactId);
     if (c) return c;
   }
   return fallback;
@@ -571,6 +603,7 @@ export function matchesRule(event, iso) {
 // `occDate` is where it actually shows (an override may relocate it).
 function makeOccurrence(event, recDate, occDate, ov) {
   const repeat = event.repeat || 'none';
+  const contactIds = ov?.contactIds !== undefined ? ov.contactIds : eventContactIds(event);
   return {
     ...event,
     recDate,
@@ -580,7 +613,8 @@ function makeOccurrence(event, recDate, occDate, ov) {
       title: event.title,
       start: event.start,
       end: event.end,
-      contactId: event.contactId || '',
+      contactIds: eventContactIds(event),
+      contactId: eventContactIds(event)[0] || '',
       location: event.location || '',
       notes: event.notes || '',
       date: event.date,
@@ -588,7 +622,8 @@ function makeOccurrence(event, recDate, occDate, ov) {
     title: ov?.title ?? event.title,
     start: ov?.start ?? event.start,
     end: ov?.end ?? event.end,
-    contactId: ov?.contactId ?? event.contactId ?? '',
+    contactIds,
+    contactId: contactIds[0] || '',
     location: ov?.location ?? event.location ?? '',
     notes: ov?.notes ?? event.notes ?? '',
     done: repeat === 'none' ? !!event.done : (event.doneDates || []).includes(recDate),

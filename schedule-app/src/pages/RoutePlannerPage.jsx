@@ -10,7 +10,7 @@ import {
 } from '../data/routePlanner.js';
 import { mapsLinkProps, webTarget } from '../data/maps.js';
 import { eventPinIdentity } from '../data/pinLabel.js';
-import { todayISO, expandEventOnDay, formatTime } from '../data/helpers.js';
+import { todayISO, expandEventOnDay, formatTime, eventContactIds } from '../data/helpers.js';
 import { ROUTE_PLANNER_ENABLED } from '../data/routePlannerConfig.js';
 import { geoAvailable, getCurrentPosition } from '../data/geo.js';
 import Icon from '../components/Icon.jsx';
@@ -47,22 +47,27 @@ export default function RoutePlannerPage() {
     return state.events
       .flatMap((e) => expandEventOnDay(e, iso))
       .filter((o) => typeof o.locLat === 'number' && typeof o.locLng === 'number')
-      .map((o) => ({
-        id: `event:${o.id}:${o.recDate || iso}`,
-        ...eventPinIdentity(o, {
-          contact: contactById[o.contactId],
-          eventKind: o.kind,
-        }),
-        lat: o.locLat,
-        lng: o.locLng,
-        contactId: o.contactId || '',
-        isEvent: true,
-        start: o.start,
-        // The optimiser needs the real length of an appointment, not a
-        // guess — an hour-long meeting pushes everything after it back by
-        // an hour.
-        end: o.end,
-      }))
+      .map((o) => {
+        // A stop can only stand for one person — the first linked contact,
+        // same policy as the event block's own color (eventColor()).
+        const primaryContactId = eventContactIds(o)[0] || '';
+        return {
+          id: `event:${o.id}:${o.recDate || iso}`,
+          ...eventPinIdentity(o, {
+            contact: contactById[primaryContactId],
+            eventKind: o.kind,
+          }),
+          lat: o.locLat,
+          lng: o.locLng,
+          contactId: primaryContactId,
+          isEvent: true,
+          start: o.start,
+          // The optimiser needs the real length of an appointment, not a
+          // guess — an hour-long meeting pushes everything after it back by
+          // an hour.
+          end: o.end,
+        };
+      })
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
   }, [state.events, contactById]);
 

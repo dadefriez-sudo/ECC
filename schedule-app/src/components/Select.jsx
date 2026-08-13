@@ -6,10 +6,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 // `searchable`: adds a filter box at the top of the sheet — worth it once a
 // list is long enough that scanning beats scrolling (e.g. picking a contact
 // out of dozens), not worth the extra tap for a handful of fixed options.
-export default function Select({ value, onChange, options, placeholder = 'Choose…', disabled, searchable }) {
+// `multiple`: value/onChange work with an array of values instead of one —
+// picking an option toggles it in the array and the sheet stays open (a
+// list of choices, not a single pick), with its own Done button to close.
+export default function Select({ value, onChange, options, placeholder = 'Choose…', disabled, searchable, multiple }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const current = options.find((o) => o.value === value);
+  const selectedValues = multiple ? (Array.isArray(value) ? value : []) : null;
+  const current = multiple ? null : options.find((o) => o.value === value);
   // When the sheet closes because an option was picked, the trigger button
   // is left sitting right under the finger/cursor — some browsers deliver a
   // follow-up "ghost" click to whatever is now there, instantly reopening
@@ -53,8 +57,20 @@ export default function Select({ value, onChange, options, placeholder = 'Choose
         disabled={disabled}
       >
         <span className="select-trigger-label">
-          {current?.color && <span className="select-swatch" style={{ background: current.color }} />}
-          {current ? current.label : <span className="muted">{placeholder}</span>}
+          {multiple ? (
+            selectedValues.length === 0 ? (
+              <span className="muted">{placeholder}</span>
+            ) : selectedValues.length === 1 ? (
+              options.find((o) => o.value === selectedValues[0])?.label
+            ) : (
+              `${selectedValues.length} selected`
+            )
+          ) : (
+            <>
+              {current?.color && <span className="select-swatch" style={{ background: current.color }} />}
+              {current ? current.label : <span className="muted">{placeholder}</span>}
+            </>
+          )}
         </span>
         <ChevronDown />
       </button>
@@ -77,27 +93,43 @@ export default function Select({ value, onChange, options, placeholder = 'Choose
               </div>
             )}
             <div className="select-options">
-              {visibleOptions.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  role="option"
-                  aria-selected={o.value === value}
-                  className={`select-option${o.value === value ? ' select-option--on' : ''}`}
-                  onClick={() => {
-                    onChange(o.value);
-                    closeFromSelection();
-                  }}
-                >
-                  {o.color && <span className="select-swatch" style={{ background: o.color }} />}
-                  <span className="select-option-label">{o.label}</span>
-                  {o.value === value && <CheckIcon />}
-                </button>
-              ))}
+              {visibleOptions.map((o) => {
+                const isOn = multiple ? selectedValues.includes(o.value) : o.value === value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="option"
+                    aria-selected={isOn}
+                    className={`select-option${isOn ? ' select-option--on' : ''}`}
+                    onClick={() => {
+                      if (multiple) {
+                        onChange(
+                          isOn ? selectedValues.filter((v) => v !== o.value) : [...selectedValues, o.value]
+                        );
+                      } else {
+                        onChange(o.value);
+                        closeFromSelection();
+                      }
+                    }}
+                  >
+                    {o.color && <span className="select-swatch" style={{ background: o.color }} />}
+                    <span className="select-option-label">{o.label}</span>
+                    {isOn && <CheckIcon />}
+                  </button>
+                );
+              })}
               {searchable && visibleOptions.length === 0 && (
                 <p className="muted small select-no-results">No matches.</p>
               )}
             </div>
+            {multiple && (
+              <div className="select-multi-foot">
+                <button type="button" className="btn btn-primary full" onClick={closeFromSelection}>
+                  Done
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

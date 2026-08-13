@@ -1,6 +1,6 @@
 import { useActions } from './store.jsx';
 import { useToast } from './toast.jsx';
-import { todayISO } from './helpers.js';
+import { todayISO, withContactIds } from './helpers.js';
 
 // Turns a parsed smart-add result into a real task or event. Shared, because
 // the quick-add FAB offers Smart add on every page that has one — the Planner
@@ -19,24 +19,28 @@ export function useSmartAdd(fallbackDate) {
     if (kind === 'event') {
       const start = parsed.time || '09:00';
       const end = parsed.endTime || plusMinutes(start, parsed.durationMinutes || 60);
-      actions.addEvent({
-        title: parsed.title,
-        date,
-        start,
-        end,
-        contactId: parsed.contactId || '',
-        location: parsed.location || '',
-        locLat: null,
-        locLng: null,
-        notes: '',
-        done: false,
-        repeat: parsed.repeat || 'none',
-        repeatUntil: '',
-        repeatDays: parsed.repeatDays || [],
-        kind: '',
-        color: '',
-        reminder: parsed.reminderMinutes || 0,
-      });
+      actions.addEvent(
+        withContactIds(
+          {
+            title: parsed.title,
+            date,
+            start,
+            end,
+            location: parsed.location || '',
+            locLat: null,
+            locLng: null,
+            notes: '',
+            done: false,
+            repeat: parsed.repeat || 'none',
+            repeatUntil: '',
+            repeatDays: parsed.repeatDays || [],
+            kind: '',
+            color: '',
+            reminder: parsed.reminderMinutes || 0,
+          },
+          parsed.contactId ? [parsed.contactId] : []
+        )
+      );
       showToast(`"${parsed.title}" added to your calendar`);
     } else {
       actions.addTask({

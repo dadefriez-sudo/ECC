@@ -2,7 +2,7 @@
 // apps, no backend needed. Recurring events export using RRULE where
 // possible; per-occurrence overrides and skips don't have a clean RRULE
 // equivalent, so those export as their own VEVENTs (best-effort).
-import { uid } from './helpers.js';
+import { uid, eventContactIds, contactNames } from './helpers.js';
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -34,7 +34,6 @@ function eventToRRule(e) {
 }
 
 export function exportEventsToICS(events, contacts) {
-  const contactName = (id) => contacts.find((c) => c.id === id)?.name;
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Keystone//App//EN', 'CALSCALE:GREGORIAN'];
   const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
@@ -48,7 +47,8 @@ export function exportEventsToICS(events, contacts) {
     const rrule = eventToRRule(e);
     if (rrule) lines.push(rrule);
     if (e.location) lines.push(`LOCATION:${escapeText(e.location)}`);
-    const notesParts = [e.notes, contactName(e.contactId) ? `With: ${contactName(e.contactId)}` : ''].filter(Boolean);
+    const withNames = contactNames(eventContactIds(e), contacts);
+    const notesParts = [e.notes, withNames ? `With: ${withNames}` : ''].filter(Boolean);
     if (notesParts.length) lines.push(`DESCRIPTION:${escapeText(notesParts.join('\\n'))}`);
     lines.push('END:VEVENT');
   }

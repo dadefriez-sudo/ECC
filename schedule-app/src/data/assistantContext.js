@@ -6,6 +6,8 @@ import {
   expandEventOnDay,
   formatTime,
   WEEKDAY_ABBR,
+  eventContactIds,
+  contactNames,
 } from './helpers.js';
 import { makeOverdueCheck, reconnectDaysOf } from './reconnect.js';
 
@@ -70,7 +72,6 @@ export function buildAssistantContext(state, { now = new Date() } = {}) {
   // --- The next fortnight --------------------------------------------------
   lines.push('');
   lines.push(`## Calendar, ${iso} to ${toISODate(addDays(fromISODate(iso), HORIZON_DAYS))}`);
-  const nameById = Object.fromEntries(contacts.map((c) => [c.id, c.name]));
   let any = false;
   for (let d = 0; d <= HORIZON_DAYS; d++) {
     const day = toISODate(addDays(fromISODate(iso), d));
@@ -83,7 +84,8 @@ export function buildAssistantContext(state, { now = new Date() } = {}) {
     for (const o of occs) {
       const bits = [`${formatRange(o.start, o.end)} ${o.title}`];
       if (o.location) bits.push(`at ${o.location}`);
-      if (o.contactId && nameById[o.contactId]) bits.push(`with ${nameById[o.contactId]}`);
+      const withNames = contactNames(eventContactIds(o), contacts);
+      if (withNames) bits.push(`with ${withNames}`);
       lines.push(`  - ${bits.join(' ')}`);
     }
   }

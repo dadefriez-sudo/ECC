@@ -9,6 +9,9 @@ import {
   minutesToTime,
   formatTime,
   WEEKDAY_ABBR,
+  eventContactIds,
+  contactNames,
+  withContactIds,
 } from './helpers.js';
 import { makeOverdueCheck, reconnectDaysOf } from './reconnect.js';
 import { contactInsights } from './contactInsights.js';
@@ -57,7 +60,6 @@ const TOOLS = {
     if (span < 0) return fail('`to` is before `from`.');
     if (span > MAX_RANGE_DAYS) return fail(`That range is too wide — ask for ${MAX_RANGE_DAYS} days or fewer.`);
 
-    const nameById = byId(state.contacts);
     const out = [];
     for (let d = 0; d <= span; d++) {
       const day = toISODate(addDays(fromISODate(from), d));
@@ -70,7 +72,8 @@ const TOOLS = {
       for (const o of occs) {
         const bits = [`${o.start || '--:--'}-${o.end || ''} ${o.title}`];
         if (o.location) bits.push(`at ${o.location}`);
-        if (nameById[o.contactId]) bits.push(`with ${nameById[o.contactId].name}`);
+        const withNames = contactNames(eventContactIds(o), state.contacts);
+        if (withNames) bits.push(`with ${withNames}`);
         out.push(`  ${bits.join(' ')}`);
       }
       for (const t of tasks) out.push(`  task: ${t.title}${t.dueTime ? ` at ${t.dueTime}` : ''}`);
@@ -169,19 +172,21 @@ const TOOLS = {
 
     const dur = state.settings?.defaultEventDuration || 60;
     const id = uid('e');
-    const event = {
-      id,
-      title: title.trim(),
-      date,
-      start,
-      end: end || minutesToTime(Math.min(timeToMinutes(start) + dur, 23 * 60 + 59)),
-      location: location || '',
-      contactId: contactId || '',
-      notes: notes || '',
-      repeat: repeat && repeat !== 'none' ? repeat : 'none',
-      kind: '',
-      reminder: Number.isFinite(reminderMinutes) ? reminderMinutes : (state.settings?.defaultReminderLead || 0),
-    };
+    const event = withContactIds(
+      {
+        id,
+        title: title.trim(),
+        date,
+        start,
+        end: end || minutesToTime(Math.min(timeToMinutes(start) + dur, 23 * 60 + 59)),
+        location: location || '',
+        notes: notes || '',
+        repeat: repeat && repeat !== 'none' ? repeat : 'none',
+        kind: '',
+        reminder: Number.isFinite(reminderMinutes) ? reminderMinutes : (state.settings?.defaultReminderLead || 0),
+      },
+      contactId ? [contactId] : []
+    );
     actions.addEvent(event);
     return ok(
       `Created "${event.title}" on ${date} at ${start}–${event.end}${location ? ` at ${location}` : ''}.`,
@@ -268,14 +273,20 @@ const TOOLS = {
     const eventStops = (state.events || [])
       .flatMap((e) => expandEventOnDay(e, day))
       .filter((o) => typeof o.locLat === 'number' && typeof o.locLng === 'number')
-      .map((o) => ({
-        id: `event:${o.id}:${o.recDate || day}`,
-        ...eventPinIdentity(o, { contact: contactById[o.contactId], eventKind: o.kind }),
-        lat: o.locLat,
-        lng: o.locLng,
-        start: o.start,
-        end: o.end,
-      }))
+      .map((o) => {
+        // A stop can only stand for one person — the first linked contact,
+        // same policy as the event block's own color (eventColor()).
+        const primaryContactId = eventContactIds(o)[0] || '';
+        return {
+          id: `event:${o.id}:${o.recDate || day}`,
+          ...eventPinIdentity(o, { contact: contactById[primaryContactId], eventKind: o.kind }),
+          lat: o.locLat,
+          lng: o.locLng,
+          contactId: primaryContactId,
+          start: o.start,
+          end: o.end,
+        };
+      })
       // Chronological, not array/insertion order — the origin below picks
       // the earliest of these, and an events array is built in whatever
       // order things were created in, not the order they happen in the day.
@@ -368,7 +379,7 @@ function timelineEntries(state, contactId) {
   // expanded day by day to be seen at all, so this loop is 500-odd
   // iterations either way and the only thing that decides its cost is how
   // many events go through it.
-  const theirs = (state.events || []).filter((e) => e.contactId === contactId);
+  const theirs = (state.events || []).filter((e) => eventContactIds(e).includes(contactId));
   const from = new Date();
   for (let d = -400; d <= 120; d++) {
     const day = toISODate(addDays(from, d));

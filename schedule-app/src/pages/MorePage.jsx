@@ -272,6 +272,7 @@ export default function MorePage() {
             kind: '',
             color: '',
             reminder: 0,
+            contactIds: [],
             contactId: '',
           });
         }

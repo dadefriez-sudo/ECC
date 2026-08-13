@@ -1,4 +1,4 @@
-import { addDays, expandEventOnDay, startOfWeek, toISODate, uid, weekDays } from './helpers.js';
+import { addDays, expandEventOnDay, startOfWeek, toISODate, uid, weekDays, eventContactIds, withContactIds } from './helpers.js';
 
 // A template is a day's (or week's) shape, saved so it can be stamped down
 // again. It stores plain time blocks rather than references to the events it
@@ -9,13 +9,15 @@ import { addDays, expandEventOnDay, startOfWeek, toISODate, uid, weekDays } from
 // (the whole point is that it moves), `repeat` (a template is applied to
 // specific days; a repeating event stamped repeatedly would multiply), and
 // anything occurrence-specific like overrides or done-state.
-const BLOCK_FIELDS = ['title', 'start', 'end', 'location', 'locLat', 'locLng', 'notes', 'kind', 'color', 'contactId', 'reminder'];
+const BLOCK_FIELDS = ['title', 'start', 'end', 'location', 'locLat', 'locLng', 'notes', 'kind', 'color', 'reminder'];
 
 function toBlock(occ, dayOffset) {
   const block = { dayOffset };
   for (const f of BLOCK_FIELDS) {
     if (occ[f] !== undefined && occ[f] !== null && occ[f] !== '') block[f] = occ[f];
   }
+  const contactIds = eventContactIds(occ);
+  if (contactIds.length) block.contactIds = contactIds;
   return block;
 }
 
@@ -62,28 +64,30 @@ export function instantiate(template, targetISO) {
       : new Date(`${targetISO}T00:00:00`);
   return template.blocks.map((b) => {
     const { dayOffset = 0, ...rest } = b;
-    return {
-      id: uid('e'),
-      title: '',
-      start: '09:00',
-      end: '10:00',
-      contactId: '',
-      location: '',
-      locLat: null,
-      locLng: null,
-      notes: '',
-      kind: '',
-      color: '',
-      reminder: 0,
-      repeat: 'none',
-      repeatUntil: '',
-      repeatDays: [],
-      done: false,
-      doneDates: [],
-      skipDates: [],
-      ...rest,
-      date: toISODate(addDays(base, dayOffset)),
-    };
+    return withContactIds(
+      {
+        id: uid('e'),
+        title: '',
+        start: '09:00',
+        end: '10:00',
+        location: '',
+        locLat: null,
+        locLng: null,
+        notes: '',
+        kind: '',
+        color: '',
+        reminder: 0,
+        repeat: 'none',
+        repeatUntil: '',
+        repeatDays: [],
+        done: false,
+        doneDates: [],
+        skipDates: [],
+        ...rest,
+        date: toISODate(addDays(base, dayOffset)),
+      },
+      eventContactIds(rest)
+    );
   });
 }
 

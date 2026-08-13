@@ -5,7 +5,15 @@ import EditorSheet from '../components/EditorSheet.jsx';
 import Modal from '../components/Modal.jsx';
 import Checkbox from '../components/Checkbox.jsx';
 import { Avatar } from '../components/Avatar.jsx';
-import { todayISO, toISODate, addDays, formatShortDate, formatTime, expandEventOnDay } from '../data/helpers.js';
+import {
+  todayISO,
+  toISODate,
+  addDays,
+  formatShortDate,
+  formatTime,
+  expandEventOnDay,
+  eventContactIds,
+} from '../data/helpers.js';
 import { contactInsights } from '../data/contactInsights.js';
 import { useToast } from '../data/toast.jsx';
 import { confirmTick, selectTick, warnTick } from '../data/haptics.js';
@@ -60,7 +68,7 @@ export default function ContactTimelinePage() {
       const iso = toISODate(addDays(today, i));
       for (const e of state.events) {
         for (const occ of expandEventOnDay(e, iso)) {
-          if (occ.contactId === contact.id) {
+          if (eventContactIds(occ).includes(contact.id)) {
             out.push({ type: 'event', date: iso, key: `ev:${occ.id}:${occ.recDate}`, occ });
           }
         }
@@ -187,7 +195,7 @@ export default function ContactTimelinePage() {
             title: occ.title,
             start: occ.start,
             end: occ.end,
-            contactId: occ.contactId,
+            contactIds: eventContactIds(occ),
             location: occ.location,
             notes: occ.notes,
             date: newDate,

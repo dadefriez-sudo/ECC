@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useReducer } from 'react';
 import { makeSeed } from './seed.js';
-import { uid, todayISO, DEFAULT_KIND_COLORS } from './helpers.js';
+import { uid, todayISO, DEFAULT_KIND_COLORS, eventContactIds, withContactIds } from './helpers.js';
 import { DEFAULT_HOME_BLOCKS } from './homeBlocks.js';
 
 const STORAGE_KEY = 'compass.data.v1';
@@ -206,9 +206,10 @@ function reducer(state, action) {
         // them, so it's removed outright. Interactions only make sense tied
         // to a person, so those go with them; notes are unlinked (kept) —
         // they're the user's own writing, not just a link.
-        events: state.events.map((e) =>
-          e.contactId === action.id ? { ...e, contactId: '' } : e
-        ),
+        events: state.events.map((e) => {
+          const ids = eventContactIds(e);
+          return ids.includes(action.id) ? withContactIds(e, ids.filter((id) => id !== action.id)) : e;
+        }),
         pins: (state.pins || [])
           .filter((p) => !(p.contactId === action.id && p.source === 'contact-address'))
           .map((p) => (p.contactId === action.id ? { ...p, contactId: '' } : p)),
@@ -223,7 +224,7 @@ function reducer(state, action) {
       return {
         ...state,
         contacts: [],
-        events: state.events.map((e) => (e.contactId ? { ...e, contactId: '' } : e)),
+        events: state.events.map((e) => (eventContactIds(e).length ? withContactIds(e, []) : e)),
         pins: (state.pins || [])
           .filter((p) => !(p.contactId && p.source === 'contact-address'))
           .map((p) => (p.contactId ? { ...p, contactId: '' } : p)),

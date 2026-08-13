@@ -1,5 +1,6 @@
 import { useStore, useActions } from './store.jsx';
 import { useToast } from './toast.jsx';
+import { eventContactIds } from './helpers.js';
 
 // Deleting a contact cascades — it unlinks their events/notes, drops any pin
 // auto-created from their address, and deletes their interactions (see
@@ -19,7 +20,7 @@ export function useDeleteContactWithUndo() {
 
     const snapshots = list.map((c) => ({
       contact: c,
-      affectedEvents: state.events.filter((e) => e.contactId === c.id),
+      affectedEvents: state.events.filter((e) => eventContactIds(e).includes(c.id)),
       removedPins: (state.pins || []).filter((p) => p.contactId === c.id && p.source === 'contact-address'),
       unlinkedPins: (state.pins || []).filter((p) => p.contactId === c.id && p.source !== 'contact-address'),
       affectedInteractions: (state.interactions || []).filter((i) => i.contactId === c.id),
@@ -32,7 +33,11 @@ export function useDeleteContactWithUndo() {
     showToast(label, 'Undo', () => {
       for (const s of snapshots) {
         actions.addContact(s.contact);
-        s.affectedEvents.forEach((e) => actions.updateEvent({ ...e, contactId: s.contact.id }));
+        // Restoring the whole captured event, not just re-patching one
+        // field — it was snapshotted before deleteContact touched it, so
+        // this is the actual full contactIds array from before, correct
+        // even when the deleted contact was one of several linked.
+        s.affectedEvents.forEach((e) => actions.updateEvent(e));
         s.unlinkedPins.forEach((p) => actions.updatePin({ ...p, contactId: s.contact.id }));
         s.removedPins.forEach((p) => actions.addPin(p));
         s.affectedInteractions.forEach((i) => actions.addInteraction(i));

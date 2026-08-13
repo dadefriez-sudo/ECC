@@ -42,6 +42,9 @@ import {
   uid,
   eventColor,
   makeContactColor,
+  eventContactIds,
+  contactNames,
+  withContactIds,
   EVENT_TYPE_KINDS,
   resolveKindColors,
   resolveKindLabels,
@@ -51,7 +54,7 @@ import AddressField from '../components/AddressField.jsx';
 import Icon from '../components/Icon.jsx';
 import { findDayConflicts } from '../data/conflicts.js';
 import { contactDatesOn, contactDatesInMonth, contactDateLabel } from '../data/contactDates.js';
-import { directionsTarget, mapsLinkProps } from '../data/maps.js';
+import { directionsTarget, addressTarget, mapsLinkProps } from '../data/maps.js';
 import SmartQuickAdd from '../components/SmartQuickAdd.jsx';
 import { useSmartAdd } from '../data/useSmartAdd.js';
 import Modal from '../components/Modal.jsx';
@@ -129,7 +132,7 @@ const emptyDraft = (date, start, extra, opts = {}) => {
     date,
     start,
     end: minutesToTime(Math.min(dayEndHour * 60, timeToMinutes(start) + duration)),
-    contactId: '',
+    contactIds: [],
     location: '',
     locLat: null,
     locLng: null,
@@ -302,7 +305,7 @@ export default function PlannerPage() {
   useEffect(() => {
     const cid = location.state?.newEventContact;
     if (cid) {
-      openNew(todayISO(), '09:00', { contactId: cid });
+      openNew(todayISO(), '09:00', { contactIds: [cid] });
       window.history.replaceState({}, '');
       return;
     }
@@ -519,7 +522,7 @@ export default function PlannerPage() {
         title: occ.title,
         start,
         end,
-        contactId: occ.contactId,
+        contactIds: eventContactIds(occ),
         location: occ.location,
         notes: occ.notes,
         ...(newDate !== occ.recDate ? { date: newDate } : {}),
@@ -586,7 +589,7 @@ export default function PlannerPage() {
           title: occ.title,
           start,
           end,
-          contactId: occ.contactId,
+          contactIds: eventContactIds(occ),
           location: occ.location,
           notes: occ.notes,
           ...(newDate !== occ.recDate ? { date: newDate } : {}),
@@ -1133,7 +1136,7 @@ function DayView({
 
   const dayEvents = useMemo(() => occurrencesFor(events, date).filter((e) => e.e2 > e.s), [events, date]);
   const laid = useMemo(() => layout(dayEvents), [dayEvents]);
-  const contactName = (id) => contacts.find((c) => c.id === id)?.name;
+  const whoFor = (occ) => contactNames(eventContactIds(occ), contacts);
   const contactColor = useMemo(() => makeContactColor(contacts, statuses), [contacts, statuses]);
 
   const nowMins = useMinuteOfDay();
@@ -1790,7 +1793,7 @@ function DayView({
             const top = (ev.s - dayStart * 60) * pxPerMin;
             const height = Math.max(24, (ev.e2 - ev.s) * pxPerMin - 3);
             const short = ev.e2 - ev.s < 55;
-            const who = contactName(ev.contactId);
+            const who = whoFor(ev);
             const kindLabel = kindLabels[ev.kind];
             const recurring = ev.repeat && ev.repeat !== 'none';
             const color = eventColor(ev, contactColor, '', kindColors);
@@ -1908,7 +1911,7 @@ function DayView({
             const top = (occ.s - dayStart * 60) * pxPerMin;
             const height = Math.max(24, (occ.e2 - occ.s) * pxPerMin - 3);
             const short = occ.e2 - occ.s < 55;
-            const who = contactName(occ.contactId);
+            const who = whoFor(occ);
             const kindLabel = kindLabels[occ.kind];
             const recurring = occ.repeat && occ.repeat !== 'none';
             const color = eventColor(occ, contactColor, '', kindColors);
@@ -1968,7 +1971,7 @@ function DayView({
               const top = (occ.s - dayStart * 60) * pxPerMin;
               const height = Math.max(24, (occ.e2 - occ.s) * pxPerMin - 3);
               const short = occ.e2 - occ.s < 55;
-              const who = contactName(occ.contactId);
+              const who = whoFor(occ);
               const kindLabel = kindLabels[occ.kind];
               const recurring = occ.repeat && occ.repeat !== 'none';
               const color = eventColor(occ, contactColor, '', kindColors);
@@ -2382,7 +2385,9 @@ const DETAIL_DISMISS_THRESHOLD = 110;
 function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindLabels, onClose, onEdit, onToggleDone }) {
   const navigate = useNavigate();
   useBackDismiss(true, onClose);
-  const contact = contacts.find((c) => c.id === occ.contactId);
+  const linkedContacts = eventContactIds(occ)
+    .map((id) => contacts.find((c) => c.id === id))
+    .filter(Boolean);
   const recurring = occ.repeat && occ.repeat !== 'none';
   const color = eventColor(occ, null, '', kindColors);
   const kindLabel = kindLabels[occ.kind];
@@ -2495,40 +2500,45 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindL
               <span className="detail-value">{occ.location}</span>
             </div>
           )}
-          {contact && (
-            <div className="detail-field">
+          {linkedContacts.map((c) => (
+            <div className="detail-field" key={`with-${c.id}`}>
               <span className="detail-label">With</span>
               <button
                 type="button"
                 className="detail-value detail-value--link"
                 onClick={() => {
                   onClose();
-                  navigate(`/contacts/${contact.id}`);
+                  navigate(`/contacts/${c.id}`);
                 }}
               >
-                {contact.name}
+                {c.name}
               </button>
             </div>
-          )}
-          {contact && contact.phone && (
-            <div className="detail-field">
-              <span className="detail-label">Phone</span>
-              <a
-                className="detail-value detail-value--link"
-                href={`${occ.kind === 'text' ? 'sms' : 'tel'}:${contact.phone}`}
-              >
-                {contact.phone}
-              </a>
-            </div>
-          )}
-          {contact && occ.kind === 'email' && contact.email && (
-            <div className="detail-field">
-              <span className="detail-label">Email</span>
-              <a className="detail-value detail-value--link" href={`mailto:${contact.email}`}>
-                {contact.email}
-              </a>
-            </div>
-          )}
+          ))}
+          {linkedContacts
+            .filter((c) => c.phone)
+            .map((c) => (
+              <div className="detail-field" key={`phone-${c.id}`}>
+                <span className="detail-label">Phone{linkedContacts.length > 1 ? ` (${c.name})` : ''}</span>
+                <a
+                  className="detail-value detail-value--link"
+                  href={`${occ.kind === 'text' ? 'sms' : 'tel'}:${c.phone}`}
+                >
+                  {c.phone}
+                </a>
+              </div>
+            ))}
+          {occ.kind === 'email' &&
+            linkedContacts
+              .filter((c) => c.email)
+              .map((c) => (
+                <div className="detail-field" key={`email-${c.id}`}>
+                  <span className="detail-label">Email{linkedContacts.length > 1 ? ` (${c.name})` : ''}</span>
+                  <a className="detail-value detail-value--link" href={`mailto:${c.email}`}>
+                    {c.email}
+                  </a>
+                </div>
+              ))}
           {(linkedGoal || linkedTask) && (
             <div className="detail-field">
               <span className="detail-label">Linked to</span>
@@ -2551,6 +2561,18 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindL
             <a className="btn btn-primary full" style={{ marginTop: 10 }} {...mapsLinkProps(mapsTarget)}>
               <Icon name="send" /> Directions
             </a>
+          </section>
+        )}
+
+        {linkedContacts.some((c) => c.address) && (
+          <section className="detail-section detail-directions-stack">
+            {linkedContacts
+              .filter((c) => c.address)
+              .map((c) => (
+                <a key={c.id} className="btn btn-ghost full" {...mapsLinkProps(addressTarget(c.address))}>
+                  <Icon name="send" /> Directions to {c.name}
+                </a>
+              ))}
           </section>
         )}
 
@@ -2605,7 +2627,7 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
       title: editing.title,
       start: editing.start,
       end: editing.end,
-      contactId: editing.contactId || '',
+      contactIds: eventContactIds(editing),
       location: editing.location || '',
       locLat: editing.locLat ?? null,
       locLng: editing.locLng ?? null,
@@ -2646,7 +2668,7 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
         title: b.title ?? draft.title,
         start: b.start ?? draft.start,
         end: b.end ?? draft.end,
-        contactId: b.contactId ?? draft.contactId,
+        contactIds: b.contactIds ?? draft.contactIds,
         location: b.location ?? draft.location,
         notes: b.notes ?? draft.notes,
         date: draft.masterDate,
@@ -2661,7 +2683,7 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
         title: editing.title,
         start: editing.start,
         end: editing.end,
-        contactId: editing.contactId || '',
+        contactIds: eventContactIds(editing),
         location: editing.location || '',
         notes: editing.notes || '',
         date: draft.occDate,
@@ -2701,21 +2723,23 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
       repeatUntil: draft.repeatUntil,
       repeatDays: draft.repeatDays,
       done: draft.done,
-      fields: {
-        title: draft.title.trim() || 'Untitled',
-        start: draft.start,
-        end,
-        contactId: draft.contactId || '',
-        location: draft.location,
-        locLat: draft.locLat,
-        locLng: draft.locLng,
-        notes: draft.notes,
-        kind: draft.kind,
-        color: draft.color,
-        reminder: draft.reminder,
-        linkKind,
-        linkId,
-      },
+      fields: withContactIds(
+        {
+          title: draft.title.trim() || 'Untitled',
+          start: draft.start,
+          end,
+          location: draft.location,
+          locLat: draft.locLat,
+          locLng: draft.locLng,
+          notes: draft.notes,
+          kind: draft.kind,
+          color: draft.color,
+          reminder: draft.reminder,
+          linkKind,
+          linkId,
+        },
+        draft.contactIds
+      ),
     });
   };
 
@@ -2872,14 +2896,12 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
         <label className="field">
           <span>With</span>
           <Select
-            value={draft.contactId || ''}
-            onChange={(v) => setDraft({ ...draft, contactId: v })}
+            value={draft.contactIds || []}
+            onChange={(v) => setDraft({ ...draft, contactIds: v })}
             placeholder="No one linked"
             searchable
-            options={[
-              { value: '', label: 'No one linked' },
-              ...[...contacts].sort((a, b) => a.name.localeCompare(b.name)).map((c) => ({ value: c.id, label: c.name })),
-            ]}
+            multiple
+            options={[...contacts].sort((a, b) => a.name.localeCompare(b.name)).map((c) => ({ value: c.id, label: c.name }))}
           />
         </label>
 

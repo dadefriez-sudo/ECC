@@ -10,6 +10,8 @@ import {
   eventOccursInRange,
   formatShortDate,
   formatTime,
+  eventContactIds,
+  contactNames,
 } from '../data/helpers.js';
 import { parseSearchQuery } from '../data/nlSearch.js';
 import { contactDatesInRange, contactDatesWithin, contactDateLabel } from '../data/contactDates.js';
@@ -45,7 +47,6 @@ export default function SearchPage() {
   const [query, setQuery] = useState('');
 
   const q = query.trim().toLowerCase();
-  const contactName = (id) => state.contacts.find((c) => c.id === id)?.name || '';
 
   // Recognizes date ranges ("next week"), a person ("with Sarah"), and a
   // "birthdays"/"anniversary" mention, and hands back whatever's left as
@@ -73,10 +74,10 @@ export default function SearchPage() {
 
     const events = state.events.filter((e) => {
       if (pureDateQuery) return false;
-      if (parsed.personId && e.contactId !== parsed.personId) return false;
+      if (parsed.personId && !eventContactIds(e).includes(parsed.personId)) return false;
       if (parsed.fromISO && !eventOccursInRange(e, parsed.fromISO, parsed.toISO)) return false;
       if (!kw) return !!(parsed.personId || parsed.fromISO);
-      return has(e.title) || has(e.notes) || has(e.location) || has(contactName(e.contactId));
+      return has(e.title) || has(e.notes) || has(e.location) || has(contactNames(eventContactIds(e), state.contacts));
     });
     const tasks = state.tasks.filter((t) => {
       if (pureDateQuery) return false;

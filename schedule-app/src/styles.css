@@ -1853,6 +1853,11 @@ textarea {
   overflow-y: auto;
   padding: 4px 8px 12px;
 }
+.select-multi-foot {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
 .select-option {
   width: 100%;
   display: flex;
@@ -3066,6 +3071,11 @@ textarea {
   padding: 14px 16px;
   margin-bottom: 14px;
   box-shadow: var(--shadow);
+}
+.detail-directions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .section-head {
   display: flex;

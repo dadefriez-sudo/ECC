@@ -21,6 +21,7 @@ import {
   formatShortDate,
   formatTime,
   expandEventOnDay,
+  eventContactIds,
 } from '../data/helpers.js';
 import { nextAnnualOccurrence, yearsBetween } from '../data/contactDates.js';
 import Icon from '../components/Icon.jsx';
@@ -81,7 +82,7 @@ export default function ContactDetailPage() {
       const iso = toISODate(addDays(today, i));
       for (const e of state.events) {
         for (const occ of expandEventOnDay(e, iso)) {
-          if (occ.contactId === contact.id) out.push(occ);
+          if (eventContactIds(occ).includes(contact.id)) out.push(occ);
         }
       }
     }
