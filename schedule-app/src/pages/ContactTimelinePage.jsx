@@ -480,6 +480,7 @@ export default function ContactTimelinePage() {
           </div>
         )}
 
+        {pastAll.length > 0 && <div className="timeline-band timeline-band--past">Past</div>}
         {past.map((entry) => (
           <TimelineEntry
             key={entry.key}

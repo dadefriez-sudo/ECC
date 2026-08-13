@@ -5367,19 +5367,35 @@ button.timeline-item {
   color: var(--muted);
   opacity: 0.55;
 }
-/* Already happened. Same information, visibly settled, so which side of the
-   Today line you're on is legible without reading a date. */
+/* Already happened. Faded and flattened as a whole, not just a tinted
+   strip — the old version only softened the border and the title, which
+   read the same as an unread/read state, not as "in the past" at a glance. */
 .timeline-item--past {
+  /* filter, not opacity: the entry animation below sets `opacity: 1` as its
+     end state with fill-mode both, which — being an animation value — beats
+     a plain opacity rule in the cascade for as long as the fill applies
+     (permanently). filter isn't touched by that animation, so it sticks. */
+  filter: opacity(0.62);
   background: transparent;
-  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  border-width: 1px;
+  border-left-width: 2px;
+  border-color: color-mix(in srgb, var(--border) 55%, transparent);
   border-left-color: color-mix(in srgb, var(--muted) 45%, transparent);
 }
 .timeline-item--past .timeline-item-body strong {
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 500;
+}
+.timeline-item--past .timeline-item-date {
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
 }
 .timeline-item--past .timeline-item-edit {
-  opacity: 0.35;
+  opacity: 0.3;
+}
+/* Selecting a past item is still an active, current action — full
+   strength regardless of which band it came from. */
+.timeline-item--past.timeline-item--selected {
+  filter: none;
 }
 .timeline-item--selected {
   border-color: var(--accent);
