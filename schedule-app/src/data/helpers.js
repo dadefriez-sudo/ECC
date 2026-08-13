@@ -422,6 +422,17 @@ export function resolveKindColors(settings, customEventTypes) {
   };
 }
 
+// Same idea as resolveKindColors() above, for the label instead — the id →
+// display-name half of a kind, merging the fixed kinds with anyone's custom
+// types. Fixed kinds' labels aren't user-renamable, so unlike colors there's
+// no settings override to merge in.
+export function resolveKindLabels(customEventTypes) {
+  return {
+    ...Object.fromEntries(EVENT_TYPE_KINDS.map((k) => [k.value, k.label])),
+    ...Object.fromEntries((customEventTypes || []).map((t) => [t.id, t.label])),
+  };
+}
+
 // The colour an event should be drawn in, in priority order: a colour set
 // on the event itself, then its kind's colour (user-customized if set, else
 // the default above), then the status colour of the person it's with, then

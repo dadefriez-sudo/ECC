@@ -44,6 +44,7 @@ import {
   makeContactColor,
   EVENT_TYPE_KINDS,
   resolveKindColors,
+  resolveKindLabels,
   normalizeEventTypeOrder,
 } from '../data/helpers.js';
 import AddressField from '../components/AddressField.jsx';
@@ -150,6 +151,7 @@ export default function PlannerPage() {
   const { state } = useStore();
   const actions = useActions();
   const kindColors = resolveKindColors(state.settings, state.customEventTypes);
+  const kindLabels = resolveKindLabels(state.customEventTypes);
   const showToast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -834,6 +836,7 @@ export default function PlannerPage() {
           contacts={state.contacts}
           statuses={state.statuses}
           kindColors={kindColors}
+          kindLabels={kindLabels}
           onAddAt={(start) => openNew(cursor, start)}
           onOpen={openView}
           onMove={moveOccurrence}
@@ -1027,6 +1030,7 @@ export default function PlannerPage() {
           tasks={state.tasks || []}
           isPro={!!state.settings?.isPro}
           kindColors={kindColors}
+          kindLabels={kindLabels}
           onClose={() => setViewing(null)}
           onEdit={openEditFromView}
           onToggleDone={() => toggleDoneQuick(viewing)}
@@ -1088,6 +1092,7 @@ function DayView({
   contacts,
   statuses,
   kindColors,
+  kindLabels,
   onAddAt,
   onOpen,
   onMove,
@@ -1786,6 +1791,7 @@ function DayView({
             const height = Math.max(24, (ev.e2 - ev.s) * pxPerMin - 3);
             const short = ev.e2 - ev.s < 55;
             const who = contactName(ev.contactId);
+            const kindLabel = kindLabels[ev.kind];
             const recurring = ev.repeat && ev.repeat !== 'none';
             const color = eventColor(ev, contactColor, '', kindColors);
             const displayStartMin = ev.s;
@@ -1856,7 +1862,13 @@ function DayView({
                       {ev.reminder > 0 && <span className="repeat-glyph"> <Icon name="bell" size={13} /></span>}
                     </span>
                     <span className="event-title">{ev.title || 'Untitled'}</span>
-                    {who && <span className="event-who">{who}</span>}
+                    {(who || kindLabel) && (
+                      <span className="event-who">
+                        {kindLabel}
+                        {who && kindLabel ? ' · ' : ''}
+                        {who}
+                      </span>
+                    )}
                   </>
                 )}
               </button>
@@ -1897,6 +1909,7 @@ function DayView({
             const height = Math.max(24, (occ.e2 - occ.s) * pxPerMin - 3);
             const short = occ.e2 - occ.s < 55;
             const who = contactName(occ.contactId);
+            const kindLabel = kindLabels[occ.kind];
             const recurring = occ.repeat && occ.repeat !== 'none';
             const color = eventColor(occ, contactColor, '', kindColors);
             const rubberX = Math.max(-18, Math.min(18, dragDx * 0.2));
@@ -1933,7 +1946,13 @@ function DayView({
                         {occ.reminder > 0 && <span className="repeat-glyph"> <Icon name="bell" size={13} /></span>}
                       </span>
                       <span className="event-title">{occ.title || 'Untitled'}</span>
-                      {who && <span className="event-who">{who}</span>}
+                      {(who || kindLabel) && (
+                        <span className="event-who">
+                          {kindLabel}
+                          {who && kindLabel ? ' · ' : ''}
+                          {who}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
@@ -1950,6 +1969,7 @@ function DayView({
               const height = Math.max(24, (occ.e2 - occ.s) * pxPerMin - 3);
               const short = occ.e2 - occ.s < 55;
               const who = contactName(occ.contactId);
+              const kindLabel = kindLabels[occ.kind];
               const recurring = occ.repeat && occ.repeat !== 'none';
               const color = eventColor(occ, contactColor, '', kindColors);
               const rubberX = Math.max(-18, Math.min(18, groupDrag.dx * 0.2));
@@ -1985,7 +2005,13 @@ function DayView({
                         {recurring && <span className="repeat-glyph"> <Icon name={occ.isException ? 'pencil' : 'repeat'} size={13} /></span>}
                       </span>
                       <span className="event-title">{occ.title || 'Untitled'}</span>
-                      {who && <span className="event-who">{who}</span>}
+                      {(who || kindLabel) && (
+                        <span className="event-who">
+                          {kindLabel}
+                          {who && kindLabel ? ' · ' : ''}
+                          {who}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
@@ -2353,12 +2379,13 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
 
 const DETAIL_DISMISS_THRESHOLD = 110;
 
-function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, onClose, onEdit, onToggleDone }) {
+function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindLabels, onClose, onEdit, onToggleDone }) {
   const navigate = useNavigate();
   useBackDismiss(true, onClose);
   const contact = contacts.find((c) => c.id === occ.contactId);
   const recurring = occ.repeat && occ.repeat !== 'none';
   const color = eventColor(occ, null, '', kindColors);
+  const kindLabel = kindLabels[occ.kind];
   const linkedGoal = occ.linkKind === 'goal' ? goals.find((g) => g.id === occ.linkId) : null;
   const linkedTask = occ.linkKind === 'task' ? tasks.find((t) => t.id === occ.linkId) : null;
 
@@ -2428,6 +2455,11 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, onClo
             <Checkbox checked={!!occ.done} onChange={onToggleDone} ariaLabel="Mark as done" />
           </label>
         </div>
+        {kindLabel && (
+          <span className="tag" style={{ borderColor: color, color }}>
+            {kindLabel}
+          </span>
+        )}
         {(linkedGoal || linkedTask) && (
           <p className="muted small detail-done-hint">
             Checking done updates {linkedGoal ? 'the linked goal' : 'the linked task'}.

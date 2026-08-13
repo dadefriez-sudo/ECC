@@ -2041,6 +2041,26 @@ textarea {
   gap: 10px;
   margin-top: 8px;
 }
+.contacts-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+/* Select's trigger defaults to a full-width form field — scoped down here
+   to a compact, content-sized control that fits a header row alongside a
+   short "Sort" label instead of stretching across the page. */
+.contacts-sort-row .select-trigger {
+  width: auto;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  gap: 6px;
+}
+.contacts-sort-row .select-chevron {
+  width: 14px;
+  height: 14px;
+}
 .select-bar {
   position: fixed;
   left: max(12px, calc(50% - var(--maxw) / 2 + 12px));

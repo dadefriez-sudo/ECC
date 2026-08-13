@@ -28,6 +28,22 @@ import {
 import Icon from '../components/Icon.jsx';
 import GroupPicker from '../components/GroupPicker.jsx';
 
+// Sort comparators for the list — dates compare fine as their own ISO
+// strings, so "missing" just needs a fallback that sorts to the right end
+// rather than a separate branch: '0000-00-00' reads as earliest, so a
+// contact with no createdAt/lastContacted naturally lands last in a
+// newest-first sort instead of needing its own case.
+const CONTACT_SORTS = {
+  name: (a, b) => a.name.localeCompare(b.name),
+  added: (a, b) => (b.createdAt || '0000-00-00').localeCompare(a.createdAt || '0000-00-00'),
+  contacted: (a, b) => (b.lastContacted || '0000-00-00').localeCompare(a.lastContacted || '0000-00-00'),
+};
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Name (A–Z)' },
+  { value: 'added', label: 'Recently added' },
+  { value: 'contacted', label: 'Recently contacted' },
+];
+
 export default function ContactsPage() {
   const { state } = useStore();
   const actions = useActions();
@@ -37,6 +53,7 @@ export default function ContactsPage() {
   const showToast = useToast();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(''); // statusId, '__overdue', or ''
+  const [sortMode, setSortMode] = useState('name'); // 'name' | 'added' | 'contacted'
   const [adding, setAdding] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState(new Set());
@@ -130,8 +147,8 @@ export default function ContactsPage() {
             (c.notes || '').toLowerCase().includes(q)
           : true
       )
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [state.contacts, query, filter, isOverdue]);
+      .sort(CONTACT_SORTS[sortMode] || CONTACT_SORTS.name);
+  }, [state.contacts, query, filter, isOverdue, sortMode]);
 
   const showBanner = !query.trim() && filter === '' && overdue.length > 0;
 
@@ -314,6 +331,20 @@ export default function ContactsPage() {
           </div>
         )}
       </header>
+
+      {/* Deliberately outside <header>: that header is position:sticky with
+          its own z-index, which — despite Select's overlay having a much
+          higher z-index of its own — caps the whole overlay to the header's
+          stacking context. Nested there, the last option or two of a tall
+          enough list render visually on top of the fixed tab bar but are
+          actually unclickable, since the tab bar sits in a separate,
+          higher-priority stacking context untouched by the header's. */}
+      {state.contacts.length > 1 && (
+        <div className="contacts-sort-row">
+          <span className="muted small">Sort</span>
+          <Select value={sortMode} onChange={setSortMode} options={SORT_OPTIONS} />
+        </div>
+      )}
 
       {showBanner && (
         <section className="reconnect">
