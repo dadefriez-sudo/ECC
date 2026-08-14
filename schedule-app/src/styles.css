@@ -3451,6 +3451,9 @@ textarea {
   border-radius: 50%;
   cursor: pointer;
   flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .map-fab {
   z-index: 500;
