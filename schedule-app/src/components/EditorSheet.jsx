@@ -30,6 +30,7 @@ export default function EditorSheet({
   const [justSaved, setJustSaved] = useState(false);
   const startY = useRef(null);
   const dragging = useRef(false);
+  const bodyRef = useRef(null);
   const confirmCloseRef = useRef(confirmClose);
   confirmCloseRef.current = confirmClose;
   const dirtyRef = useRef(dirty);
@@ -84,8 +85,15 @@ export default function EditorSheet({
   };
 
   const onPointerDown = (e) => {
-    // Ignore drags starting inside a scrollable form field or button.
-    if (e.target.closest('button, input, textarea, select, .select-trigger')) return;
+    // Ignore drags starting inside a scrollable form field, a button, or the
+    // unsaved-changes confirm dialog.
+    if (e.target.closest('button, input, textarea, select, .select-trigger, .confirm-backdrop')) return;
+    // The grip/header strip is a fixed target, but most of the sheet is the
+    // scrollable form body — swiping down from *there* only counts as
+    // "dismiss" once it has nothing left to scroll up to. Otherwise this
+    // would hijack an ordinary scroll-to-top gesture and slide the whole
+    // sheet away underneath it.
+    if (e.target.closest('.editor-sheet-body') && bodyRef.current && bodyRef.current.scrollTop > 0) return;
     startY.current = e.clientY;
     dragging.current = true;
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -103,8 +111,15 @@ export default function EditorSheet({
   };
 
   return (
-    <div className="editor-sheet" style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}>
-      <div className="editor-sheet-drag" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+    <div
+      className="editor-sheet"
+      style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <div className="editor-sheet-drag">
         <div className="editor-sheet-grip">
           <span className="modal-handle" />
         </div>
@@ -130,7 +145,7 @@ export default function EditorSheet({
         </div>
       </div>
 
-      <div className={`editor-sheet-body${bodyClassName ? ` ${bodyClassName}` : ''}`}>{children}</div>
+      <div ref={bodyRef} className={`editor-sheet-body${bodyClassName ? ` ${bodyClassName}` : ''}`}>{children}</div>
 
       {danger && (
         <div className="editor-sheet-foot">
