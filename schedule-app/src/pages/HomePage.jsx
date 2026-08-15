@@ -555,7 +555,7 @@ export default function HomePage() {
               <button key="goals" className="detail-section home-block-goals" onClick={() => navigate('/goals')}>
                 <div className="goals-block-head">
                   <span className="detail-label"><Icon name="target" /> Goals</span>
-                  {bestStreak >= 2 && (
+                  {bestStreak >= 1 && (
                     <span className="streak-badge">
                       <Icon name="flame" size={16} /> <AnimatedNumber value={bestStreak} />
                     </span>

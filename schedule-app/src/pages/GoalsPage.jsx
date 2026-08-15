@@ -422,8 +422,16 @@ export default function GoalsPage() {
                             <Icon name="snowflake" size={14} /> <AnimatedNumber value={streak} />
                           </span>
                         ) : (
-                          streak >= 2 && (
-                            <span className="streak-badge" title={`${streak} ${g.period === 'daily' ? 'days' : 'weeks'} in a row`}>
+                          // Shows from the very first period met, not just once a
+                          // "row" of two exists — a completed goal with nothing to
+                          // show for it read as the streak not tracking at all,
+                          // especially next to Goal History's unfiltered number
+                          // for the same goal one tap away.
+                          streak >= 1 && (
+                            <span
+                              className="streak-badge"
+                              title={`${streak} ${g.period === 'daily' ? 'day' : 'week'}${streak === 1 ? '' : 's'} in a row`}
+                            >
                               <Icon name="flame" size={16} /> <AnimatedNumber value={streak} />
                             </span>
                           )
