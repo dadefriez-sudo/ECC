@@ -332,6 +332,105 @@ export function paceCumulative(target) {
   return weeklyPace(target).map((n) => (run += n));
 }
 
+// --- Objectives (quarterly/annual goals with milestones) -------------------
+//
+// Deliberately a separate layer from the daily/weekly habit goals above
+// rather than a third `period` value on the same model: a habit is scored by
+// a running count against a repeating target, an objective by a checklist of
+// one-off milestones against a fixed end date — different enough shapes that
+// forcing them into one record would mean every reader has to branch on
+// which kind it is anyway.
+
+// A milestone with a numeric target (e.g. "run 300 miles") is scored by how
+// far current is toward target; a plain checklist item (no target set) is
+// scored by its done flag. Either way this returns 0..1, so it can be
+// averaged across a mixed list of both kinds without special-casing.
+export function milestoneProgress(m) {
+  if (m.target && m.target > 0) return Math.min(1, (m.current || 0) / m.target);
+  return m.done ? 1 : 0;
+}
+
+export function objectiveMilestones(objectiveId, milestones) {
+  return (milestones || []).filter((m) => m.objectiveId === objectiveId);
+}
+
+// Unweighted average of its milestones — a 5-mile run toward a 300-mile
+// milestone counts the same fractional share as ticking a plain checklist
+// item, so one heavy quantifiable milestone can't quietly dominate (or get
+// swamped by) a handful of small checkboxes.
+export function objectiveProgress(objectiveId, milestones) {
+  const mine = objectiveMilestones(objectiveId, milestones);
+  if (mine.length === 0) return 0;
+  const sum = mine.reduce((s, m) => s + milestoneProgress(m), 0);
+  return Math.round((sum / mine.length) * 100);
+}
+
+// How progress compares to where a straight-line pace through the
+// objective's date range would put you today — the same "on pace / behind"
+// read the weekly habit pacing above gives, one level up. A small buffer
+// (8 points) keeps a goal that's a couple of days from catching up from
+// flashing "behind" on every check-in.
+export function objectivePaceStatus(objective, pct) {
+  if (pct >= 100) return 'complete';
+  if (!objective.startDate || !objective.endDate) return 'on-track';
+  const now = new Date();
+  const end = fromISODate(objective.endDate);
+  if (now > end) return 'overdue';
+  const start = fromISODate(objective.startDate);
+  const totalMs = end - start;
+  if (totalMs <= 0) return 'on-track';
+  const expectedPct = Math.max(0, Math.min(100, ((now - start) / totalMs) * 100));
+  return pct + 8 < expectedPct ? 'behind' : 'on-track';
+}
+
+export function daysUntil(iso) {
+  if (!iso) return null;
+  return Math.round((fromISODate(iso) - fromISODate(todayISO())) / 86400000);
+}
+
+// "Q1 2026" / "2026" / an explicit date range for a custom-length objective
+// — whichever the period implies is the one thing worth naming it by, so the
+// card doesn't also need to spell out start/end dates just to say when it is.
+export function objectivePeriodLabel(objective) {
+  const start = fromISODate(objective.startDate);
+  if (objective.period === 'quarterly') {
+    return `Q${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`;
+  }
+  if (objective.period === 'annual') {
+    return `${start.getFullYear()}`;
+  }
+  return `${formatShortDate(start)} – ${formatShortDate(fromISODate(objective.endDate))}`;
+}
+
+// Quarter/year start-end pairs for the editor's period picker, so choosing
+// "Q1 2026" fills in real dates instead of leaving them for the user to look
+// up and type by hand.
+export function quarterRange(year, quarter) {
+  const startMonth = (quarter - 1) * 3;
+  const start = new Date(year, startMonth, 1);
+  const end = new Date(year, startMonth + 3, 0);
+  return { startDate: toISODate(start), endDate: toISODate(end) };
+}
+export function yearRange(year) {
+  return { startDate: toISODate(new Date(year, 0, 1)), endDate: toISODate(new Date(year, 11, 31)) };
+}
+export function currentQuarter(date = new Date()) {
+  return Math.floor(date.getMonth() / 3) + 1;
+}
+
+// A single flat conic-gradient reads as a progress bar bent into a circle —
+// functional, but flat in a way most of the ring's real-world references
+// (Activity, Fitness) aren't. Starting the fill a shade lighter than where
+// it ends gives it a direction, the way a physical dial catches more light
+// at one edge. `--ring-hi` is computed once in CSS from --accent, so this
+// stays a single extra color-stop rather than a second variable to keep in
+// sync with the theme.
+export function ringStyle(pct) {
+  return {
+    background: `conic-gradient(from -90deg, var(--ring-hi) 0deg, var(--accent) ${pct * 3.6}deg, var(--track) ${pct * 3.6}deg)`,
+  };
+}
+
 // Streak freezes reset monthly rather than being a lifetime pool — Pro gets
 // a bigger monthly allowance ("streak insurance") as one of the perks of the
 // subscription. Usage is derived from the dates already recorded in

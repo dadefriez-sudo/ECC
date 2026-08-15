@@ -9,6 +9,7 @@ import { useCountUp } from '../data/useCountUp.js';
 import { useTodayResync } from '../data/useTodayResync.js';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import MilestoneCelebration from '../components/MilestoneCelebration.jsx';
+import ObjectivesView from './ObjectivesView.jsx';
 import {
   goalKey,
   weekKey,
@@ -25,6 +26,7 @@ import {
   WEEKDAY_LETTERS,
   weeklyPace,
   paceCumulative,
+  ringStyle,
 } from '../data/helpers.js';
 import {
   requestNotificationPermission,
@@ -48,6 +50,12 @@ export default function GoalsPage() {
   const actions = useActions();
   const navigate = useNavigate();
   const isPro = !!state.settings?.isPro;
+  // Habits (the existing daily/weekly streak tracker) and Objectives (the
+  // higher-level quarterly/annual layer with milestones) share this one tab
+  // rather than splitting into two bottom-nav entries — one is the cadence
+  // that drives the other, and switching between them should be a tap, not
+  // a whole navigation.
+  const [view, setView] = useState('habits');
   const [period, setPeriod] = useState('daily');
   const [day, setDay] = useState(() => todayISO());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
@@ -294,49 +302,68 @@ export default function GoalsPage() {
         <div className="page-head-row">
           <Brand>Goals</Brand>
         </div>
+        {/* One tab, two layers: Habits is the existing daily/weekly streak
+            tracker, Objectives is the quarterly/annual layer with
+            milestones sitting above it. A habit can drive an objective (see
+            the "Link habits" field on an objective), so keeping both a tap
+            apart beats splitting them across separate bottom-nav pages. */}
         <div className="seg seg--full">
-          <button className={`seg-btn${isDaily ? ' seg-btn--on' : ''}`} onClick={() => setPeriod('daily')}>
-            Today
+          <button className={`seg-btn${view === 'habits' ? ' seg-btn--on' : ''}`} onClick={() => setView('habits')}>
+            Habits
           </button>
-          <button className={`seg-btn${!isDaily ? ' seg-btn--on' : ''}`} onClick={() => setPeriod('weekly')}>
-            This week
-          </button>
-        </div>
-        <div className="week-nav">
-          <button
-            className="icon-btn"
-            onClick={() => (isDaily ? stepDay(-1) : stepWeek(-7))}
-            aria-label="Previous"
-          >
-            <Chevron dir="left" />
-          </button>
-          <button className="week-label" onClick={goToCurrent}>
-            {isDaily
-              ? atCurrent
-                ? 'Today'
-                : formatDayLabel(day)
-              : atCurrent
-              ? 'This week'
-              : formatWeekRange(weekStart)}
-            {/* The sub-label exists to answer "which date is 'Today'?" — a
-                question that only exists when the main label says "Today"
-                or "This week" in the first place. On any other date the two
-                lines were identical text stacked on top of itself. */}
-            {atCurrent && (
-              <span className="week-sub">{isDaily ? formatDayLabel(day) : formatWeekRange(weekStart)}</span>
-            )}
-          </button>
-          <button
-            className="icon-btn"
-            onClick={() => (isDaily ? stepDay(1) : stepWeek(7))}
-            aria-label="Next"
-          >
-            <Chevron dir="right" />
+          <button className={`seg-btn${view === 'objectives' ? ' seg-btn--on' : ''}`} onClick={() => setView('objectives')}>
+            Objectives
           </button>
         </div>
+        {view === 'habits' && (
+          <>
+            <div className="seg seg--full">
+              <button className={`seg-btn${isDaily ? ' seg-btn--on' : ''}`} onClick={() => setPeriod('daily')}>
+                Today
+              </button>
+              <button className={`seg-btn${!isDaily ? ' seg-btn--on' : ''}`} onClick={() => setPeriod('weekly')}>
+                This week
+              </button>
+            </div>
+            <div className="week-nav">
+              <button
+                className="icon-btn"
+                onClick={() => (isDaily ? stepDay(-1) : stepWeek(-7))}
+                aria-label="Previous"
+              >
+                <Chevron dir="left" />
+              </button>
+              <button className="week-label" onClick={goToCurrent}>
+                {isDaily
+                  ? atCurrent
+                    ? 'Today'
+                    : formatDayLabel(day)
+                  : atCurrent
+                  ? 'This week'
+                  : formatWeekRange(weekStart)}
+                {/* The sub-label exists to answer "which date is 'Today'?" — a
+                    question that only exists when the main label says "Today"
+                    or "This week" in the first place. On any other date the two
+                    lines were identical text stacked on top of itself. */}
+                {atCurrent && (
+                  <span className="week-sub">{isDaily ? formatDayLabel(day) : formatWeekRange(weekStart)}</span>
+                )}
+              </button>
+              <button
+                className="icon-btn"
+                onClick={() => (isDaily ? stepDay(1) : stepWeek(7))}
+                aria-label="Next"
+              >
+                <Chevron dir="right" />
+              </button>
+            </div>
+          </>
+        )}
       </header>
 
-      {goals.length > 0 && (
+      {view === 'objectives' && <ObjectivesView state={state} actions={actions} isPro={isPro} navigate={navigate} />}
+
+      {view === 'habits' && goals.length > 0 && (
         <section className="summary-card">
           <div className="summary-ring" style={ringStyle(shownTotalsPct)}>
             <span>{shownTotalsPct}%</span>
@@ -352,7 +379,7 @@ export default function GoalsPage() {
         </section>
       )}
 
-      {goals.length === 0 ? (
+      {view === 'habits' && (goals.length === 0 ? (
         <EmptyState isDaily={isDaily} onAdd={() => openNew()} />
       ) : (
         groups.map(([category, list]) => (
@@ -482,12 +509,15 @@ export default function GoalsPage() {
             })}
           </section>
         ))
+      ))}
+
+      {view === 'habits' && (
+        <button className="fab" onClick={() => openNew()} aria-label="New goal">
+          +
+        </button>
       )}
 
-      <button className="fab" onClick={() => openNew()} aria-label="New goal">
-        +
-      </button>
-
+      {view === 'habits' && (
       <EditorSheet
         open={!!editing}
         title={editing?.id ? 'Edit goal' : 'New goal'}
@@ -639,6 +669,7 @@ export default function GoalsPage() {
           </div>
         )}
       </EditorSheet>
+      )}
     </div>
   );
 }
@@ -742,19 +773,6 @@ function EmptyState({ isDaily, onAdd }) {
       </button>
     </div>
   );
-}
-
-// A single flat conic-gradient reads as a progress bar bent into a circle —
-// functional, but flat in a way most of the ring's real-world references
-// (Activity, Fitness) aren't. Starting the fill a shade lighter than where
-// it ends gives it a direction, the way a physical dial catches more light
-// at one edge. `--ring-hi` is computed once in CSS from --accent, so this
-// stays a single extra color-stop rather than a second variable to keep in
-// sync with the theme.
-function ringStyle(pct) {
-  return {
-    background: `conic-gradient(from -90deg, var(--ring-hi) 0deg, var(--accent) ${pct * 3.6}deg, var(--track) ${pct * 3.6}deg)`,
-  };
 }
 
 function Chevron({ dir }) {

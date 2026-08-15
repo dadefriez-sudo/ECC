@@ -1,4 +1,4 @@
-import { uid, todayISO, toISODate, addDays, weekKey } from './helpers.js';
+import { uid, todayISO, toISODate, addDays, weekKey, quarterRange, yearRange, currentQuarter } from './helpers.js';
 
 // Starter data so a first-time user sees a populated app instead of blank
 // screens. Everything here is editable/deletable from the UI.
@@ -118,6 +118,141 @@ export function makeSeed() {
       unit: 'blocks',
       progress: { [thisWeek]: 6 },
       reminder: null,
+      createdAt: today,
+    },
+  ];
+
+  // High-level objectives — quarterly/annual targets broken into a handful
+  // of concrete milestones, one level up from the daily/weekly habits above.
+  // "Workouts" is linked to the fitness objective so its streak counts as
+  // the cadence driving it, the same relationship the real editor lets you
+  // set up between any habit and any objective.
+  const thisQuarter = quarterRange(new Date().getFullYear(), currentQuarter());
+  const thisYear = yearRange(new Date().getFullYear());
+  const objectives = [
+    {
+      id: uid('obj'),
+      title: 'Get in the best shape of my life',
+      description: '',
+      category: 'Health',
+      period: 'quarterly',
+      startDate: thisQuarter.startDate,
+      endDate: thisQuarter.endDate,
+      status: 'active',
+      linkedGoalIds: [goals[2].id], // "Workouts"
+      createdAt: today,
+    },
+    {
+      id: uid('obj'),
+      title: 'Grow the business',
+      description: '',
+      category: 'Work',
+      period: 'annual',
+      startDate: thisYear.startDate,
+      endDate: thisYear.endDate,
+      status: 'active',
+      linkedGoalIds: [],
+      createdAt: today,
+    },
+  ];
+
+  const milestones = [
+    {
+      id: uid('ms'),
+      objectiveId: objectives[0].id,
+      title: 'Run a 10K without stopping',
+      targetDate: toISODate(addDays(today, -10)),
+      done: true,
+      doneAt: toISODate(addDays(today, -12)),
+      target: null,
+      current: 0,
+      unit: '',
+      createdAt: today,
+    },
+    {
+      id: uid('ms'),
+      objectiveId: objectives[0].id,
+      title: 'Strength program',
+      targetDate: toISODate(addDays(today, 20)),
+      done: false,
+      doneAt: '',
+      target: 30,
+      current: 18,
+      unit: 'days',
+      createdAt: today,
+    },
+    {
+      id: uid('ms'),
+      objectiveId: objectives[0].id,
+      title: 'Hit target weight',
+      targetDate: toISODate(addDays(today, 45)),
+      done: false,
+      doneAt: '',
+      target: null,
+      current: 0,
+      unit: '',
+      createdAt: today,
+    },
+    {
+      id: uid('ms'),
+      objectiveId: objectives[0].id,
+      title: 'Run a half marathon',
+      // Deliberately already past due and still open — shows what a slipped
+      // milestone looks like rather than only ever demoing the happy path.
+      targetDate: toISODate(addDays(today, -3)),
+      done: false,
+      doneAt: '',
+      target: null,
+      current: 0,
+      unit: '',
+      createdAt: today,
+    },
+    {
+      id: uid('ms'),
+      objectiveId: objectives[1].id,
+      title: 'Reach 100 customers',
+      targetDate: toISODate(addDays(today, 120)),
+      done: false,
+      doneAt: '',
+      target: 100,
+      current: 62,
+      unit: 'customers',
+      createdAt: today,
+    },
+    {
+      id: uid('ms'),
+      objectiveId: objectives[1].id,
+      title: 'Launch v2',
+      targetDate: toISODate(addDays(today, -30)),
+      done: true,
+      doneAt: toISODate(addDays(today, -28)),
+      target: null,
+      current: 0,
+      unit: '',
+      createdAt: today,
+    },
+    {
+      id: uid('ms'),
+      objectiveId: objectives[1].id,
+      title: 'Hire first team member',
+      targetDate: '',
+      done: false,
+      doneAt: '',
+      target: null,
+      current: 0,
+      unit: '',
+      createdAt: today,
+    },
+    {
+      id: uid('ms'),
+      objectiveId: objectives[1].id,
+      title: 'Break even monthly',
+      targetDate: toISODate(addDays(today, 200)),
+      done: false,
+      doneAt: '',
+      target: null,
+      current: 0,
+      unit: '',
       createdAt: today,
     },
   ];
@@ -374,6 +509,8 @@ export function makeSeed() {
   return {
     version: 1,
     goals,
+    objectives,
+    milestones,
     events,
     contacts,
     pins,

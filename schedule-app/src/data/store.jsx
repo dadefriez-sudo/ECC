@@ -79,6 +79,8 @@ function loadState() {
       notes: parsed.notes || [],
       interactions: parsed.interactions || [],
       templates: parsed.templates || [],
+      objectives: parsed.objectives || [],
+      milestones: parsed.milestones || [],
       settings: {
         theme: 'system',
         reconnectDays: 30,
@@ -182,6 +184,24 @@ function reducer(state, action) {
       });
       return { ...state, goals };
     }
+
+    // Objectives (quarterly/annual goals) and their milestones
+    case 'ADD_OBJECTIVE':
+      return { ...state, objectives: [...state.objectives, action.objective] };
+    case 'UPDATE_OBJECTIVE':
+      return { ...state, objectives: upsert(state.objectives, action.objective) };
+    case 'DELETE_OBJECTIVE':
+      return {
+        ...state,
+        objectives: state.objectives.filter((o) => o.id !== action.id),
+        milestones: state.milestones.filter((m) => m.objectiveId !== action.id),
+      };
+    case 'ADD_MILESTONE':
+      return { ...state, milestones: [...state.milestones, action.milestone] };
+    case 'UPDATE_MILESTONE':
+      return { ...state, milestones: upsert(state.milestones, action.milestone) };
+    case 'DELETE_MILESTONE':
+      return { ...state, milestones: state.milestones.filter((m) => m.id !== action.id) };
 
     // Events
     case 'ADD_EVENT':
@@ -403,6 +423,8 @@ function reducer(state, action) {
         notes: [],
         interactions: [],
         templates: [],
+        objectives: [],
+        milestones: [],
         statuses: state.statuses,
         customEventTypes: state.customEventTypes,
         settings: state.settings,
@@ -454,6 +476,21 @@ export function useActions() {
     deleteGoal: (id) => dispatch({ type: 'DELETE_GOAL', id }),
     setGoalProgress: (id, key, value) =>
       dispatch({ type: 'SET_GOAL_PROGRESS', id, key, value }),
+
+    addObjective: (data) =>
+      dispatch({
+        type: 'ADD_OBJECTIVE',
+        objective: { id: uid('obj'), status: 'active', linkedGoalIds: [], createdAt: todayISO(), ...data },
+      }),
+    updateObjective: (objective) => dispatch({ type: 'UPDATE_OBJECTIVE', objective }),
+    deleteObjective: (id) => dispatch({ type: 'DELETE_OBJECTIVE', id }),
+    addMilestone: (data) =>
+      dispatch({
+        type: 'ADD_MILESTONE',
+        milestone: { id: uid('ms'), done: false, current: 0, createdAt: todayISO(), ...data },
+      }),
+    updateMilestone: (milestone) => dispatch({ type: 'UPDATE_MILESTONE', milestone }),
+    deleteMilestone: (id) => dispatch({ type: 'DELETE_MILESTONE', id }),
 
     addEvent: (data) => dispatch({ type: 'ADD_EVENT', event: { id: uid('e'), done: false, ...data } }),
     updateEvent: (event) => dispatch({ type: 'UPDATE_EVENT', event }),
