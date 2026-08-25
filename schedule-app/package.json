@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Keystone — a personal schedule, goals, and people app.",
+  "author": "KeyStone Software",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

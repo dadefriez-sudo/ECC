@@ -2,6 +2,7 @@
   "name": "keystone-backend",
   "version": "0.1.0",
   "private": true,
+  "author": "KeyStone Software",
   "type": "module",
   "engines": {
     "node": ">=20.9.0"

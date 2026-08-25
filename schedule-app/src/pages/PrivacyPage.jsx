@@ -9,9 +9,10 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated="August 12, 2026">
       <p>
-        Keystone is built around one idea: your calendar, your goals, and your people are your
-        data, kept on your device by default. This page explains what that means in practice —
-        what Keystone collects, when (if ever) it leaves your device, and how to delete it.
+        Keystone is made by KeyStone Software and built around one idea: your calendar, your
+        goals, and your people are your data, kept on your device by default. This page explains
+        what that means in practice — what Keystone collects, when (if ever) it leaves your
+        device, and how to delete it.
       </p>
 
       <h2>What stays on your device</h2>

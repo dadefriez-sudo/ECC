@@ -8,8 +8,8 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of Service" updated="August 12, 2026">
       <p>
-        These terms cover your use of Keystone. By using the app, you agree to them. If you
-        don't agree, please don't use Keystone.
+        Keystone is made by KeyStone Software. These terms cover your use of Keystone. By using
+        the app, you agree to them. If you don't agree, please don't use Keystone.
       </p>
 
       <h2>The service</h2>
