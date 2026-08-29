@@ -1,7 +1,10 @@
 // Thin client for the Keystone backend (accounts + billing). Every call
 // needs a fresh Clerk session token, so callers pass their own `getToken`
 // (from Clerk's useAuth()) rather than this module holding one itself.
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || '';
+// Trailing slash stripped so `${BASE_URL}${path}` never produces a
+// double slash (e.g. "https://api.example.com//api/billing/checkout") —
+// a config with a trailing slash would otherwise 404 on every request.
+const BASE_URL = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
 
 async function request(path, { getToken, method = 'GET', body } = {}) {
   if (!BASE_URL) throw new Error('Backend not configured (VITE_BACKEND_URL missing).');
