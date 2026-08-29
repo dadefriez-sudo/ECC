@@ -303,7 +303,7 @@ export default function MorePage() {
         () => {}
       );
     } else {
-      const url = `mailto:?subject=${encodeURIComponent('Keystone feedback')}&body=${encodeURIComponent(text)}`;
+      const url = `mailto:keystone.planner@gmail.com?subject=${encodeURIComponent('Keystone feedback')}&body=${encodeURIComponent(text)}`;
       window.location.href = url;
     }
     setFeedback(null);

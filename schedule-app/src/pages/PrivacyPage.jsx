@@ -90,7 +90,7 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Questions about this policy or your data can go to{' '}
-        <span className="legal-placeholder">[your support email here]</span>.
+        <a href="mailto:keystone.planner@gmail.com">keystone.planner@gmail.com</a>.
       </p>
     </LegalPage>
   );

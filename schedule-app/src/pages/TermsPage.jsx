@@ -66,7 +66,8 @@ export default function TermsPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions about these terms can go to <span className="legal-placeholder">[your support email here]</span>.
+        Questions about these terms can go to{' '}
+        <a href="mailto:keystone.planner@gmail.com">keystone.planner@gmail.com</a>.
       </p>
     </LegalPage>
   );
