@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "postinstall": "npm run db:generate",
     "db:generate": "prisma generate --config prisma.config.mjs",
     "db:migrate": "prisma migrate dev --config prisma.config.mjs",
     "db:deploy": "prisma migrate deploy --config prisma.config.mjs"
