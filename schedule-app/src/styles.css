@@ -1057,7 +1057,12 @@ textarea {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  margin-bottom: 10px;
+  /* .summary-card above only carries margin-top, so without this the first
+     objective card sat flush against it — margins collapse between plain
+     block siblings, so this only affects the gap after .summary-card; the
+     gap between objective cards themselves stays the same 10px it always
+     was. */
+  margin: 14px 0 10px;
   box-shadow: var(--shadow);
   overflow: hidden;
 }

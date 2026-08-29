@@ -1445,6 +1445,9 @@ function AccountSection() {
               <p className="muted small">Your Pro purchase is tied to this account.</p>
             </div>
           </div>
+          <button type="button" className="btn btn-ghost full" onClick={() => clerk.signOut()}>
+            Sign out
+          </button>
           <button
             type="button"
             className="btn btn-danger-ghost full"
