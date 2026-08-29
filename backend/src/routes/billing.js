@@ -6,7 +6,19 @@ import { requireUser } from '../middleware/requireUser.js';
 import { prisma } from '../db.js';
 
 const router = Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Lazy and memoized, same reasoning as getAppleVerifiers/getAndroidPublisher
+// below: constructing this at module load time (the old behavior) threw
+// immediately if STRIPE_SECRET_KEY wasn't set yet, which took the whole
+// server down on import rather than leaving just the Stripe-dependent routes
+// unavailable — the one env var in REQUIRED_ENV (server.js) that didn't
+// actually degrade gracefully like its warning promised.
+let stripe; // Stripe|null, undefined until first use
+function getStripe() {
+  if (stripe !== undefined) return stripe;
+  stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+  return stripe;
+}
 
 // Pro is a single one-time purchase, so there is exactly one price and the
 // client never sends a price ID — checkout can't be pointed at an arbitrary
@@ -15,7 +27,7 @@ const LIFETIME_PRICE_ID = process.env.STRIPE_PRICE_ID_LIFETIME || process.env.ST
 
 async function ensureStripeCustomer(user) {
   if (user.stripeCustomerId) return user.stripeCustomerId;
-  const customer = await stripe.customers.create({
+  const customer = await getStripe().customers.create({
     email: user.email,
     metadata: { clerkId: user.clerkId, userId: user.id },
   });
@@ -29,6 +41,9 @@ async function ensureStripeCustomer(user) {
 // Starts the one-time Pro purchase — redirect the browser to the returned URL.
 router.post('/checkout', requireUser, async (req, res, next) => {
   try {
+    if (!getStripe()) {
+      return res.status(400).json({ error: 'Stripe is not configured on the server.' });
+    }
     if (!LIFETIME_PRICE_ID) {
       return res.status(400).json({ error: 'No Stripe price configured for Pro' });
     }
@@ -38,7 +53,7 @@ router.post('/checkout', requireUser, async (req, res, next) => {
     }
 
     const customerId = await ensureStripeCustomer(req.dbUser);
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: 'payment',
       line_items: [{ price: LIFETIME_PRICE_ID, quantity: 1 }],
@@ -63,10 +78,13 @@ router.post('/checkout', requireUser, async (req, res, next) => {
 // New buyers have nothing recurring to manage and never see this.
 router.post('/portal', requireUser, async (req, res, next) => {
   try {
+    if (!getStripe()) {
+      return res.status(400).json({ error: 'Stripe is not configured on the server.' });
+    }
     if (!req.dbUser.stripeCustomerId) {
       return res.status(400).json({ error: 'No billing account yet.' });
     }
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: req.dbUser.stripeCustomerId,
       return_url: `${process.env.FRONTEND_URL}/#/more`,
     });

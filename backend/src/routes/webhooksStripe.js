@@ -3,14 +3,26 @@ import Stripe from 'stripe';
 import { prisma } from '../db.js';
 
 const router = Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Lazy and memoized — see the identical comment in billing.js. Constructing
+// this unconditionally at module load time threw immediately whenever
+// STRIPE_SECRET_KEY wasn't set yet, taking the whole server down on import.
+let stripe; // Stripe|null, undefined until first use
+function getStripe() {
+  if (stripe !== undefined) return stripe;
+  stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+  return stripe;
+}
 
 // Stripe signature verification needs the exact raw request bytes, so this
 // route must be mounted before the app's global express.json() middleware.
 router.post('/', raw({ type: 'application/json' }), async (req, res) => {
+  if (!getStripe()) {
+    return res.status(503).send('Stripe is not configured on the server.');
+  }
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       req.body,
       req.headers['stripe-signature'],
       process.env.STRIPE_WEBHOOK_SECRET
