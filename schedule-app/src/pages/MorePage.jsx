@@ -189,7 +189,6 @@ export default function MorePage() {
   const actions = useActions();
   const navigate = useNavigate();
   const location = useLocation();
-  const { getToken } = useAuth();
   const [editingStatus, setEditingStatus] = useState(null);
   const [editingKindColor, setEditingKindColor] = useState(null); // { value, label, color } | null
   const [editingEventType, setEditingEventType] = useState(null); // { id?, label, color } | null
@@ -214,22 +213,11 @@ export default function MorePage() {
     navigate('/more', { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Same pattern for the redirect back from Google's consent screen (see
-  // backend/src/routes/google.js's /callback) — mark it connected, pull the
-  // first import, and strip the param so a refresh doesn't re-import.
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const google = params.get('google');
-    if (!google) return;
-    navigate('/more', { replace: true });
-    if (google === 'connected') {
-      actions.setSettings({ googleConnected: true });
-      runGoogleImport();
-    } else {
-      showToast('Connecting Google didn’t work — try again.');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // The redirect back from Google's consent screen (see
+  // backend/src/routes/google.js's /callback) is handled inside
+  // GoogleSyncButtons below, not here — it needs a Clerk token, and this
+  // component renders even when Clerk isn't configured (CLERK_ENABLED
+  // false), which GoogleSyncButtons being conditionally mounted accounts for.
   // Which settings cards are expanded. All collapsed on arrival, so the page
   // opens as a scannable index rather than one long scroll; kept in component
   // state rather than persisted, since "where I left the accordion" isn't a
@@ -319,72 +307,6 @@ export default function MorePage() {
       }
     };
     reader.readAsText(file);
-  };
-
-  // Redirects the browser to Google's consent screen; it comes back to
-  // /#/more?google=connected (see backend/src/routes/google.js), picked up
-  // by the effect below.
-  const connectGoogle = async () => {
-    try {
-      const { url } = await googleAuthUrl(getToken);
-      window.location.href = url;
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  // Pulls a fresh one-time import and merges it in exactly the way the
-  // .ics/.vcf file pickers above do — same target shapes, so this is the
-  // same two loops as importICS/importVCard, just fed from the backend
-  // instead of a local file.
-  const runGoogleImport = async () => {
-    try {
-      const { events, contacts } = await importGoogleData(getToken);
-      for (const ev of events) {
-        actions.addEvent({
-          ...ev,
-          repeatUntil: '',
-          repeatDays: [],
-          doneDates: [],
-          skipDates: [],
-          kind: '',
-          color: '',
-          reminder: 0,
-          contactIds: [],
-          contactId: '',
-        });
-      }
-      for (const c of contacts) {
-        actions.addContact({
-          id: uid('c'),
-          name: c.name,
-          phone: c.phone,
-          email: c.email,
-          address: c.address,
-          photo: '',
-          statusId: state.statuses[0]?.id || '',
-          tags: [],
-          notes: c.notes,
-          lastContacted: '',
-          createdAt: todayISO(),
-        });
-      }
-      showToast(
-        `Imported ${events.length} event${events.length === 1 ? '' : 's'} and ${contacts.length} contact${contacts.length === 1 ? '' : 's'} from Google.`
-      );
-    } catch (err) {
-      showToast(err.message);
-    }
-  };
-
-  const disconnectGoogleAccount = async () => {
-    if (!confirm('Disconnect Google? You can reconnect any time to import again.')) return;
-    try {
-      await disconnectGoogle(getToken);
-      actions.setSettings({ googleConnected: false });
-    } catch (err) {
-      alert(err.message);
-    }
   };
 
   const toggleNotifications = async () => {
@@ -592,24 +514,20 @@ export default function MorePage() {
               : 'Keep your data synced across devices. Requires Pro.'}
           </p>
         )}
-        {isPro && CLERK_ENABLED && backendConfigured() && googleConnected ? (
-          <>
-            <button className="btn btn-ghost full" onClick={() => requirePro(runGoogleImport)}>
-              <GoogleIcon /> Import again from Google
-            </button>
-            <button className="btn btn-ghost full" onClick={disconnectGoogleAccount}>
-              Disconnect Google
-            </button>
-          </>
+        {CLERK_ENABLED ? (
+          <GoogleSyncButtons
+            isPro={isPro}
+            googleConnected={googleConnected}
+            requirePro={requirePro}
+            actions={actions}
+            showToast={showToast}
+            state={state}
+          />
         ) : (
           <button
             className="btn btn-ghost full"
             onClick={() =>
-              requirePro(() =>
-                CLERK_ENABLED && backendConfigured()
-                  ? connectGoogle()
-                  : alert('Google sign-in requires a backend that is not connected in this build yet.')
-              )
+              requirePro(() => alert('Google sign-in requires a backend that is not connected in this build yet.'))
             }
           >
             <GoogleIcon /> Sign in with Google {!isPro && '· Pro'}
@@ -1617,6 +1535,126 @@ function AccountSection() {
         </>
       )}
     </section>
+  );
+}
+
+// Owns everything that needs a Clerk token (connect/import/disconnect) so
+// it can call useAuth() safely — only ever mounted when CLERK_ENABLED, same
+// as AccountSection/CloudSyncStatus below, since <ClerkProvider> itself is
+// only rendered under that same condition (main.jsx). MorePage's own render
+// always runs regardless of CLERK_ENABLED, so useAuth() can't live there.
+function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showToast, state }) {
+  const { getToken } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // The redirect back from Google's consent screen (see
+  // backend/src/routes/google.js's /callback) — mark it connected, pull the
+  // first import, and strip the param so a refresh doesn't re-import.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const google = params.get('google');
+    if (!google) return;
+    navigate('/more', { replace: true });
+    if (google === 'connected') {
+      actions.setSettings({ googleConnected: true });
+      runGoogleImport();
+    } else {
+      showToast('Connecting Google didn’t work — try again.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Redirects the browser to Google's consent screen; it comes back to
+  // /#/more?google=connected, picked up by the effect above.
+  const connectGoogle = async () => {
+    try {
+      const { url } = await googleAuthUrl(getToken);
+      window.location.href = url;
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  // Pulls a fresh one-time import and merges it in exactly the way the
+  // .ics/.vcf file pickers on MorePage do — same target shapes, so this is
+  // the same two loops as importICS/importVCard, just fed from the backend
+  // instead of a local file.
+  const runGoogleImport = async () => {
+    try {
+      const { events, contacts } = await importGoogleData(getToken);
+      for (const ev of events) {
+        actions.addEvent({
+          ...ev,
+          repeatUntil: '',
+          repeatDays: [],
+          doneDates: [],
+          skipDates: [],
+          kind: '',
+          color: '',
+          reminder: 0,
+          contactIds: [],
+          contactId: '',
+        });
+      }
+      for (const c of contacts) {
+        actions.addContact({
+          id: uid('c'),
+          name: c.name,
+          phone: c.phone,
+          email: c.email,
+          address: c.address,
+          photo: '',
+          statusId: state.statuses[0]?.id || '',
+          tags: [],
+          notes: c.notes,
+          lastContacted: '',
+          createdAt: todayISO(),
+        });
+      }
+      showToast(
+        `Imported ${events.length} event${events.length === 1 ? '' : 's'} and ${contacts.length} contact${contacts.length === 1 ? '' : 's'} from Google.`
+      );
+    } catch (err) {
+      showToast(err.message);
+    }
+  };
+
+  const disconnectGoogleAccount = async () => {
+    if (!confirm('Disconnect Google? You can reconnect any time to import again.')) return;
+    try {
+      await disconnectGoogle(getToken);
+      actions.setSettings({ googleConnected: false });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  if (isPro && backendConfigured() && googleConnected) {
+    return (
+      <>
+        <button className="btn btn-ghost full" onClick={() => requirePro(runGoogleImport)}>
+          <GoogleIcon /> Import again from Google
+        </button>
+        <button className="btn btn-ghost full" onClick={disconnectGoogleAccount}>
+          Disconnect Google
+        </button>
+      </>
+    );
+  }
+  return (
+    <button
+      className="btn btn-ghost full"
+      onClick={() =>
+        requirePro(() =>
+          backendConfigured()
+            ? connectGoogle()
+            : alert('Google sign-in requires a backend that is not connected in this build yet.')
+        )
+      }
+    >
+      <GoogleIcon /> Sign in with Google {!isPro && '· Pro'}
+    </button>
   );
 }
 
