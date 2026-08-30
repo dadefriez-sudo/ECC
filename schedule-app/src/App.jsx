@@ -48,10 +48,21 @@ const SearchPage = lazy(() => import('./pages/SearchPage.jsx'));
 // the real subscription status from the backend, once someone's signed in.
 // Only ever mounted when CLERK_ENABLED, so useAuth() always has a provider.
 function SubscriptionSync() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const actions = useActions();
   useEffect(() => {
-    if (!isSignedIn || !backendConfigured()) return;
+    // isSignedIn is undefined (not yet false) while Clerk is still resolving
+    // the existing session on load — wait for isLoaded so a legitimate Pro
+    // user doesn't get their local isPro flag cleared during that window.
+    if (!isLoaded) return;
+    if (!isSignedIn || !backendConfigured()) {
+      // Signed out (or no backend to check against) — isPro is persisted
+      // locally, so without this it would keep showing Pro as unlocked for
+      // whoever uses this device next, entitlement unverified. Signing back
+      // in re-syncs it from the server above.
+      if (!isSignedIn) actions.setSettings({ isPro: false, isLifetime: false, subscriptionStatus: null });
+      return;
+    }
     let cancelled = false;
     fetchMe(getToken)
       .then((me) => {
@@ -68,7 +79,7 @@ function SubscriptionSync() {
     return () => {
       cancelled = true;
     };
-  }, [isSignedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
 
