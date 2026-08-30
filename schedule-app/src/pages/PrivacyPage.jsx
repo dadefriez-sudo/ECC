@@ -7,7 +7,7 @@ import LegalPage from '../components/LegalPage.jsx';
 // accurate to the current codebase as of the date below.
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="August 12, 2026">
+    <LegalPage title="Privacy Policy" updated="August 30, 2026">
       <p>
         Keystone is made by KeyStone Software and built around one idea: your calendar, your
         goals, and your people are your data, kept on your device by default. This page explains
@@ -45,6 +45,30 @@ export default function PrivacyPage() {
           arrival reminder you've explicitly set up needs to fire.
         </li>
         <li>
+          <b>Map search and address lookup.</b> Searching the map, dropping a pin by address, or
+          entering a contact's address sends that search text to OpenStreetMap's Nominatim
+          service to look up coordinates, and map tiles are loaded from OpenStreetMap — both
+          happen directly from your device, without going through our server. Keystone doesn't
+          control what OpenStreetMap does with that traffic; see their own privacy policy.
+        </li>
+        <li>
+          <b>Google import (optional, Pro).</b> If you choose to connect Google in Settings →
+          Account & sync, Keystone requests read-only access to your Google Calendar events and
+          Google Contacts and pulls a one-time copy of them into your local data — the same as
+          picking a <code>.ics</code>/<code>.vcf</code> file, just sourced from Google instead.
+          This is a one-time import, not an ongoing sync: nothing is automatically kept in step
+          with Google afterward, and nothing is written back to your Google account. Our server
+          holds a Google-issued token only so you can trigger another import later, and only until
+          you tap Disconnect (which also revokes it). Keystone's use of information received from
+          Google APIs adheres to the{' '}
+          <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noreferrer">
+            Google API Services User Data Policy
+          </a>
+          , including the Limited Use requirements: that data is used only to build the imported
+          events/contacts shown to you, is never used for advertising, and is never sold or
+          shared with anyone other than you.
+        </li>
+        <li>
           <b>Payment (Pro purchase).</b> Payment is handled entirely by Stripe, the App Store, or
           Google Play, depending on how you bought Pro. Keystone never sees or stores your card
           details — only whether the purchase succeeded.
@@ -54,16 +78,24 @@ export default function PrivacyPage() {
       <h2>Who else sees it</h2>
       <p>
         Keystone uses a small number of service providers to run: Clerk for authentication,
-        Stripe for payment processing, and a hosting provider for the optional sync server. Each
-        only sees the specific data their job requires (Clerk sees your email; Stripe sees your
-        payment; the sync server sees your data blob only if cloud sync is on). None of them are
-        permitted to use your data for their own purposes. We don't sell data, and we don't run
-        ads or third-party trackers in the app.
+        Stripe for payment processing, Google (only if you choose to connect it, for the one-time
+        import above), OpenStreetMap/Nominatim for map tiles and address search, and a hosting
+        provider for the optional sync server. Each only sees the specific data their job requires
+        (Clerk sees your email; Stripe sees your payment; Google sees only the read-only access
+        you granted; OpenStreetMap sees the map area or address text you search; the sync server
+        sees your data blob only if cloud sync is on). None of them are permitted to use your data
+        for their own purposes. We don't sell data, and we don't run ads or third-party trackers
+        in the app.
       </p>
 
       <h2>Your data, your control</h2>
       <ul>
         <li>Delete individual events, goals, contacts, or notes any time, right in the app.</li>
+        <li>
+          Disconnect Google any time from Settings → Account & sync — this revokes its access on
+          Google's side and deletes the stored token; it doesn't remove events/contacts already
+          imported, which is a separate, local action like anything else you've entered.
+        </li>
         <li>
           Clear all local data from Settings → Your data — this resets the app on this device.
         </li>
