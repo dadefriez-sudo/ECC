@@ -38,4 +38,13 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- @capacitor/geolocation requests these at runtime via its
+         @CapacitorPlugin permissions annotation, but Capacitor plugins using
+         that mechanism don't auto-merge the underlying manifest permission —
+         the consuming app has to declare it itself, or the runtime request
+         can't be granted at all. Used for the Map's "my location", geocoding
+         a contact's address, and arrival reminders. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 </manifest>

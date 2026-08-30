@@ -24,6 +24,19 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Required for @capacitor/geolocation (Map's "my location", geocoding
+	     a contact's address, arrival reminders) — without this key, calling
+	     any location API crashes the app instead of prompting. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Keystone uses your location to show it on the map, help you drop a pin near where you are, and fire arrival reminders you've set up.</string>
+	<!-- The contact/profile photo picker (a plain HTML file input) can
+	     surface a native "Take Photo" option inside the WebView, which
+	     crashes without this key even though there's no dedicated camera
+	     plugin in use. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Keystone uses your camera to take a photo for a contact or your profile.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Keystone uses your photo library to pick a photo for a contact or your profile.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
