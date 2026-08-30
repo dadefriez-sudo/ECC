@@ -1116,6 +1116,13 @@ function DayView({
   onOpenContact,
 }) {
   const bodyRef = useRef(null);
+  // Brief highlight on the 30-min block a tap-to-create landed on, so the
+  // new-event sheet opening (which covers the timeline) doesn't leave you
+  // guessing which slot you actually hit. Keyed by a fresh id per tap
+  // (rather than just toggling on/off) so tapping the same slot twice in a
+  // row still restarts the fade instead of the second tap doing nothing
+  // visible.
+  const [tapFlash, setTapFlash] = useState(null); // { id, top } | null
   const gestureRef = useRef(null); // { key, occ, phase, startY, startX, startClientY }
   const groupGestureRef = useRef(null); // { phase, startClientX, startClientY, timer, lastMinSnap, lastDayOffset }
   const groupClickSuppressRef = useRef(false); // swallow the native click that follows a group-gesture pointerup
@@ -1209,7 +1216,9 @@ function DayView({
     const y = e.clientY - rect.top;
     let mins = dayStart * 60 + y / pxPerMin;
     mins = Math.round(mins / 30) * 30;
-    onAddAt(minutesToTime(Math.max(dayStart * 60, Math.min(dayEnd * 60 - 30, mins))));
+    mins = Math.max(dayStart * 60, Math.min(dayEnd * 60 - 30, mins));
+    setTapFlash({ id: uid('flash'), top: (mins - dayStart * 60) * pxPerMin });
+    onAddAt(minutesToTime(mins));
   };
 
   // Pinch-to-zoom: two touch pointers on the timeline scale pxPerHour by how
@@ -1778,6 +1787,16 @@ function DayView({
             >
               <span className="now-line-dot" />
             </div>
+          )}
+
+          {tapFlash && (
+            <div
+              key={tapFlash.id}
+              className="tap-flash"
+              style={{ top: tapFlash.top, height: 30 * pxPerMin }}
+              aria-hidden="true"
+              onAnimationEnd={() => setTapFlash((f) => (f?.id === tapFlash.id ? null : f))}
+            />
           )}
 
           <div className="event-layer">

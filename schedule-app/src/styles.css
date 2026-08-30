@@ -2424,6 +2424,30 @@ textarea {
   background: var(--danger, #d1495b);
 }
 
+/* Marks the 30-min slot a tap-to-create landed on — the new-event sheet
+   covers the timeline right after, so without this there's nothing left
+   showing which slot was actually hit. */
+.tap-flash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  pointer-events: none;
+  animation: tap-flash-fade 0.5s ease-out forwards;
+}
+@keyframes tap-flash-fade {
+  0% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 .timeline-body {
   position: relative;
   cursor: pointer;
