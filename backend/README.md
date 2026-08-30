@@ -80,7 +80,30 @@ what keeps emails in sync and cleans up on account deletion.)
 Test the whole loop with Stripe's test card `4242 4242 4242 4242`, any
 future expiry, any CVC.
 
-## 4. Deploy (Render or Railway)
+## 4. Set up Google sync (optional)
+
+A **one-time, read-only import** of Google Calendar events and Google
+Contacts — not an ongoing two-way sync. Entirely optional: leave the vars
+below unset and the "Sign in with Google" button in the app just errors
+instead of working, same as the Stripe/IAP vars.
+
+1. Create/use a project in the [Google Cloud Console](https://console.cloud.google.com).
+2. **APIs & Services → Library** → enable the **Google Calendar API** and
+   the **People API**.
+3. **APIs & Services → OAuth consent screen** → User type **External**, add
+   scopes `.../auth/calendar.readonly` and `.../auth/contacts.readonly`.
+   These are "sensitive" scopes — Google requires app verification before
+   the general public can use them, but you can add your own account (and
+   any other testers) under **Test users** and use it immediately without
+   waiting on that review.
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+   → type **Web application** → Authorized redirect URI:
+   `https://<your-backend-domain>/api/google/callback`.
+5. Copy the **Client ID** into `GOOGLE_CLIENT_ID`, the **Client secret**
+   into `GOOGLE_CLIENT_SECRET`, and set `GOOGLE_REDIRECT_URI` to the exact
+   same redirect URI from step 4.
+
+## 5. Deploy (Render or Railway)
 
 Both work the same way for this service:
 
@@ -109,6 +132,10 @@ Both work the same way for this service:
 | `POST /api/assistant` | Clerk session, Pro | body `{ messages, context? }`, returns one Claude reply as `{ content, stop_reason, usage }` — see below |
 | `POST /api/webhooks/clerk` | Clerk webhook signature | keeps `User.email` in sync |
 | `POST /api/webhooks/stripe` | Stripe webhook signature | keeps subscription status in sync |
+| `GET /api/google/auth` | Clerk session | returns `{ url }` — redirect the browser there to start Google's consent screen |
+| `GET /api/google/callback` | Google OAuth redirect (signed `state`, not a Clerk session) | stores the refresh token, redirects back to `/#/more?google=connected` |
+| `POST /api/google/import` | Clerk session | one-time pull, returns `{ events, contacts }` in Keystone's own shape for the frontend to merge locally |
+| `POST /api/google/disconnect` | Clerk session | revokes and forgets the stored Google refresh token |
 | `GET /api/calendars` | Clerk session | calendars you're a member of, with your role on each |
 | `POST /api/calendars` | Clerk session | body `{ name, color? }`, creates a calendar with you as owner |
 | `GET /api/calendars/:id` | Clerk session, member | `{ calendar, role, members, events }` |

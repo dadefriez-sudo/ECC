@@ -60,7 +60,8 @@ function SubscriptionSync() {
       // locally, so without this it would keep showing Pro as unlocked for
       // whoever uses this device next, entitlement unverified. Signing back
       // in re-syncs it from the server above.
-      if (!isSignedIn) actions.setSettings({ isPro: false, isLifetime: false, subscriptionStatus: null });
+      if (!isSignedIn)
+        actions.setSettings({ isPro: false, isLifetime: false, subscriptionStatus: null, googleConnected: false });
       return;
     }
     let cancelled = false;
@@ -73,6 +74,7 @@ function SubscriptionSync() {
             // Only pre-switch subscribers have one; drives whether the
             // "manage billing" escape hatch is offered.
             subscriptionStatus: me.subscriptionStatus,
+            googleConnected: !!me.googleConnected,
           });
       })
       .catch((err) => console.warn('Failed to sync subscription status:', err.message));

@@ -22,6 +22,7 @@ router.get('/', requireUser, (req, res) => {
     // whether to offer the "manage billing" escape hatch at all.
     subscriptionStatus: u.subscriptionStatus,
     currentPeriodEnd: u.currentPeriodEnd,
+    googleConnected: !!u.googleRefreshToken,
   });
 });
 

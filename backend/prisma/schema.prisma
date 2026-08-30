@@ -37,6 +37,13 @@ model User {
   subscriptionPriceId  String?
   currentPeriodEnd     DateTime?
 
+  // Google one-time import (Calendar + Contacts, read-only) — see
+  // routes/google.js. A stored refresh token is enough to pull a fresh
+  // import on demand; there's no ongoing sync/webhook, so no cursor or
+  // sync-token bookkeeping is needed here yet.
+  googleRefreshToken   String?
+  googleConnectedAt    DateTime?
+
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

@@ -13,7 +13,14 @@ import {
   requestNotificationPermission,
 } from '../data/notifications.js';
 import { downloadICS, parseICS } from '../data/ics.js';
-import { formatTime, EVENT_TYPE_KINDS, DEFAULT_KIND_COLORS, normalizeEventTypeOrder } from '../data/helpers.js';
+import {
+  formatTime,
+  EVENT_TYPE_KINDS,
+  DEFAULT_KIND_COLORS,
+  normalizeEventTypeOrder,
+  uid,
+  todayISO,
+} from '../data/helpers.js';
 import { geoAvailable } from '../data/geo.js';
 import ReorderToggleList from '../components/ReorderToggleList.jsx';
 import SettingsGroup from '../components/SettingsGroup.jsx';
@@ -29,7 +36,7 @@ import {
   DEFAULT_CONTACT_SWIPE_LEFT,
   DEFAULT_CONTACT_SWIPE_RIGHT,
 } from '../data/contactSwipe.js';
-import { backendConfigured, deleteAccount } from '../data/api.js';
+import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disconnectGoogle } from '../data/api.js';
 import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
 import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
@@ -182,6 +189,7 @@ export default function MorePage() {
   const actions = useActions();
   const navigate = useNavigate();
   const location = useLocation();
+  const { getToken } = useAuth();
   const [editingStatus, setEditingStatus] = useState(null);
   const [editingKindColor, setEditingKindColor] = useState(null); // { value, label, color } | null
   const [editingEventType, setEditingEventType] = useState(null); // { id?, label, color } | null
@@ -204,6 +212,22 @@ export default function MorePage() {
     if (new URLSearchParams(location.search).get('checkout') !== 'success') return;
     showToast('Welcome to Keystone Pro!');
     navigate('/more', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Same pattern for the redirect back from Google's consent screen (see
+  // backend/src/routes/google.js's /callback) — mark it connected, pull the
+  // first import, and strip the param so a refresh doesn't re-import.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const google = params.get('google');
+    if (!google) return;
+    navigate('/more', { replace: true });
+    if (google === 'connected') {
+      actions.setSettings({ googleConnected: true });
+      runGoogleImport();
+    } else {
+      showToast('Connecting Google didn’t work — try again.');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Which settings cards are expanded. All collapsed on arrival, so the page
@@ -255,6 +279,7 @@ export default function MorePage() {
   const theme = state.settings?.theme || 'system';
   const notifOn = !!state.settings?.notifications && notificationPermission() === 'granted';
   const isPro = !!state.settings?.isPro;
+  const googleConnected = !!state.settings?.googleConnected;
   const profileName = state.settings?.profileName || '';
   const profilePhoto = state.settings?.profilePhoto || '';
   // `!== false` rather than a truthiness check, matching DataSync: an
@@ -294,6 +319,72 @@ export default function MorePage() {
       }
     };
     reader.readAsText(file);
+  };
+
+  // Redirects the browser to Google's consent screen; it comes back to
+  // /#/more?google=connected (see backend/src/routes/google.js), picked up
+  // by the effect below.
+  const connectGoogle = async () => {
+    try {
+      const { url } = await googleAuthUrl(getToken);
+      window.location.href = url;
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  // Pulls a fresh one-time import and merges it in exactly the way the
+  // .ics/.vcf file pickers above do — same target shapes, so this is the
+  // same two loops as importICS/importVCard, just fed from the backend
+  // instead of a local file.
+  const runGoogleImport = async () => {
+    try {
+      const { events, contacts } = await importGoogleData(getToken);
+      for (const ev of events) {
+        actions.addEvent({
+          ...ev,
+          repeatUntil: '',
+          repeatDays: [],
+          doneDates: [],
+          skipDates: [],
+          kind: '',
+          color: '',
+          reminder: 0,
+          contactIds: [],
+          contactId: '',
+        });
+      }
+      for (const c of contacts) {
+        actions.addContact({
+          id: uid('c'),
+          name: c.name,
+          phone: c.phone,
+          email: c.email,
+          address: c.address,
+          photo: '',
+          statusId: state.statuses[0]?.id || '',
+          tags: [],
+          notes: c.notes,
+          lastContacted: '',
+          createdAt: todayISO(),
+        });
+      }
+      showToast(
+        `Imported ${events.length} event${events.length === 1 ? '' : 's'} and ${contacts.length} contact${contacts.length === 1 ? '' : 's'} from Google.`
+      );
+    } catch (err) {
+      showToast(err.message);
+    }
+  };
+
+  const disconnectGoogleAccount = async () => {
+    if (!confirm('Disconnect Google? You can reconnect any time to import again.')) return;
+    try {
+      await disconnectGoogle(getToken);
+      actions.setSettings({ googleConnected: false });
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const toggleNotifications = async () => {
@@ -501,12 +592,33 @@ export default function MorePage() {
               : 'Keep your data synced across devices. Requires Pro.'}
           </p>
         )}
-        <button className="btn btn-ghost full" onClick={() => requirePro(() => alert('Google sign-in requires a backend that is not connected in this build yet.'))}>
-          <GoogleIcon /> Sign in with Google {!isPro && '· Pro'}
-        </button>
+        {isPro && CLERK_ENABLED && backendConfigured() && googleConnected ? (
+          <>
+            <button className="btn btn-ghost full" onClick={() => requirePro(runGoogleImport)}>
+              <GoogleIcon /> Import again from Google
+            </button>
+            <button className="btn btn-ghost full" onClick={disconnectGoogleAccount}>
+              Disconnect Google
+            </button>
+          </>
+        ) : (
+          <button
+            className="btn btn-ghost full"
+            onClick={() =>
+              requirePro(() =>
+                CLERK_ENABLED && backendConfigured()
+                  ? connectGoogle()
+                  : alert('Google sign-in requires a backend that is not connected in this build yet.')
+              )
+            }
+          >
+            <GoogleIcon /> Sign in with Google {!isPro && '· Pro'}
+          </button>
+        )}
         <p className="muted small">
-          A personal Keystone login (no Google needed) is free and always available — this is
-          only for connecting a Google account for calendar sync.
+          {googleConnected
+            ? "One-time import, not an ongoing sync — events and contacts are copied in, not kept in step with Google afterward. Tap \"Import again\" any time to pull a fresh copy."
+            : 'A personal Keystone login (no Google needed) is free and always available — this is only for a one-time import of your Google Calendar events and Contacts.'}
         </p>
       </SettingsGroup>
       <SettingsGroup {...grp('g2')}>

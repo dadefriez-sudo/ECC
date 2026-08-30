@@ -44,6 +44,15 @@ export const openBillingPortal = (getToken) => request('/api/billing/portal', { 
 export const verifyPurchase = (getToken, body) =>
   request('/api/billing/verify-purchase', { getToken, method: 'POST', body });
 
+// One-time Google Calendar / Contacts import (read-only) — see
+// backend/src/routes/google.js. googleAuthUrl() returns the consent URL to
+// redirect the browser to; importGoogleData() pulls a fresh Keystone-shaped
+// { events, contacts } payload for the caller to merge locally, the same
+// way an .ics/.vcf file import already works (see MorePage.jsx).
+export const googleAuthUrl = (getToken) => request('/api/google/auth', { getToken });
+export const importGoogleData = (getToken) => request('/api/google/import', { getToken, method: 'POST' });
+export const disconnectGoogle = (getToken) => request('/api/google/disconnect', { getToken, method: 'POST' });
+
 // Whole-app-data sync: mirrors the same object shape kept in localStorage.
 export const fetchSyncedData = (getToken) => request('/api/data', { getToken });
 export const pushSyncedData = (getToken, data) =>
