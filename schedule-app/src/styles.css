@@ -2536,7 +2536,7 @@ textarea {
 }
 .day-content--in-right,
 .day-content--in-left {
-  animation-duration: 0.22s;
+  animation-duration: 0.26s;
   animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
   animation-fill-mode: both;
 }
@@ -2546,9 +2546,14 @@ textarea {
 .day-content--in-left {
   animation-name: day-slide-in-left;
 }
+/* Distance chosen to read as a continuation of a swipe's exit (which slides
+   the previous day fully off-screen — see SWIPE_EXIT_MS in PlannerPage.jsx)
+   rather than a small unrelated settle-in nudge; still short enough that
+   tapping the prev/next chevrons quickly, over and over, doesn't feel
+   sluggish. */
 @keyframes day-slide-in-right {
   from {
-    transform: translateX(18px);
+    transform: translateX(36px);
     opacity: 0.4;
   }
   to {
@@ -2558,7 +2563,7 @@ textarea {
 }
 @keyframes day-slide-in-left {
   from {
-    transform: translateX(-18px);
+    transform: translateX(-36px);
     opacity: 0.4;
   }
   to {

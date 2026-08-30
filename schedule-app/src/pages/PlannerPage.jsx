@@ -1079,6 +1079,7 @@ const EDGE_ZONE_PX = 30; // how close to the timeline's edge before a drag pages
 const AUTO_SCROLL_ZONE_PX = 78; // how close to an edge before the page starts moving
 const AUTO_SCROLL_MAX_PX = 15; // per frame at the very edge (~900px/s)
 const SWIPE_THRESHOLD_PX = 60; // horizontal drag distance to swipe-navigate a day/month
+const SWIPE_EXIT_MS = 200; // how long the released content takes to finish sliding off-screen before the day actually changes
 
 // Which edge (if any) of `rect` a pointer at `clientX` has reached. Used to
 // require a drag reach the very side of the page before it pages a day,
@@ -1130,6 +1131,8 @@ function DayView({
   useEffect(() => () => cancelAnimationFrame(momentumRef.current), []);
   const pinchRef = useRef(null); // { pointers: Map<id,{x,y}>, startDist, startZoom }
   const swipeRef = useRef(null); // { pointerId, startX, startY } — single-pointer swipe to change day
+  const swipeExitTimerRef = useRef(null); // pending onNavigateDay call after a swipe's exit animation
+  useEffect(() => () => clearTimeout(swipeExitTimerRef.current), []);
   const [armedKey, setArmedKey] = useState(null);
   const [dragDy, setDragDy] = useState(0);
   const [dragDx, setDragDx] = useState(0);
@@ -1278,11 +1281,28 @@ function DayView({
       const dy = e.clientY - s.startY;
       if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
         bgSwipeSuppressRef.current = true;
-        onNavigateDay?.(dx < 0 ? 1 : -1);
         confirmTick();
+        // Let go of dragging first so the transform transition (off while
+        // swipeDragging, per its style below) actually applies, then keep
+        // the content moving the same direction the finger was already
+        // going — all the way off-screen — instead of snapping back to 0
+        // and letting the new day's own, much smaller entrance nudge be
+        // the only thing that moved. onNavigateDay (the actual day change)
+        // waits for that exit to finish, so the two read as one continuous
+        // swoosh instead of a drag that cuts off and a separate unrelated
+        // pop-in.
+        setSwipeDragging(false);
+        const exitWidth = bodyRef.current?.getBoundingClientRect().width || 400;
+        setSwipeDx(dx < 0 ? -exitWidth : exitWidth);
+        clearTimeout(swipeExitTimerRef.current);
+        swipeExitTimerRef.current = setTimeout(() => {
+          onNavigateDay?.(dx < 0 ? 1 : -1);
+          setSwipeDx(0);
+        }, SWIPE_EXIT_MS);
+      } else {
+        setSwipeDragging(false);
+        setSwipeDx(0);
       }
-      setSwipeDragging(false);
-      setSwipeDx(0);
     }
     const p = pinchRef.current;
     if (!p) return;
@@ -1765,7 +1785,7 @@ function DayView({
           className={`day-content${direction > 0 ? ' day-content--in-right' : direction < 0 ? ' day-content--in-left' : ''}`}
           style={{
             transform: `translateX(${swipeDx}px)`,
-            transition: swipeDragging ? 'none' : 'transform 0.2s ease',
+            transition: swipeDragging ? 'none' : `transform ${SWIPE_EXIT_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
           }}
         >
           {hours.map((h) => (
@@ -3056,7 +3076,18 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
   // onDown('move')/resize below call stopPropagation, so a drag on the
   // block never reaches these handlers.
   const swipeRef = useRef(null); // { pointerId, startX, startY }
+  const swipeExitTimerRef = useRef(null); // pending stepDay call after a swipe's exit animation
+  useEffect(() => () => clearTimeout(swipeExitTimerRef.current), []);
   const [swipeDx, setSwipeDx] = useState(0);
+  const [swipeDragging, setSwipeDragging] = useState(false);
+  // Direction of the most recent date change, for the same slide-in
+  // treatment the main day timeline uses — works for both the chevron
+  // buttons and a swipe, since it just diffs ISO date strings.
+  const prevDateRef = useRef(draft.date);
+  const direction = draft.date > prevDateRef.current ? 1 : draft.date < prevDateRef.current ? -1 : 0;
+  useEffect(() => {
+    prevDateRef.current = draft.date;
+  }, [draft.date]);
   const dayStart = settings?.timelineStartHour ?? DAY_START;
   const dayEnd = settings?.timelineEndHour ?? DAY_END;
   const kindColors = resolveKindColors(settings, customEventTypes);
@@ -3092,6 +3123,7 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
   const onBodyPointerDown = (e) => {
     if (dragRef.current || swipeRef.current) return;
     swipeRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY };
+    setSwipeDragging(true);
   };
   const onBodyPointerMove = (e) => {
     const sw = swipeRef.current;
@@ -3110,10 +3142,24 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
     const dx = e.clientX - sw.startX;
     const dy = e.clientY - sw.startY;
     if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
-      stepDay(dx < 0 ? 1 : -1);
       confirmTick();
+      // Same exit-then-enter choreography as the main day timeline: keep
+      // moving the same direction all the way off-screen instead of
+      // snapping back to 0, and only actually change the date once that
+      // finishes, so the swipe and the day change read as one continuous
+      // motion.
+      setSwipeDragging(false);
+      const exitWidth = bodyRef.current?.getBoundingClientRect().width || 400;
+      setSwipeDx(dx < 0 ? -exitWidth : exitWidth);
+      clearTimeout(swipeExitTimerRef.current);
+      swipeExitTimerRef.current = setTimeout(() => {
+        stepDay(dx < 0 ? 1 : -1);
+        setSwipeDx(0);
+      }, SWIPE_EXIT_MS);
+    } else {
+      setSwipeDragging(false);
+      setSwipeDx(0);
     }
-    setSwipeDx(0);
   };
 
   const commit = (nextS, nextE, snapRef) => {
@@ -3182,8 +3228,12 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
           onPointerCancel={onBodyPointerUp}
         >
           <div
-            className="day-content"
-            style={{ transform: `translateX(${swipeDx}px)`, transition: swipeDx === 0 ? 'transform 0.2s ease' : 'none' }}
+            key={draft.date}
+            className={`day-content${direction > 0 ? ' day-content--in-right' : direction < 0 ? ' day-content--in-left' : ''}`}
+            style={{
+              transform: `translateX(${swipeDx}px)`,
+              transition: swipeDragging ? 'none' : `transform ${SWIPE_EXIT_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+            }}
           >
           {hours.map((h) => (
             <div className="hour-row" key={h} style={{ height: pxPerHour }}>
