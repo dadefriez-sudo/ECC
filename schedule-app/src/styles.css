@@ -2967,10 +2967,11 @@ textarea {
   height: 56px;
   border-radius: 50%;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--accent);
   color: var(--accent-ink);
-  font-size: 30px;
-  line-height: 1;
   box-shadow: 0 6px 18px rgba(20, 30, 45, 0.28);
   cursor: pointer;
   z-index: 30;

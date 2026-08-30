@@ -513,7 +513,7 @@ export default function ContactTimelinePage() {
 
       {!selectMode && (
         <button className="fab" onClick={() => setAddMenuOpen(true)} aria-label="Add to timeline">
-          +
+          <Icon name="plus" size={26} />
         </button>
       )}
 

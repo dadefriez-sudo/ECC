@@ -405,7 +405,7 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
 
       {objectives.length > 0 && (
         <button className="fab" onClick={openNewObjective} aria-label="New objective">
-          +
+          <Icon name="plus" size={26} />
         </button>
       )}
 

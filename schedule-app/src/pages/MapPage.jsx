@@ -719,7 +719,7 @@ export default function MapPage() {
       {/* Add-pin button */}
       {!pickMode && !placing && !selected && !tempPin && (
         <button className="fab map-fab" onClick={() => { setSelectedId(null); setPlacing(true); }} aria-label="Add pin">
-          +
+          <Icon name="plus" size={26} />
         </button>
       )}
 

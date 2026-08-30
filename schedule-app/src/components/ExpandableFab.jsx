@@ -41,7 +41,7 @@ export default function ExpandableFab({ onAction }) {
           aria-label={open ? 'Close quick add' : 'Quick add'}
           aria-expanded={open}
         >
-          +
+          <Icon name="plus" size={26} />
         </button>
         {open &&
           items.map((it, i) => {

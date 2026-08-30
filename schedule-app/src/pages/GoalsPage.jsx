@@ -521,7 +521,7 @@ export default function GoalsPage() {
 
       {view === 'habits' && (
         <button className="fab" onClick={() => openNew()} aria-label="New goal">
-          +
+          <Icon name="plus" size={26} />
         </button>
       )}
 

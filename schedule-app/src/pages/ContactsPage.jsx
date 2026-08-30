@@ -456,7 +456,7 @@ export default function ContactsPage() {
 
       {state.contacts.length > 0 && !selectMode && (
         <button className="fab" onClick={startAdd} aria-label="Add person">
-          +
+          <Icon name="plus" size={26} />
         </button>
       )}
 

@@ -363,7 +363,7 @@ export default function ContactDetailPage() {
         onClick={() => navigate('/planner', { state: { newEventContact: contact.id } })}
         aria-label={`Add an event with ${contact.name}`}
       >
-        +
+        <Icon name="plus" size={26} />
       </button>
 
       {/* Edit sheet */}
