@@ -299,9 +299,6 @@ export default function ContactsPage() {
             <button className="icon-btn" onClick={() => vcfFileRef.current?.click()} aria-label="Import contacts (.vcf)" title="Import contacts (.vcf)">
               <ImportIcon />
             </button>
-            <button className="btn btn-primary btn-sm" onClick={startAdd}>
-              + Add
-            </button>
           </div>
           <input ref={vcfFileRef} type="file" accept=".vcf,text/vcard" hidden onChange={importVCard} />
         </div>
@@ -455,6 +452,12 @@ export default function ContactsPage() {
             );
           })}
         </ul>
+      )}
+
+      {state.contacts.length > 0 && !selectMode && (
+        <button className="fab" onClick={startAdd} aria-label="Add person">
+          +
+        </button>
       )}
 
       {selectMode && selected.size > 0 && (
