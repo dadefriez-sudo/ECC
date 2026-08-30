@@ -4530,6 +4530,12 @@ textarea {
 .pricing-cta {
   margin-top: 14px;
 }
+/* Native purchase flow only: "Restore purchases" sits directly under the
+   main CTA with no wrapping container, so it needs its own top margin
+   instead of relying on one from a parent gap. */
+.pricing-cta + .btn {
+  margin-top: 10px;
+}
 .pricing-disclaimer {
   max-width: 340px;
   margin-left: auto;
