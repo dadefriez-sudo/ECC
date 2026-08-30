@@ -2,10 +2,17 @@
 //
 // All of these are free, keyless raster tile services, which is the whole
 // constraint: Keystone has no server and no API budget, so anything needing
-// a token (Mapbox, Google, Thunderforest) is out. Carto's Positron/Dark
-// Matter and Esri's World Imagery are the standard no-key options, and each
-// requires its attribution to be shown — hence the `attribution` field being
+// a token (Mapbox, Google, Thunderforest) is out. Esri's World Imagery and
+// Light/Dark Gray Canvas are the standard no-key options, and each requires
+// its attribution to be shown — hence the `attribution` field being
 // mandatory rather than decorative.
+//
+// Carto's Positron/Dark Matter tiles used to live here instead of the Esri
+// Canvas ones — Carto gated basemaps.cartocdn.com behind a required API key
+// at some point after this was written, and unauthenticated requests now
+// come back as a visible "API KEY REQUIRED" watermark tile instead of an
+// error, which is why it looked like the map was just broken rather than
+// misconfigured.
 //
 // 'auto' isn't in this list because it isn't a tile source: it resolves to
 // positron or dark depending on the app theme (see resolveMapStyle). A bright
@@ -21,15 +28,15 @@ export const MAP_STYLES = {
   },
   positron: {
     label: 'Light',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-    maxZoom: 20,
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 16,
+    attribution: 'Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
   },
   dark: {
     label: 'Dark',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-    maxZoom: 20,
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 16,
+    attribution: 'Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
   },
   satellite: {
     label: 'Satellite',
