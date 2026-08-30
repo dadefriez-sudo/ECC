@@ -32,6 +32,13 @@
   --radius: 16px;
   --tabbar-h: 62px;
   --maxw: 520px;
+  /* Prefer the browser-native env() value; Android's WebView only recognizes
+     it from Chromium 140 onward (https://issues.chromium.org/issues/40699457),
+     so on older WebView builds it falls through to Capacitor's own
+     --safe-area-inset-* vars, which SystemBars.java computes from real
+     WindowInsets and injects unconditionally regardless of WebView version. */
+  --sait: env(safe-area-inset-top, var(--safe-area-inset-top, 0px));
+  --saib: env(safe-area-inset-bottom, var(--safe-area-inset-bottom, 0px));
 }
 
 :root[data-theme='dark'] {
@@ -240,7 +247,7 @@ textarea {
 }
 
 .app-main {
-  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 8px);
+  padding-bottom: calc(var(--tabbar-h) + var(--saib) + 8px);
 }
 
 .page {
@@ -318,7 +325,7 @@ textarea {
   top: 0;
   z-index: 10;
   background: linear-gradient(var(--bg) 78%, transparent);
-  padding: max(12px, env(safe-area-inset-top, 0px)) 0 8px;
+  padding: max(12px, var(--sait)) 0 8px;
 }
 
 .page-head-row {
@@ -580,7 +587,7 @@ textarea {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: calc(var(--tabbar-h) + var(--saib) + 12px);
   transform: translate(-50%, 0);
   width: calc(100% - 32px);
   max-width: calc(var(--maxw) - 32px);
@@ -701,8 +708,8 @@ textarea {
   transform: translateX(-50%);
   width: 100%;
   max-width: var(--maxw);
-  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(var(--tabbar-h) + var(--saib));
+  padding-bottom: var(--saib);
   display: flex;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
@@ -1640,7 +1647,7 @@ textarea {
   display: flex;
   flex-direction: column;
   animation: slideUp 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--saib);
   will-change: transform;
 }
 .modal-sheet--tall {
@@ -1657,13 +1664,13 @@ textarea {
   padding-bottom: 0;
 }
 .modal-sheet--full .modal-grip {
-  padding-top: max(10px, env(safe-area-inset-top, 0px));
+  padding-top: max(10px, var(--sait));
 }
 .modal-sheet--full .modal-body {
   flex: 1;
 }
 .modal-sheet--full .modal-foot {
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(16px + var(--saib));
 }
 .modal-grip {
   display: flex;
@@ -1703,7 +1710,7 @@ textarea {
   /* Extra bottom headroom so a field near the end of the form can still be
      scrolled clear of the on-screen keyboard instead of stopping right at
      its edge. */
-  padding: 4px 16px calc(96px + env(safe-area-inset-bottom, 0px));
+  padding: 4px 16px calc(96px + var(--saib));
   overflow-y: auto;
 }
 .modal-foot {
@@ -1858,7 +1865,7 @@ textarea {
 .editor-sheet-grip {
   display: flex;
   justify-content: center;
-  padding: max(10px, env(safe-area-inset-top, 0px)) 0 2px;
+  padding: max(10px, var(--sait)) 0 2px;
 }
 .editor-sheet-head {
   display: flex;
@@ -1921,7 +1928,7 @@ textarea {
   /* Extra bottom headroom (see .modal-body) so a field near the end of a
      long form — event/task/goal editors all use this sheet — can still be
      scrolled clear of the on-screen keyboard. */
-  padding: 16px 16px calc(96px + env(safe-area-inset-bottom, 0px));
+  padding: 16px 16px calc(96px + var(--saib));
 }
 /* Content with its own sticky footer (the "Schedule from calendar" Done
    button) doesn't need — and is actively hurt by — that keyboard-clearance
@@ -1929,10 +1936,10 @@ textarea {
    container's padding edge, so the big padding above parks it well short of
    the sheet's real bottom edge, "floating" with a dead gap beneath it. */
 .editor-sheet-body--flush {
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(16px + var(--saib));
 }
 .editor-sheet-foot {
-  padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 16px calc(14px + var(--saib));
   border-top: 1px solid var(--border);
   flex: none;
 }
@@ -2029,7 +2036,7 @@ textarea {
   max-height: 70vh;
   background: var(--surface);
   border-radius: 20px 20px 0 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--saib);
   animation: slideUp 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   display: flex;
   flex-direction: column;
@@ -2268,7 +2275,7 @@ textarea {
   position: fixed;
   left: max(12px, calc(50% - var(--maxw) / 2 + 12px));
   right: max(12px, calc(50% - var(--maxw) / 2 + 12px));
-  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: calc(var(--tabbar-h) + var(--saib) + 12px);
   z-index: 60;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -2331,7 +2338,7 @@ textarea {
 }
 .group-drag-indicator {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 64px);
+  top: calc(var(--sait) + 64px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 600;
@@ -2561,11 +2568,9 @@ textarea {
 .day-content--in-left {
   animation-name: day-slide-in-left;
 }
-/* Distance chosen to read as a continuation of a swipe's exit (which slides
-   the previous day fully off-screen — see SWIPE_EXIT_MS in PlannerPage.jsx)
-   rather than a small unrelated settle-in nudge; still short enough that
-   tapping the prev/next chevrons quickly, over and over, doesn't feel
-   sluggish. */
+/* Distance chosen to read as a real swoosh rather than a small settle-in
+   nudge; still short enough that tapping the prev/next chevrons quickly,
+   over and over, doesn't feel sluggish. */
 @keyframes day-slide-in-right {
   from {
     transform: translateX(36px);
@@ -2957,7 +2962,7 @@ textarea {
 .fab {
   position: fixed;
   right: max(16px, calc(50% - var(--maxw) / 2 + 16px));
-  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px);
+  bottom: calc(var(--tabbar-h) + var(--saib) + 16px);
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -2982,7 +2987,7 @@ textarea {
 .expandable-fab {
   position: fixed;
   right: max(16px, calc(50% - var(--maxw) / 2 + 16px));
-  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px);
+  bottom: calc(var(--tabbar-h) + var(--saib) + 16px);
   z-index: 30;
   display: flex;
   flex-direction: column-reverse;
@@ -3472,7 +3477,7 @@ textarea {
 /* --- Map ---------------------------------------------------------------- */
 .map-page {
   position: relative;
-  height: calc(100dvh - var(--tabbar-h) - env(safe-area-inset-bottom, 0px));
+  height: calc(100dvh - var(--tabbar-h) - var(--saib));
   overflow: hidden;
 }
 .map-canvas {
@@ -3499,7 +3504,7 @@ textarea {
 
 .map-corner {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  top: calc(var(--sait) + 12px);
   right: 12px;
   z-index: 500;
   display: flex;
@@ -3544,7 +3549,7 @@ textarea {
   position: absolute;
   /* Below the corner stack's first two buttons (map style, then this one):
      2 × (46px button + 10px gap). */
-  top: calc(env(safe-area-inset-top, 0px) + 12px + 46px + 10px + 46px + 10px);
+  top: calc(var(--sait) + 12px + 46px + 10px + 46px + 10px);
   right: 12px;
   z-index: 500;
   width: 218px;
@@ -3646,7 +3651,7 @@ textarea {
 
 .map-banner {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  top: calc(var(--sait) + 12px);
   left: 12px;
   right: 70px;
   z-index: 500;
@@ -5266,7 +5271,7 @@ body.is-scrolled .page-head::before {
   left: 12px;
   /* Clear of the FAB, which sits bottom-right at the same height. */
   right: 78px;
-  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: calc(var(--tabbar-h) + var(--saib) + 12px);
   /* z-index 560 puts these above the assistant bubble rather than behind
      it, so the gutter below is what actually keeps them from overlapping. */
   /* Above the FAB (500) so a warning is never half-hidden behind it, below
@@ -5866,13 +5871,13 @@ button.timeline-item {
 /* Leaflet puts its own zoom control top-left and doesn't know about the
    notch, so give it the inset before anything is stacked under it. */
 .leaflet-top.leaflet-left {
-  margin-top: env(safe-area-inset-top, 0px);
+  margin-top: var(--sait);
 }
 .map-layers {
   position: absolute;
   /* Below the corner stack's first button (map style itself): one 46px
      button + a 10px gap. */
-  top: calc(env(safe-area-inset-top, 0px) + 12px + 46px + 10px);
+  top: calc(var(--sait) + 12px + 46px + 10px);
   right: 12px;
   z-index: 500;
   width: 178px;
@@ -5995,7 +6000,7 @@ body[data-assistant='on'] .conflict-list {
 .assistant-fab {
   position: fixed;
   left: max(16px, calc(50% - var(--maxw) / 2 + 16px));
-  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px);
+  bottom: calc(var(--tabbar-h) + var(--saib) + 16px);
   width: 48px;
   height: 48px;
   display: grid;

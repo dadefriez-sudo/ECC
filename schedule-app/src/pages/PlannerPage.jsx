@@ -1784,6 +1784,7 @@ function DayView({
           style={{
             transform: `translateX(${swipeDx}px)`,
             transition: swipeDragging ? 'none' : `transform ${SWIPE_SNAP_BACK_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+            willChange: 'transform',
           }}
         >
           {hours.map((h) => (
@@ -2387,6 +2388,7 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
         style={{
           transform: `translateX(${swipeDx}px)`,
           transition: swipeDragging ? 'none' : `transform ${SWIPE_SNAP_BACK_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+          willChange: 'transform',
         }}
       >
       <div className="month-dow-row">
@@ -3264,6 +3266,7 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
             style={{
               transform: `translateX(${swipeDx}px)`,
               transition: swipeDragging ? 'none' : `transform ${SWIPE_SNAP_BACK_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+              willChange: 'transform',
             }}
           >
           {hours.map((h) => (
