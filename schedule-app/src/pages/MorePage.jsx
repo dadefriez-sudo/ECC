@@ -31,6 +31,7 @@ import {
 } from '../data/contactSwipe.js';
 import { backendConfigured, deleteAccount } from '../data/api.js';
 import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
+import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
 
 const formatHour = (h) => formatTime(`${String(h).padStart(2, '0')}:00`);
@@ -194,6 +195,17 @@ export default function MorePage() {
   // not kept in sync with the URL afterwards, so typing in the box doesn't
   // fight with it.
   const [query, setQuery] = useState(() => new URLSearchParams(location.search).get('q') || '');
+  const showToast = useToast();
+  // Stripe redirects back here with ?checkout=success after a real purchase
+  // (see backend/src/routes/billing.js). It's a full page reload, so this
+  // effect runs once on arrival; the param is stripped right after so it
+  // doesn't re-fire on a refresh or on navigating back to this page later.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('checkout') !== 'success') return;
+    showToast('Welcome to Keystone Pro!');
+    navigate('/more', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Which settings cards are expanded. All collapsed on arrival, so the page
   // opens as a scannable index rather than one long scroll; kept in component
   // state rather than persisted, since "where I left the accordion" isn't a
