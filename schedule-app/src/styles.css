@@ -1,3 +1,18 @@
+/* Self-hosted (not Google Fonts' CDN) — this app works fully offline, and a
+   network-dependent font would break that on first load. A single variable
+   file covers the whole weight range this app actually uses (400-700);
+   anything requesting a weight above 700 (this file has a couple of 750/800
+   uses for extra-heavy headings) just clamps to 700, the heaviest Quicksand
+   offers — a small, acceptable difference from the system font's own true
+   800/900 weights. */
+@font-face {
+  font-family: 'Quicksand';
+  src: url('./fonts/Quicksand-Variable.woff2') format('woff2-variations'), url('./fonts/Quicksand-Variable.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #eef1f4;
   --surface: #ffffff;
@@ -152,7 +167,7 @@ html[data-theme='dark'] {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
