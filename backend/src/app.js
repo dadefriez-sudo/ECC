@@ -22,7 +22,32 @@ export function createApp() {
   // X-Forwarded-For entry, not an arbitrary client-supplied header.
   app.set('trust proxy', 1);
 
-  app.use(cors({ origin: process.env.FRONTEND_URL || true }));
+  // The native app shell (Capacitor) has no server config of its own, so it
+  // runs its WebView on Capacitor's own default origins rather than
+  // FRONTEND_URL — https://localhost on Android, capacitor://localhost on
+  // iOS. Restricting origin to just FRONTEND_URL (the deployed web site)
+  // meant every authenticated call from the native app got CORS-blocked,
+  // surfacing to the app as a generic "Failed to fetch". Auth here is a
+  // Bearer token in the Authorization header, not a cookie, so widening
+  // this doesn't add a CSRF-style risk — a page on another origin still
+  // can't call these routes without already having a legitimate token.
+  const ALLOWED_ORIGINS = new Set(
+    [process.env.FRONTEND_URL, 'https://localhost', 'capacitor://localhost', 'http://localhost'].filter(Boolean)
+  );
+  app.use(
+    cors({
+      origin(origin, callback) {
+        // FRONTEND_URL not set yet (e.g. still being configured) — same
+        // permissive fallback the old `origin: ... || true` had, rather
+        // than the native app's origins being the only ones that work.
+        if (!process.env.FRONTEND_URL) return callback(null, true);
+        // No Origin header at all (native non-WebView clients, curl, server-
+        // to-server) — nothing to check against, so let it through.
+        if (!origin || ALLOWED_ORIGINS.has(origin)) return callback(null, true);
+        callback(new Error('Not allowed by CORS'));
+      },
+    })
+  );
 
   // Webhooks need the raw request body for signature verification — mount
   // them before express.json() touches the stream. Left outside apiLimiter:
