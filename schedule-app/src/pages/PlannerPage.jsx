@@ -2282,8 +2282,23 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
   const month = monthStart.getMonth();
   const year = monthStart.getFullYear();
   const swipeRef = useRef(null);
+  const swipeExitTimerRef = useRef(null); // pending onSwipe call after a swipe's exit animation
+  useEffect(() => () => clearTimeout(swipeExitTimerRef.current), []);
+  const [swipeDx, setSwipeDx] = useState(0);
+  const [swipeDragging, setSwipeDragging] = useState(false);
   const suppressClickRef = useRef(false);
   const contactColor = useMemo(() => makeContactColor(contacts, statuses), [contacts, statuses]);
+
+  // Direction of the most recent month change, for the same slide-in
+  // treatment the day timeline uses — same reasoning, diffs a comparable
+  // value (month start as an ISO date) rather than caring how it changed
+  // (swipe or something else).
+  const monthKey = toISODate(monthStart);
+  const prevMonthKeyRef = useRef(monthKey);
+  const direction = monthKey > prevMonthKeyRef.current ? 1 : monthKey < prevMonthKeyRef.current ? -1 : 0;
+  useEffect(() => {
+    prevMonthKeyRef.current = monthKey;
+  }, [monthKey]);
 
   // Which cells carry a birthday/anniversary this month — a plain Set of
   // ISO dates is all a cell needs to know to show its badge.
@@ -2318,6 +2333,17 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
     // self-correcting instead of depending on a click to consume it.
     suppressClickRef.current = false;
     swipeRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY };
+    setSwipeDragging(true);
+  };
+  const onPointerMove = (e) => {
+    const s = swipeRef.current;
+    if (!s || s.pointerId !== e.pointerId) return;
+    const dx = e.clientX - s.startX;
+    const dy = e.clientY - s.startY;
+    // Only once the gesture reads as clearly horizontal, same reasoning as
+    // the day timeline: otherwise a vertical scroll visibly tugs the grid
+    // sideways before settling back.
+    setSwipeDx(Math.abs(dx) > Math.abs(dy) * 1.4 ? dx : 0);
   };
   const onPointerUp = (e) => {
     const s = swipeRef.current;
@@ -2327,8 +2353,21 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
     const dy = e.clientY - s.startY;
     if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
       suppressClickRef.current = true;
-      onSwipe?.(dx < 0 ? 1 : -1);
       confirmTick();
+      // Same exit-then-enter choreography as the day timeline: keep moving
+      // the same direction all the way off-screen instead of snapping back
+      // to 0, and only actually change the month once that finishes.
+      setSwipeDragging(false);
+      const exitWidth = e.currentTarget?.getBoundingClientRect().width || 400;
+      setSwipeDx(dx < 0 ? -exitWidth : exitWidth);
+      clearTimeout(swipeExitTimerRef.current);
+      swipeExitTimerRef.current = setTimeout(() => {
+        onSwipe?.(dx < 0 ? 1 : -1);
+        setSwipeDx(0);
+      }, SWIPE_EXIT_MS);
+    } else {
+      setSwipeDragging(false);
+      setSwipeDx(0);
     }
   };
   const onClickCapture = (e) => {
@@ -2343,12 +2382,23 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
     <div
       className="month-grid"
       onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => {
         swipeRef.current = null;
+        setSwipeDragging(false);
+        setSwipeDx(0);
       }}
       onClickCapture={onClickCapture}
     >
+      <div
+        key={monthKey}
+        className={`day-content${direction > 0 ? ' day-content--in-right' : direction < 0 ? ' day-content--in-left' : ''}`}
+        style={{
+          transform: `translateX(${swipeDx}px)`,
+          transition: swipeDragging ? 'none' : `transform ${SWIPE_EXIT_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+        }}
+      >
       <div className="month-dow-row">
         {WEEKDAY_LETTERS.map((l, i) => (
           <span key={i}>{l}</span>
@@ -2387,6 +2437,7 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
           })}
         </div>
       ))}
+      </div>
       </div>
       {upcoming.length > 0 && (
         <section className="month-upcoming">
