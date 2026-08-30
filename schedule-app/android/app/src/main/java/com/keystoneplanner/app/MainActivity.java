@@ -1,4 +1,4 @@
-package com.keystone.app;
+package com.keystoneplanner.app;
 
 import com.getcapacitor.BridgeActivity;
 

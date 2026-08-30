@@ -13,11 +13,20 @@ build, not hand-written — they're standard Capacitor scaffolding.
 
 ## Before you submit anywhere: the app ID
 
-`capacitor.config.ts`'s `appId` is currently the placeholder `com.keystone.app`. This becomes
-your bundle identifier (iOS) / application ID (Android) — **it's permanent once you first submit
-a build to either store.** Confirm or change it to your real reverse-DNS identifier (e.g.
-`com.yourcompany.keystone`) before doing anything else here, then re-run `npx cap sync` so both
-native projects pick up the change.
+`capacitor.config.ts`'s `appId` is `com.keystoneplanner.app`. This becomes your bundle
+identifier (iOS) / application ID (Android) — **it's permanent once you first submit a build to
+either store**, so confirm it's still what you want before doing anything else here.
+
+If you do need to change it: `npx cap sync` alone is **not** enough — it copies web assets and
+plugin config, but doesn't rewrite the native projects' own package identifiers. You also need to
+manually update, and keep in sync with `capacitor.config.ts`'s `appId`:
+
+- Android: `android/app/build.gradle`'s `namespace` and `applicationId`,
+  `android/app/src/main/res/values/strings.xml`'s `package_name` and `custom_url_scheme`, and the
+  Java package itself — move `android/app/src/main/java/<old/package/path>/MainActivity.java` to
+  match the new path and update its `package` declaration.
+- iOS: `ios/App/App.xcodeproj/project.pbxproj`'s `PRODUCT_BUNDLE_IDENTIFIER` (appears once per
+  build configuration — Debug and Release).
 
 ## Building — needs tools this environment doesn't have
 
