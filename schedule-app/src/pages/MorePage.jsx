@@ -535,8 +535,8 @@ export default function MorePage() {
         )}
         <p className="muted small">
           {googleConnected
-            ? "One-time import, not an ongoing sync — events and contacts are copied in, not kept in step with Google afterward. Tap \"Import again\" any time to pull a fresh copy."
-            : 'A personal Keystone login (no Google needed) is free and always available — this is only for a one-time import of your Google Calendar events and Contacts.'}
+            ? "Calendar (single events only, not repeating ones) stays synced both ways while Keystone is open. Contacts is a one-time import — tap \"Import contacts again\" any time for a fresh copy."
+            : 'A personal Keystone login (no Google needed) is free and always available — this is only for connecting your Google Calendar (kept in sync) and Contacts (a one-time import).'}
         </p>
       </SettingsGroup>
       <SettingsGroup {...grp('g2')}>
@@ -1558,7 +1558,7 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
     navigate('/more', { replace: true });
     if (google === 'connected') {
       actions.setSettings({ googleConnected: true });
-      runGoogleImport();
+      reimportContacts();
     } else {
       showToast('Connecting Google didn’t work — try again.');
     }
@@ -1576,27 +1576,20 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
     }
   };
 
-  // Pulls a fresh one-time import and merges it in exactly the way the
-  // .ics/.vcf file pickers on MorePage do — same target shapes, so this is
-  // the same two loops as importICS/importVCard, just fed from the backend
-  // instead of a local file.
-  const runGoogleImport = async () => {
+  // Pulls a fresh one-time Contacts import and merges it the same way
+  // importVCard's file picker does (data/vcard.js's parseVCard) — same
+  // target shapes, just fed from the backend instead of a local file.
+  //
+  // Calendar is deliberately NOT pulled here, even though the backend's
+  // /import response includes it — that's entirely handled by the ongoing
+  // two-way sync in data/googleCalendarSync.js instead, which does its own
+  // full first pull the moment googleConnected flips true (see App.jsx's
+  // GoogleCalendarSync). Importing events here too would create duplicates
+  // once that sync also creates them, since the two paths don't share any
+  // bookkeeping (this one has no concept of a googleEventId snapshot).
+  const reimportContacts = async () => {
     try {
-      const { events, contacts } = await importGoogleData(getToken);
-      for (const ev of events) {
-        actions.addEvent({
-          ...ev,
-          repeatUntil: '',
-          repeatDays: [],
-          doneDates: [],
-          skipDates: [],
-          kind: '',
-          color: '',
-          reminder: 0,
-          contactIds: [],
-          contactId: '',
-        });
-      }
+      const { contacts } = await importGoogleData(getToken);
       for (const c of contacts) {
         actions.addContact({
           id: uid('c'),
@@ -1612,9 +1605,7 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
           createdAt: todayISO(),
         });
       }
-      showToast(
-        `Imported ${events.length} event${events.length === 1 ? '' : 's'} and ${contacts.length} contact${contacts.length === 1 ? '' : 's'} from Google.`
-      );
+      showToast(`Imported ${contacts.length} contact${contacts.length === 1 ? '' : 's'} from Google.`);
     } catch (err) {
       showToast(err.message);
     }
@@ -1633,8 +1624,8 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
   if (isPro && backendConfigured() && googleConnected) {
     return (
       <>
-        <button className="btn btn-ghost full" onClick={() => requirePro(runGoogleImport)}>
-          <GoogleIcon /> Import again from Google
+        <button className="btn btn-ghost full" onClick={() => requirePro(reimportContacts)}>
+          <GoogleIcon /> Import contacts again
         </button>
         <button className="btn btn-ghost full" onClick={disconnectGoogleAccount}>
           Disconnect Google

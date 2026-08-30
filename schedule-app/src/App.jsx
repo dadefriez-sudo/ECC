@@ -12,6 +12,7 @@ import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/
 import { setUse24hFormat, setSundayWeekStart, distanceMeters } from './data/helpers.js';
 import { setHapticsEnabled } from './data/haptics.js';
 import { fetchMe, backendConfigured, fetchSyncedData, pushSyncedData } from './data/api.js';
+import { runGoogleCalendarSync } from './data/googleCalendarSync.js';
 import { CLERK_ENABLED } from './data/clerkConfig.js';
 import { AI_ENABLED } from './data/aiConfig.js';
 import { setSyncStatus } from './data/syncStatus.js';
@@ -197,6 +198,58 @@ function DataSync() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, active]);
+
+  return null;
+}
+
+// Two-way Google Calendar sync (single events only — see
+// data/googleCalendarSync.js), run on the same "whenever the app is open"
+// triggers as DataSync above: on launch, on a timer, on returning to the
+// tab, and on regaining the network. Not a background/webhook sync — an
+// event added on Google won't show up here until the app is next open.
+const GOOGLE_CALENDAR_SYNC_INTERVAL_MS = 60000;
+
+function GoogleCalendarSync() {
+  const { state } = useStore();
+  const actions = useActions();
+  const { isSignedIn, getToken } = useAuth();
+  const isPro = !!state.settings?.isPro;
+  const googleConnected = !!state.settings?.googleConnected;
+  const active = isSignedIn && isPro && googleConnected && backendConfigured();
+
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const busyRef = useRef(false);
+
+  const sync = useCallback(async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      await runGoogleCalendarSync(getToken, stateRef.current, actions);
+    } catch (err) {
+      console.warn('Google Calendar sync failed:', err.message);
+    } finally {
+      busyRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getToken]);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    sync();
+    const timer = setInterval(sync, GOOGLE_CALENDAR_SYNC_INTERVAL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') sync();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', sync);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', sync);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   return null;
 }
@@ -512,6 +565,7 @@ export default function App() {
     <div className="app">
       {CLERK_ENABLED && <SubscriptionSync />}
       {CLERK_ENABLED && <DataSync />}
+      {CLERK_ENABLED && <GoogleCalendarSync />}
       <ArrivalWatch />
       <main className="app-main" key={location.pathname}>
         {/* Fallback is deliberately blank rather than a spinner: lazy chunks

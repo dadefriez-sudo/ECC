@@ -52,21 +52,22 @@ export default function PrivacyPage() {
           control what OpenStreetMap does with that traffic; see their own privacy policy.
         </li>
         <li>
-          <b>Google import (optional, Pro).</b> If you choose to connect Google in Settings →
-          Account & sync, Keystone requests read-only access to your Google Calendar events and
-          Google Contacts and pulls a one-time copy of them into your local data — the same as
-          picking a <code>.ics</code>/<code>.vcf</code> file, just sourced from Google instead.
-          This is a one-time import, not an ongoing sync: nothing is automatically kept in step
-          with Google afterward, and nothing is written back to your Google account. Our server
-          holds a Google-issued token only so you can trigger another import later, and only until
+          <b>Google Calendar &amp; Contacts (optional, Pro).</b> If you choose to connect Google
+          in Settings → Account & sync, Keystone requests read/write access to your Google
+          Calendar and read-only access to your Google Contacts. Contacts is a one-time import
+          into your local data, same as picking a <code>.vcf</code> file. Calendar is kept in
+          sync going forward, in both directions, while the app is open: single (non-repeating)
+          events you create, edit, or delete in Keystone are pushed to your Google Calendar, and
+          changes made on Google are pulled in the same way — this only happens while Keystone is
+          open, not in the background. Our server holds a Google-issued token to do this, until
           you tap Disconnect (which also revokes it). Keystone's use of information received from
           Google APIs adheres to the{' '}
           <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noreferrer">
             Google API Services User Data Policy
           </a>
-          , including the Limited Use requirements: that data is used only to build the imported
-          events/contacts shown to you, is never used for advertising, and is never sold or
-          shared with anyone other than you.
+          , including the Limited Use requirements: that data is used only to show and sync your
+          own events/contacts, is never used for advertising, and is never sold or shared with
+          anyone other than you.
         </li>
         <li>
           <b>Payment (Pro purchase).</b> Payment is handled entirely by Stripe, the App Store, or

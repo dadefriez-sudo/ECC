@@ -52,6 +52,12 @@ export const verifyPurchase = (getToken, body) =>
 export const googleAuthUrl = (getToken) => request('/api/google/auth', { getToken });
 export const importGoogleData = (getToken) => request('/api/google/import', { getToken, method: 'POST' });
 export const disconnectGoogle = (getToken) => request('/api/google/disconnect', { getToken, method: 'POST' });
+// Ongoing two-way Calendar sync (single events only — see
+// backend/src/routes/google.js's calendar-sync comment), run whenever the
+// app is open (see data/googleCalendarSync.js). Not the same as
+// importGoogleData above, which is the one-time Calendar+Contacts pull.
+export const syncGoogleCalendar = (getToken, body) =>
+  request('/api/google/calendar-sync', { getToken, method: 'POST', body });
 
 // Whole-app-data sync: mirrors the same object shape kept in localStorage.
 export const fetchSyncedData = (getToken) => request('/api/data', { getToken });

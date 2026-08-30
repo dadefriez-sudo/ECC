@@ -82,20 +82,22 @@ future expiry, any CVC.
 
 ## 4. Set up Google sync (optional)
 
-A **one-time, read-only import** of Google Calendar events and Google
-Contacts — not an ongoing two-way sync. Entirely optional: leave the vars
-below unset and the "Sign in with Google" button in the app just errors
-instead of working, same as the Stripe/IAP vars.
+Google Contacts is a **one-time, read-only import**. Google Calendar is an
+**ongoing two-way sync** (single, non-repeating events only) that runs while
+the app is open — not a background/webhook sync, so a change made on Google
+shows up the next time the app is opened, not instantly. Entirely optional:
+leave the vars below unset and the "Sign in with Google" button in the app
+just errors instead of working, same as the Stripe/IAP vars.
 
 1. Create/use a project in the [Google Cloud Console](https://console.cloud.google.com).
 2. **APIs & Services → Library** → enable the **Google Calendar API** and
    the **People API**.
 3. **APIs & Services → OAuth consent screen** → User type **External**, add
-   scopes `.../auth/calendar.readonly` and `.../auth/contacts.readonly`.
-   These are "sensitive" scopes — Google requires app verification before
-   the general public can use them, but you can add your own account (and
-   any other testers) under **Test users** and use it immediately without
-   waiting on that review.
+   scopes `.../auth/calendar` (read-write — needed to push local changes to
+   Google) and `.../auth/contacts.readonly`. Both are "sensitive" scopes —
+   Google requires app verification before the general public can use them,
+   but you can add your own account (and any other testers) under **Test
+   users** and use it immediately without waiting on that review.
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
    → type **Web application** → Authorized redirect URI:
    `https://<your-backend-domain>/api/google/callback`.
@@ -134,7 +136,8 @@ Both work the same way for this service:
 | `POST /api/webhooks/stripe` | Stripe webhook signature | keeps subscription status in sync |
 | `GET /api/google/auth` | Clerk session | returns `{ url }` — redirect the browser there to start Google's consent screen |
 | `GET /api/google/callback` | Google OAuth redirect (signed `state`, not a Clerk session) | stores the refresh token, redirects back to `/#/more?google=connected` |
-| `POST /api/google/import` | Clerk session | one-time pull, returns `{ events, contacts }` in Keystone's own shape for the frontend to merge locally |
+| `POST /api/google/import` | Clerk session | one-time pull, returns `{ events, contacts }` in Keystone's own shape for the frontend to merge locally — the frontend only uses the `contacts` half now that Calendar has real sync below |
+| `POST /api/google/calendar-sync` | Clerk session | body `{ syncToken, changes, timeZone }`, pushes local event changes to Google then pulls Google's changes since `syncToken` (or a full 90-day pull if it's null/expired), returns `{ syncToken, results, serverChanges }` |
 | `POST /api/google/disconnect` | Clerk session | revokes and forgets the stored Google refresh token |
 | `GET /api/calendars` | Clerk session | calendars you're a member of, with your role on each |
 | `POST /api/calendars` | Clerk session | body `{ name, color? }`, creates a calendar with you as owner |
