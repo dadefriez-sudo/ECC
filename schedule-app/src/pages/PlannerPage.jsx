@@ -3050,6 +3050,13 @@ const SCHED_PX_PER_HOUR = 64;
 function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTypes, onDone }) {
   const bodyRef = useRef(null);
   const dragRef = useRef(null); // { mode, startClientY, startS, startE }
+  // Single-pointer horizontal swipe to change day — same pattern as the
+  // main day timeline's swipeRef, minus pinch-zoom (not offered here).
+  // Starting the touch on the draft block itself doesn't trigger this:
+  // onDown('move')/resize below call stopPropagation, so a drag on the
+  // block never reaches these handlers.
+  const swipeRef = useRef(null); // { pointerId, startX, startY }
+  const [swipeDx, setSwipeDx] = useState(0);
   const dayStart = settings?.timelineStartHour ?? DAY_START;
   const dayEnd = settings?.timelineEndHour ?? DAY_END;
   const kindColors = resolveKindColors(settings, customEventTypes);
@@ -3070,6 +3077,44 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
   for (let h = dayStart; h <= dayEnd; h++) hours.push(h);
 
   const stepDay = (n) => setDraft({ ...draft, date: toISODate(addDays(draft.date, n)) });
+
+  // Snap the view to the event's own time when this opens, rather than
+  // wherever the timeline happens to scroll to by default (its top, or
+  // whatever's left over from a previous open) — for an evening event that
+  // could be most of the day's worth of scrolling to find. Instant, not
+  // smooth: this is initial positioning, not a user-triggered jump.
+  useEffect(() => {
+    const el = bodyRef.current?.querySelector('.schedule-draft-block');
+    el?.scrollIntoView({ block: 'center' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onBodyPointerDown = (e) => {
+    if (dragRef.current || swipeRef.current) return;
+    swipeRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY };
+  };
+  const onBodyPointerMove = (e) => {
+    const sw = swipeRef.current;
+    if (!sw || sw.pointerId !== e.pointerId) return;
+    const dx = e.clientX - sw.startX;
+    const dy = e.clientY - sw.startY;
+    // Only once the gesture reads as clearly horizontal, same reasoning as
+    // the main timeline: otherwise a vertical scroll visibly tugs the day
+    // sideways before settling back.
+    setSwipeDx(Math.abs(dx) > Math.abs(dy) * 1.4 ? dx : 0);
+  };
+  const onBodyPointerUp = (e) => {
+    const sw = swipeRef.current;
+    if (!sw || sw.pointerId !== e.pointerId) return;
+    swipeRef.current = null;
+    const dx = e.clientX - sw.startX;
+    const dy = e.clientY - sw.startY;
+    if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      stepDay(dx < 0 ? 1 : -1);
+      confirmTick();
+    }
+    setSwipeDx(0);
+  };
 
   const commit = (nextS, nextE, snapRef) => {
     const snap = `${nextS}:${nextE}`;
@@ -3127,7 +3172,19 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
       </div>
       <p className="muted small center-pad">Drag the block to move it, or its top/bottom handles to resize.</p>
       <div className="timeline">
-        <div className="timeline-body" ref={bodyRef} style={{ height: (dayEnd - dayStart + 1) * pxPerHour }}>
+        <div
+          className="timeline-body"
+          ref={bodyRef}
+          style={{ height: (dayEnd - dayStart + 1) * pxPerHour }}
+          onPointerDown={onBodyPointerDown}
+          onPointerMove={onBodyPointerMove}
+          onPointerUp={onBodyPointerUp}
+          onPointerCancel={onBodyPointerUp}
+        >
+          <div
+            className="day-content"
+            style={{ transform: `translateX(${swipeDx}px)`, transition: swipeDx === 0 ? 'transform 0.2s ease' : 'none' }}
+          >
           {hours.map((h) => (
             <div className="hour-row" key={h} style={{ height: pxPerHour }}>
               <span className="hour-label">{formatTime(`${String(h).padStart(2, '0')}:00`)}</span>
@@ -3177,6 +3234,7 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
                 onPointerCancel={onUp}
               />
             </div>
+          </div>
           </div>
         </div>
       </div>
