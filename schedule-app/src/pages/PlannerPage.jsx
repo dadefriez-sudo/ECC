@@ -1316,6 +1316,8 @@ function DayView({
     setArmedKey(null);
     setDragDy(0);
     setDragDx(0);
+    setSwipeDragging(false);
+    setSwipeDx(0);
   };
 
   // A scroll that starts on an event block is forwarded to window.scrollBy
@@ -1476,9 +1478,21 @@ function DayView({
         // swipe-day candidate, evaluated on release (same as swiping empty
         // timeline space).
         g.phase = Math.abs(dy) > Math.abs(dx) ? 'scrolling' : 'swiping';
+        if (g.phase === 'swiping') setSwipeDragging(true);
       } else {
         return;
       }
+    }
+    if (g.phase === 'swiping') {
+      // Same live 1:1 finger-follow as swiping empty timeline background
+      // (setSwipeDx below drives the same .day-content transform). Without
+      // this, a swipe that happens to start on top of an event block — the
+      // likely case on any day that actually has events on it — gave zero
+      // visual feedback until release, which is exactly why it read as
+      // broken/less fluid than the mostly-empty Schedule-from-calendar
+      // picker.
+      setSwipeDx(dx);
+      return;
     }
     if (g.phase === 'scrolling') {
       const now = performance.now();
@@ -1541,6 +1555,8 @@ function DayView({
         onNavigateDay?.(dx < 0 ? 1 : -1);
         confirmTick();
       }
+      setSwipeDragging(false);
+      setSwipeDx(0);
     } else if (g.phase === 'armed') {
       const deltaMin = Math.round(dragDy / pxPerMin / 15) * 15;
       const dayOffset = g.pagedOffset;
