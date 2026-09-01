@@ -52,18 +52,6 @@ const FEATURES = [
     to: '/goals',
   },
   {
-    icon: 'snowflake',
-    title: 'Streak insurance',
-    desc: '5 freezes a month to protect a streak',
-    to: '/goals',
-  },
-  {
-    icon: 'car',
-    title: 'Plan-my-day route',
-    desc: "Optimize today's stops into the shortest route",
-    to: '/plan-day',
-  },
-  {
     icon: 'gear',
     title: 'Billing & purchase details',
     desc: 'Manage payment, or see everything included',
