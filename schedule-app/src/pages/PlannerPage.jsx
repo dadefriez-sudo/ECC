@@ -255,10 +255,11 @@ export default function PlannerPage() {
       const body = document.querySelector('.timeline-body');
       if (!body) return;
       const past = nowMinuteOfDay() >= dayEndHour * 60;
-      (past ? body : document.body).scrollIntoView({
-        block: past ? 'end' : 'start',
-        behavior: 'smooth',
-      });
+      if (past) {
+        body.scrollIntoView({ block: 'end', behavior: 'smooth' });
+      } else {
+        body.closest('.timeline')?.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     });
     return () => cancelAnimationFrame(id);
   }, [scrollNowNonce, dayEndHour]);
@@ -767,7 +768,7 @@ export default function PlannerPage() {
   };
 
   return (
-    <div className="page">
+    <div className="page page--locked">
       <header className="page-head">
         <div className="page-head-row">
           <Brand>Planner</Brand>
@@ -1095,6 +1096,62 @@ function edgeOf(clientX, rect, zone) {
   return null;
 }
 
+// One swipe-to-navigate implementation, shared by the day timeline, the
+// month grid, and the schedule-from-calendar picker — previously each had
+// its own near-identical copy, which is exactly how they'd quietly drift
+// out of sync with each other. Nothing here is a hook (no hooks called
+// inside), so it's just a plain factory each component calls with its own
+// state — nothing shared or leaked between instances.
+//
+// `onCommit(dir)` fires the moment a swipe crosses the threshold — see the
+// day timeline's own onBodyPointerUp for why that's immediate rather than
+// deferred until an animation finishes: deferring it is what used to make
+// rapid repeated swiping silently drop most of the swipes.
+function createSwipeNav({ swipeRef, setSwipeDx, setSwipeDragging, suppressClickRef, onCommit }) {
+  const onPointerDown = (e) => {
+    if (swipeRef.current) return;
+    // A swipe that crosses to a different element never fires a native
+    // click (mousedown/mouseup targets differ), so a suppress flag set on
+    // release can otherwise outlive its gesture and eat the next
+    // unrelated tap. Clearing it here makes it self-correcting.
+    if (suppressClickRef) suppressClickRef.current = false;
+    swipeRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY };
+    setSwipeDragging(true);
+  };
+  const onPointerMove = (e) => {
+    const s = swipeRef.current;
+    if (!s || s.pointerId !== e.pointerId) return;
+    const dx = e.clientX - s.startX;
+    const dy = e.clientY - s.startY;
+    // Live 1:1 finger-following, but only once the gesture reads as
+    // clearly horizontal — otherwise a vertical scroll would visibly tug
+    // the content sideways before settling back to 0.
+    setSwipeDx(Math.abs(dx) > Math.abs(dy) * 1.4 ? dx : 0);
+  };
+  const onPointerUp = (e) => {
+    const s = swipeRef.current;
+    if (!s || s.pointerId !== e.pointerId) return;
+    swipeRef.current = null;
+    const dx = e.clientX - s.startX;
+    const dy = e.clientY - s.startY;
+    setSwipeDragging(false);
+    setSwipeDx(0);
+    if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      if (suppressClickRef) suppressClickRef.current = true;
+      confirmTick();
+      onCommit(dx < 0 ? 1 : -1);
+    }
+  };
+  const onPointerCancel = (e) => {
+    const s = swipeRef.current;
+    if (!s || s.pointerId !== e.pointerId) return;
+    swipeRef.current = null;
+    setSwipeDragging(false);
+    setSwipeDx(0);
+  };
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
+}
+
 function DayView({
   date,
   events,
@@ -1122,15 +1179,20 @@ function DayView({
   onOpenContact,
 }) {
   const bodyRef = useRef(null);
+  // The day timeline's own scroll container (.timeline, this component's
+  // root) — Planner's locked shell (see .page--locked in styles.css) makes
+  // this the one thing that scrolls, with the header and tab bar
+  // structurally outside it, so there's nothing left to accidentally push
+  // them around.
+  const getScrollEl = () => bodyRef.current?.closest('.timeline') ?? null;
   // Land on the top of the new day instead of carrying over wherever the
   // previous day happened to be scrolled to. Without this, paging through
   // several days while scrolled deep into one (a likely thing to do — the
   // whole point of paging is comparing the same time slot across days)
-  // means each new day opens already scrolled that same amount, which reads
-  // as the header having "scrolled away" the moment you land, since you
-  // never see the day's actual top.
+  // means each new day opens already scrolled that same amount.
   useEffect(() => {
-    window.scrollTo(0, 0);
+    getScrollEl()?.scrollTo(0, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
   // Brief highlight on the 30-min block a tap-to-create landed on, so the
   // new-event sheet opening (which covers the timeline) doesn't leave you
@@ -1237,9 +1299,19 @@ function DayView({
     onAddAt(minutesToTime(mins));
   };
 
+  // Background swipe-to-navigate, shared with the month grid and the
+  // schedule-from-calendar picker — see createSwipeNav.
+  const bgSwipe = createSwipeNav({
+    swipeRef,
+    setSwipeDx,
+    setSwipeDragging,
+    suppressClickRef: bgSwipeSuppressRef,
+    onCommit: (dir) => onNavigateDay?.(dir),
+  });
+
   // Pinch-to-zoom: two touch pointers on the timeline scale pxPerHour by how
   // much their distance apart has changed since the pinch started. A single
-  // pointer swipes the whole day forward/backward instead (swipeRef).
+  // pointer defers to the shared background swipe instead.
   const onBodyPointerDown = (e) => {
     if (e.pointerType === 'touch') {
       if (!pinchRef.current) pinchRef.current = { pointers: new Map(), startDist: 0, startZoom: zoom };
@@ -1255,15 +1327,7 @@ function DayView({
         return;
       }
     }
-    if (!swipeRef.current) {
-      // A swipe that crosses to a different element never fires a native
-      // click (mousedown/mouseup targets differ), so the suppress flag set
-      // on release can otherwise outlive its gesture and eat the next
-      // unrelated tap-to-add. Clearing it here makes it self-correcting.
-      bgSwipeSuppressRef.current = false;
-      swipeRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY };
-      setSwipeDragging(true);
-    }
+    bgSwipe.onPointerDown(e);
   };
   const onBodyPointerMove = (e) => {
     const p = pinchRef.current;
@@ -1277,41 +1341,18 @@ function DayView({
       }
       return;
     }
-    const s = swipeRef.current;
-    if (!s || s.pointerId !== e.pointerId) return;
-    const dx = e.clientX - s.startX;
-    const dy = e.clientY - s.startY;
-    // Live 1:1 finger-following, but only once the gesture reads as clearly
-    // horizontal — otherwise a vertical scroll would visibly tug the day
-    // sideways before settling back to 0.
-    setSwipeDx(Math.abs(dx) > Math.abs(dy) * 1.4 ? dx : 0);
+    bgSwipe.onPointerMove(e);
   };
   const onBodyPointerUp = (e) => {
-    const s = swipeRef.current;
-    if (s && s.pointerId === e.pointerId) {
-      swipeRef.current = null;
-      const dx = e.clientX - s.startX;
-      const dy = e.clientY - s.startY;
-      if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
-        bgSwipeSuppressRef.current = true;
-        confirmTick();
-        // The day change itself is immediate, same as it's always been —
-        // deferring it until a separate "exit" animation finished (an
-        // earlier version of this) turned out to be fragile under the very
-        // thing swiping through several days actually looks like: each new
-        // swipe cancelling whatever day-change the previous one had queued
-        // up, so most swipes silently did nothing and whichever one
-        // finally landed could feel like it jumped further than intended.
-        // The fluid motion instead comes entirely from the new day's own
-        // entrance animation (day-content--in-right/left below), which is
-        // sized to read as a real swoosh rather than a small settle nudge —
-        // and because nothing is deferred, every swipe registers instantly
-        // no matter how quickly they're chained.
-        onNavigateDay?.(dx < 0 ? 1 : -1);
-      }
-      setSwipeDragging(false);
-      setSwipeDx(0);
-    }
+    bgSwipe.onPointerUp(e);
+    const p = pinchRef.current;
+    if (!p) return;
+    p.pointers.delete(e.pointerId);
+    if (p.pointers.size < 2) p.startDist = 0;
+    if (p.pointers.size === 0) pinchRef.current = null;
+  };
+  const onBodyPointerCancel = (e) => {
+    bgSwipe.onPointerCancel(e);
     const p = pinchRef.current;
     if (!p) return;
     p.pointers.delete(e.pointerId);
@@ -1330,24 +1371,27 @@ function DayView({
     setSwipeDx(0);
   };
 
-  // A scroll that starts on an event block is forwarded to window.scrollBy
-  // by hand (see the 'scrolling' phase below) since the block is
-  // touch-action: none and the browser won't pan it natively. Cutting that
-  // off dead the instant the finger lifts — with no coast-down — is what
-  // reads as "not continuous" next to a real scroll starting on empty
-  // space. This replicates that momentum: keep scrolling at the release
-  // velocity, decaying it each frame, until it's imperceptibly small.
+  // A scroll that starts on an event block is forwarded to the timeline's
+  // own scroll container by hand (see the 'scrolling' phase below) since
+  // the block is touch-action: none and the browser won't pan it
+  // natively. Cutting that off dead the instant the finger lifts — with no
+  // coast-down — is what reads as "not continuous" next to a real scroll
+  // starting on empty space. This replicates that momentum: keep
+  // scrolling at the release velocity, decaying it each frame, until it's
+  // imperceptibly small.
   const MOMENTUM_FRICTION = 0.95; // multiplier applied to velocity per frame
   const MOMENTUM_MIN_VELOCITY = 0.05; // px/ms — below this, momentum stops
   const startMomentumScroll = (velocity) => {
     cancelAnimationFrame(momentumRef.current);
     if (Math.abs(velocity) < MOMENTUM_MIN_VELOCITY) return;
+    const el = getScrollEl();
+    if (!el) return;
     let v = velocity;
     let lastT = performance.now();
     const step = (t) => {
       const dt = t - lastT;
       lastT = t;
-      window.scrollBy(0, v * dt);
+      el.scrollBy(0, v * dt);
       v *= MOMENTUM_FRICTION;
       if (Math.abs(v) < MOMENTUM_MIN_VELOCITY) {
         momentumRef.current = null;
@@ -1359,9 +1403,10 @@ function DayView({
   };
 
   // How far the block has travelled, in page terms: the finger's own
-  // movement plus anything the page scrolled underneath it.
+  // movement plus anything the timeline scrolled underneath it.
   const applyArmedDelta = (g) => {
-    const dy = g.lastClientY - g.startClientY + (window.scrollY - g.startScrollY);
+    const scrollTop = getScrollEl()?.scrollTop ?? 0;
+    const dy = g.lastClientY - g.startClientY + (scrollTop - g.startScrollTop);
     setDragDy(dy);
     setDragDx(g.lastClientX - g.startClientX);
     const snap = Math.round(dy / pxPerMin / 15) * 15;
@@ -1377,9 +1422,11 @@ function DayView({
   // a single fixed speed is either too slow to be useful or too fast to
   // aim with.
   //
-  // The bounds are the sticky header's bottom and the tab bar's top, not the
-  // raw viewport: scrolling only when the pointer is under a bar the user
-  // can't see the timeline through would feel like a dead zone.
+  // The bounds are the header's bottom and the tab bar's top, not the raw
+  // viewport: scrolling only when the pointer is under a bar the user
+  // can't see the timeline through would feel like a dead zone. Both are
+  // now permanently fixed in place (see .page--locked), so these rects
+  // never move mid-drag the way a sticky header's could.
   const updateAutoScroll = (g, clientY) => {
     const headBottom = document.querySelector('.page-head')?.getBoundingClientRect().bottom ?? 0;
     const barTop = document.querySelector('.tabbar')?.getBoundingClientRect().top ?? window.innerHeight;
@@ -1402,11 +1449,16 @@ function DayView({
         g.autoRaf = 0;
         return;
       }
-      const before = window.scrollY;
-      window.scrollBy(0, g.autoSpeed);
-      // Hitting the top or bottom of the document is the natural stop —
-      // otherwise this would keep burning frames scrolling nothing.
-      if (window.scrollY === before) {
+      const el = getScrollEl();
+      if (!el) {
+        g.autoRaf = 0;
+        return;
+      }
+      const before = el.scrollTop;
+      el.scrollBy(0, g.autoSpeed);
+      // Hitting the top or bottom of the scroll container is the natural
+      // stop — otherwise this would keep burning frames scrolling nothing.
+      if (el.scrollTop === before) {
         g.autoRaf = 0;
         return;
       }
@@ -1439,7 +1491,7 @@ function DayView({
       // Where the page was when the drag began. `clientY` is
       // viewport-relative, so without this an auto-scroll would slide the
       // timeline out from under a block that stayed put on screen.
-      startScrollY: window.scrollY,
+      startScrollTop: getScrollEl()?.scrollTop ?? 0,
       lastClientY: e.clientY,
       lastClientX: e.clientX,
       autoRaf: 0,
@@ -1508,7 +1560,7 @@ function DayView({
       const now = performance.now();
       const dt = now - g.lastMoveTime;
       const scrollDelta = g.lastClientY - e.clientY;
-      window.scrollBy(0, scrollDelta);
+      getScrollEl()?.scrollBy(0, scrollDelta);
       if (dt > 0) {
         const instVelocity = scrollDelta / dt;
         // Smoothed rather than the raw last-frame value, so one jittery
@@ -1681,7 +1733,7 @@ function DayView({
       const now = performance.now();
       const dt = now - g.lastMoveTime;
       const scrollDelta = g.lastClientY - e.clientY;
-      window.scrollBy(0, scrollDelta);
+      getScrollEl()?.scrollBy(0, scrollDelta);
       if (dt > 0) {
         const instVelocity = scrollDelta / dt;
         g.velocity = g.velocity * 0.7 + instVelocity * 0.3;
@@ -1802,7 +1854,7 @@ function DayView({
         onPointerDown={onBodyPointerDown}
         onPointerMove={onBodyPointerMove}
         onPointerUp={onBodyPointerUp}
-        onPointerCancel={onBodyPointerUp}
+        onPointerCancel={onBodyPointerCancel}
       >
         <div
           key={date}
@@ -2347,45 +2399,15 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, monthStart]);
 
-  const onPointerDown = (e) => {
-    // A swipe that crosses from one cell to another never fires a native
-    // click at all (mousedown/mouseup targets differ), so the suppress flag
-    // set below can otherwise outlive its gesture and eat the next
-    // unrelated tap. Clearing it at the start of every new gesture makes it
-    // self-correcting instead of depending on a click to consume it.
-    suppressClickRef.current = false;
-    swipeRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY };
-    setSwipeDragging(true);
-  };
-  const onPointerMove = (e) => {
-    const s = swipeRef.current;
-    if (!s || s.pointerId !== e.pointerId) return;
-    const dx = e.clientX - s.startX;
-    const dy = e.clientY - s.startY;
-    // Only once the gesture reads as clearly horizontal, same reasoning as
-    // the day timeline: otherwise a vertical scroll visibly tugs the grid
-    // sideways before settling back.
-    setSwipeDx(Math.abs(dx) > Math.abs(dy) * 1.4 ? dx : 0);
-  };
-  const onPointerUp = (e) => {
-    const s = swipeRef.current;
-    if (!s || s.pointerId !== e.pointerId) return;
-    swipeRef.current = null;
-    const dx = e.clientX - s.startX;
-    const dy = e.clientY - s.startY;
-    if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
-      suppressClickRef.current = true;
-      confirmTick();
-      // Immediate, same as it's always been — see the day timeline's
-      // onBodyPointerUp for why deferring this until a separate exit
-      // animation finished turned out fragile under rapid repeated
-      // swiping. The fluid motion comes entirely from the new month's own
-      // entrance animation instead.
-      onSwipe?.(dx < 0 ? 1 : -1);
-    }
-    setSwipeDragging(false);
-    setSwipeDx(0);
-  };
+  // Shared with the day timeline and the schedule-from-calendar picker —
+  // see createSwipeNav.
+  const swipe = createSwipeNav({
+    swipeRef,
+    setSwipeDx,
+    setSwipeDragging,
+    suppressClickRef,
+    onCommit: (dir) => onSwipe?.(dir),
+  });
   const onClickCapture = (e) => {
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
@@ -2397,14 +2419,10 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
     <>
     <div
       className="month-grid"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => {
-        swipeRef.current = null;
-        setSwipeDragging(false);
-        setSwipeDx(0);
-      }}
+      onPointerDown={swipe.onPointerDown}
+      onPointerMove={swipe.onPointerMove}
+      onPointerUp={swipe.onPointerUp}
+      onPointerCancel={swipe.onPointerCancel}
       onClickCapture={onClickCapture}
     >
       <div
@@ -3188,39 +3206,22 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
     el?.scrollIntoView({ block: 'center' });
   }, [draft.date]);
 
+  // Shared with the day timeline and the month grid — see createSwipeNav.
+  // dragRef guards against a swipe starting while the draft block itself
+  // is being moved/resized.
+  const bgSwipe = createSwipeNav({
+    swipeRef,
+    setSwipeDx,
+    setSwipeDragging,
+    onCommit: (dir) => stepDay(dir),
+  });
   const onBodyPointerDown = (e) => {
-    if (dragRef.current || swipeRef.current) return;
-    swipeRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY };
-    setSwipeDragging(true);
+    if (dragRef.current) return;
+    bgSwipe.onPointerDown(e);
   };
-  const onBodyPointerMove = (e) => {
-    const sw = swipeRef.current;
-    if (!sw || sw.pointerId !== e.pointerId) return;
-    const dx = e.clientX - sw.startX;
-    const dy = e.clientY - sw.startY;
-    // Only once the gesture reads as clearly horizontal, same reasoning as
-    // the main timeline: otherwise a vertical scroll visibly tugs the day
-    // sideways before settling back.
-    setSwipeDx(Math.abs(dx) > Math.abs(dy) * 1.4 ? dx : 0);
-  };
-  const onBodyPointerUp = (e) => {
-    const sw = swipeRef.current;
-    if (!sw || sw.pointerId !== e.pointerId) return;
-    swipeRef.current = null;
-    const dx = e.clientX - sw.startX;
-    const dy = e.clientY - sw.startY;
-    if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
-      confirmTick();
-      // Immediate, same as it's always been — see the main day timeline's
-      // onBodyPointerUp for why deferring this until a separate exit
-      // animation finished turned out fragile under rapid repeated
-      // swiping. The fluid motion comes entirely from the new day's own
-      // entrance animation instead.
-      stepDay(dx < 0 ? 1 : -1);
-    }
-    setSwipeDragging(false);
-    setSwipeDx(0);
-  };
+  const onBodyPointerMove = bgSwipe.onPointerMove;
+  const onBodyPointerUp = bgSwipe.onPointerUp;
+  const onBodyPointerCancel = bgSwipe.onPointerCancel;
 
   const commit = (nextS, nextE, snapRef) => {
     const snap = `${nextS}:${nextE}`;
@@ -3285,7 +3286,7 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
           onPointerDown={onBodyPointerDown}
           onPointerMove={onBodyPointerMove}
           onPointerUp={onBodyPointerUp}
-          onPointerCancel={onBodyPointerUp}
+          onPointerCancel={onBodyPointerCancel}
         >
           <div
             key={draft.date}

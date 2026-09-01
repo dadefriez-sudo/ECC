@@ -88,6 +88,16 @@ export default function EditorSheet({
     // Ignore drags starting inside a scrollable form field, a button, or the
     // unsaved-changes confirm dialog.
     if (e.target.closest('button, input, textarea, select, .select-trigger, .confirm-backdrop')) return;
+    // Flush content (currently just the schedule-from-calendar picker) owns
+    // its own gestures end to end — vertical scroll AND horizontal
+    // day-swipe, both handled internally, with its own scroll container
+    // nested below this one now (see .editor-sheet-body--flush in
+    // styles.css). Capturing the pointer here would steal every one of
+    // those gestures the instant they start, since pointer capture
+    // retargets all further move/up events to this element instead of the
+    // one they actually landed on. Its own header's close button is the
+    // way out instead of a swipe-down-to-dismiss.
+    if (e.target.closest('.editor-sheet-body--flush')) return;
     // The grip/header strip is a fixed target, but most of the sheet is the
     // scrollable form body — swiping down from *there* only counts as
     // "dismiss" once it has nothing left to scroll up to. Otherwise this

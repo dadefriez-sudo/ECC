@@ -319,6 +319,48 @@ textarea {
   animation: none;
 }
 
+/* Planner opts out of the rest of the app's "whole document scrolls under
+   a sticky header" model. That model kept re-breaking in small, different
+   ways (a stray will-change on a descendant, scroll position carrying
+   over between days) because a sticky header's position is only ever
+   *correct by convention* — nothing stops some other rule from quietly
+   invalidating it. This is the structural fix: Planner pins itself to the
+   viewport and only its own content area scrolls, so the header and tab
+   bar are never part of the same scrolling box as the timeline in the
+   first place. There's no positioning scheme left for anything to break.
+   `left`/`right` via calc rather than `transform: translateX(-50%)` for
+   the centering, on purpose — a transform here would make this the
+   containing block for every position: fixed descendant (.select-bar,
+   .conflict-list), the same bug already fixed once for .fab above. */
+.page.page--locked {
+  position: fixed;
+  top: 0;
+  left: max(0px, calc(50% - var(--maxw) / 2));
+  right: max(0px, calc(50% - var(--maxw) / 2));
+  bottom: calc(var(--tabbar-h) + var(--saib));
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.page--locked > .page-head {
+  animation: none;
+}
+/* Whichever mode is active — Day (.timeline), Week (.agenda), Month
+   (.month-grid) — its root becomes the one scrolling element in the
+   locked shell. */
+.page--locked > .timeline,
+.page--locked > .agenda,
+.page--locked > .month-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  animation: none;
+  padding-bottom: 16px;
+}
+
 /* --- Header ------------------------------------------------------------- */
 .page-head {
   position: sticky;
@@ -1937,6 +1979,15 @@ textarea {
    the sheet's real bottom edge, "floating" with a dead gap beneath it. */
 .editor-sheet-body--flush {
   padding-bottom: calc(16px + var(--saib));
+  /* Currently only used by the schedule-from-calendar picker, which now
+     manages its own internal scroll (see .schedule-calendar below) so its
+     day-nav row can stay fixed while just the hour grid scrolls under it —
+     letting this container scroll too would just be nested scrolling. If
+     another flush use ever needs the body to scroll normally, split that
+     out into its own modifier instead of changing this one under it. */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .editor-sheet-foot {
   padding: 10px 16px calc(14px + var(--saib));
@@ -2558,8 +2609,8 @@ textarea {
 }
 .day-content--in-right,
 .day-content--in-left {
-  animation-duration: 0.26s;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-duration: 0.19s;
+  animation-timing-function: cubic-bezier(0.22, 0.85, 0.32, 1);
   animation-fill-mode: both;
 }
 .day-content--in-right {
@@ -2568,13 +2619,14 @@ textarea {
 .day-content--in-left {
   animation-name: day-slide-in-left;
 }
-/* Distance chosen to read as a real swoosh rather than a small settle-in
-   nudge; still short enough that tapping the prev/next chevrons quickly,
-   over and over, doesn't feel sluggish. */
+/* Distance/duration tuned light on purpose — enough to read as a real
+   directional swoosh, short of a big dramatic slide. Still short enough
+   that tapping the prev/next chevrons quickly, over and over, doesn't
+   feel sluggish. */
 @keyframes day-slide-in-right {
   from {
-    transform: translateX(36px);
-    opacity: 0.4;
+    transform: translateX(22px);
+    opacity: 0.5;
   }
   to {
     transform: translateX(0);
@@ -2583,8 +2635,8 @@ textarea {
 }
 @keyframes day-slide-in-left {
   from {
-    transform: translateX(-36px);
-    opacity: 0.4;
+    transform: translateX(-22px);
+    opacity: 0.5;
   }
   to {
     transform: translateX(0);
@@ -2678,12 +2730,28 @@ textarea {
 
 /* --- Event editor: "Schedule from calendar" ------------------------------- */
 .schedule-calendar {
+  /* Fills .editor-sheet-body--flush, which no longer scrolls itself — see
+     its own comment. Same locked-header approach as the main day timeline:
+     the nav row is a normal (non-scrolling) flex child, only .timeline
+     below it scrolls. */
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding-bottom: 8px;
+}
+.schedule-calendar > .timeline {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .schedule-nav {
   justify-content: center;
   gap: 16px;
   margin-bottom: 4px;
+  flex: none;
 }
 .schedule-ghost-block {
   opacity: 0.45;
