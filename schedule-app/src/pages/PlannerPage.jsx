@@ -1122,6 +1122,16 @@ function DayView({
   onOpenContact,
 }) {
   const bodyRef = useRef(null);
+  // Land on the top of the new day instead of carrying over wherever the
+  // previous day happened to be scrolled to. Without this, paging through
+  // several days while scrolled deep into one (a likely thing to do — the
+  // whole point of paging is comparing the same time slot across days)
+  // means each new day opens already scrolled that same amount, which reads
+  // as the header having "scrolled away" the moment you land, since you
+  // never see the day's actual top.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [date]);
   // Brief highlight on the 30-min block a tap-to-create landed on, so the
   // new-event sheet opening (which covers the timeline) doesn't leave you
   // guessing which slot you actually hit. Keyed by a fresh id per tap
@@ -1800,7 +1810,6 @@ function DayView({
           style={{
             transform: `translateX(${swipeDx}px)`,
             transition: swipeDragging ? 'none' : `transform ${SWIPE_SNAP_BACK_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
-            willChange: 'transform',
           }}
         >
           {hours.map((h) => (
@@ -2404,7 +2413,6 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
         style={{
           transform: `translateX(${swipeDx}px)`,
           transition: swipeDragging ? 'none' : `transform ${SWIPE_SNAP_BACK_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
-          willChange: 'transform',
         }}
       >
       <div className="month-dow-row">
@@ -3166,16 +3174,19 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
 
   const stepDay = (n) => setDraft({ ...draft, date: toISODate(addDays(draft.date, n)) });
 
-  // Snap the view to the event's own time when this opens, rather than
-  // wherever the timeline happens to scroll to by default (its top, or
-  // whatever's left over from a previous open) — for an evening event that
-  // could be most of the day's worth of scrolling to find. Instant, not
-  // smooth: this is initial positioning, not a user-triggered jump.
+  // Snap the view to the event's own time when this opens, and again every
+  // time a swipe/chevron changes the day — rather than carrying over
+  // whatever the previous day happened to be scrolled to (the main day
+  // timeline had the same gap: paging through days while scrolled deep into
+  // one left each new day opening at that same carried-over position). Same
+  // time slot, different day is exactly the comparison this picker is for,
+  // so re-centering on every change is the consistent behavior, not just
+  // the first open. Instant, not smooth: this is positioning, not a
+  // user-triggered jump.
   useEffect(() => {
     const el = bodyRef.current?.querySelector('.schedule-draft-block');
     el?.scrollIntoView({ block: 'center' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [draft.date]);
 
   const onBodyPointerDown = (e) => {
     if (dragRef.current || swipeRef.current) return;
@@ -3282,7 +3293,6 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
             style={{
               transform: `translateX(${swipeDx}px)`,
               transition: swipeDragging ? 'none' : `transform ${SWIPE_SNAP_BACK_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
-              willChange: 'transform',
             }}
           >
           {hours.map((h) => (
