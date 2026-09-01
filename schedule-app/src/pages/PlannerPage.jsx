@@ -899,7 +899,12 @@ export default function PlannerPage() {
         />
       )}
 
-      {!selectMode && (
+      {/* Not just !selectMode — the FAB is portaled straight to <body>, so
+          it renders on its own regardless of what's on top of Planner
+          itself. Suppressed for the whole time the event editor sheet is
+          open (not only its schedule-from-calendar sub-view) since the
+          sheet is meant to be full-screen the entire time either way. */}
+      {!selectMode && !editing && (
         <ExpandableFab
           onAction={(id) => {
             if (id === 'event') openNew(cursor);
@@ -3277,7 +3282,6 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
           <Chevron dir="right" />
         </button>
       </div>
-      <p className="muted small center-pad">Drag the block to move it, or its top/bottom handles to resize.</p>
       <div className="timeline">
         <div
           className="timeline-body"
