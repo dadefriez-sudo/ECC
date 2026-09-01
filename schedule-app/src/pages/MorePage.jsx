@@ -13,6 +13,8 @@ import {
   requestNotificationPermission,
 } from '../data/notifications.js';
 import { downloadICS, parseICS } from '../data/ics.js';
+import { parseVCard, generateVCard } from '../data/vcard.js';
+import { syncContactAddressPin } from '../data/geocode.js';
 import {
   formatTime,
   EVENT_TYPE_KINDS,
@@ -152,7 +154,8 @@ const SETTINGS_INDEX = [
     groups: [
       { id: 'g14', title: 'People groups', keywords: 'contacts status label category colour color' },
       { id: 'gswipe', title: 'People swipe actions', keywords: 'contacts gesture log schedule call text delete' },
-      { id: 'g13', title: 'Birthdays & anniversaries', keywords: 'contacts dates special yearly' },
+      { id: 'g19', title: 'Contact import / export', keywords: 'vcf vcard contacts address book download backup google apple outlook' },
+      { id: 'g13', title: 'Contact notifications', keywords: 'contacts dates special yearly birthdays anniversaries overdue reconnect touch base nudge' },
     ],
   },
   {
@@ -166,7 +169,6 @@ const SETTINGS_INDEX = [
     label: 'Notifications',
     groups: [
       { id: 'g10', title: 'Allow notifications', keywords: 'alerts permission push allow' },
-      { id: 'g12', title: 'Reconnect reminders', keywords: 'contacts overdue people touch base nudge' },
     ],
   },
   {
@@ -263,6 +265,7 @@ export default function MorePage() {
   });
   const fileRef = useRef(null);
   const icsFileRef = useRef(null);
+  const vcfFileRef = useRef(null);
 
   const theme = state.settings?.theme || 'system';
   const notifOn = !!state.settings?.notifications && notificationPermission() === 'granted';
@@ -304,6 +307,57 @@ export default function MorePage() {
         alert(`Imported ${imported.length} event${imported.length === 1 ? '' : 's'}.`);
       } catch {
         alert('That file could not be read as an .ics calendar.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const exportContactsVCF = () => {
+    const blob = new Blob([generateVCard(state.contacts)], { type: 'text/vcard' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contacts-${todayISO()}.vcf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const importContactsVCF = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = parseVCard(reader.result);
+        if (imported.length === 0) return alert('No contacts found in that file.');
+        const newContacts = imported.map((c) => ({
+          id: uid('c'),
+          name: c.name,
+          phone: c.phone,
+          email: c.email,
+          address: c.address,
+          photo: '',
+          statusId: state.statuses[0]?.id || '',
+          tags: [],
+          notes: c.notes,
+          lastContacted: '',
+          createdAt: todayISO(),
+        }));
+        newContacts.forEach((contact) => actions.addContact(contact));
+        alert(`Imported ${newContacts.length} contact${newContacts.length === 1 ? '' : 's'}.`);
+        // Nominatim's public geocoder enforces roughly one request per
+        // second, so addresses are synced one at a time, a beat apart,
+        // instead of all at once — see the same pattern (and reasoning) on
+        // the People tab's own import.
+        (async () => {
+          for (const contact of newContacts) {
+            if (!contact.address) continue;
+            await syncContactAddressPin(contact, state, actions);
+            await new Promise((r) => setTimeout(r, 1100));
+          }
+        })();
+      } catch {
+        alert('That file could not be read as a vCard (.vcf) file.');
       }
     };
     reader.readAsText(file);
@@ -957,9 +1011,23 @@ export default function MorePage() {
           options={CONTACT_SWIPE_OPTIONS}
         />
       </SettingsGroup>
+      <SettingsGroup {...grp('g19')}>
+        <span className="detail-label">Contact import / export</span>
+        <p className="muted small">Move people to or from other address book apps using the .vcf format.</p>
+        <div className="stack-btns">
+          <button className="btn btn-ghost full" onClick={exportContactsVCF}>
+            Export contacts (.vcf)
+          </button>
+          <button className="btn btn-ghost full" onClick={() => vcfFileRef.current?.click()}>
+            Import contacts (.vcf)
+          </button>
+          <input ref={vcfFileRef} type="file" accept=".vcf,text/vcard" hidden onChange={importContactsVCF} />
+        </div>
+      </SettingsGroup>
       <SettingsGroup {...grp('g13')}>
+        <span className="detail-label">Contact notifications</span>
         <div className="section-head">
-          <span className="detail-label">Birthdays & anniversaries</span>
+          <span>Birthdays & anniversaries</span>
           <button
             className={`toggle${s.contactBirthdaysEnabled !== false ? ' toggle--on' : ''}`}
             role="switch"
@@ -970,9 +1038,54 @@ export default function MorePage() {
           </button>
         </div>
         <p className="muted small">
-          Surface a person's birthday or anniversary on Home and the calendar. Each is still
-          optional per person — set them from a contact's Edit sheet.
+          Surface a person's birthday or anniversary on Home and the calendar, and send a
+          reminder notification the morning of. Each date is still optional per person —
+          set them from a contact's Edit sheet.
         </p>
+        <div className="section-head">
+          <span>Reconnect reminders</span>
+          <button
+            className={`toggle${s.reconnectRemindersEnabled === true ? ' toggle--on' : ''}`}
+            role="switch"
+            aria-checked={s.reconnectRemindersEnabled === true}
+            onClick={() =>
+              actions.setSettings({ reconnectRemindersEnabled: s.reconnectRemindersEnabled !== true })
+            }
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
+        <p className="muted small">
+          Flag people on the People tab when you haven't been in touch for this long.
+          Only applies to people you've actually logged contact with — someone you've
+          added but never spoken to has no lapse to report. You can override the
+          interval per person.
+        </p>
+        {s.reconnectRemindersEnabled === true && (
+        <div className="cadence-setting">
+          <button
+            className="step-btn"
+            onClick={() =>
+              actions.setSettings({ reconnectDays: Math.max(1, (state.settings?.reconnectDays ?? 30) - 5) })
+            }
+            aria-label="Fewer days"
+          >
+            −
+          </button>
+          <span className="cadence-value">
+            <strong>{state.settings?.reconnectDays ?? 30}</strong> days
+          </span>
+          <button
+            className="step-btn step-btn--plus"
+            onClick={() =>
+              actions.setSettings({ reconnectDays: Math.min(365, (state.settings?.reconnectDays ?? 30) + 5) })
+            }
+            aria-label="More days"
+          >
+            +
+          </button>
+        </div>
+        )}
       </SettingsGroup>
 
       <SettingsSection label="Map" hidden={!sectionShown('Map')} />
@@ -1065,52 +1178,6 @@ export default function MorePage() {
             ? 'Get reminders for goals and events while Keystone is open. (A web app can’t alert you once it’s fully closed.)'
             : 'This browser doesn’t support notifications.'}
         </p>
-      </SettingsGroup>
-      <SettingsGroup {...grp('g12')}>
-        <div className="section-head">
-          <span className="detail-label">Reconnect reminders</span>
-          <button
-            className={`toggle${s.reconnectRemindersEnabled === true ? ' toggle--on' : ''}`}
-            role="switch"
-            aria-checked={s.reconnectRemindersEnabled === true}
-            onClick={() =>
-              actions.setSettings({ reconnectRemindersEnabled: s.reconnectRemindersEnabled !== true })
-            }
-          >
-            <span className="toggle-knob" />
-          </button>
-        </div>
-        <p className="muted small">
-          Flag people on the People tab when you haven't been in touch for this long.
-          Only applies to people you've actually logged contact with — someone you've
-          added but never spoken to has no lapse to report. You can override the
-          interval per person.
-        </p>
-        {s.reconnectRemindersEnabled === true && (
-        <div className="cadence-setting">
-          <button
-            className="step-btn"
-            onClick={() =>
-              actions.setSettings({ reconnectDays: Math.max(1, (state.settings?.reconnectDays ?? 30) - 5) })
-            }
-            aria-label="Fewer days"
-          >
-            −
-          </button>
-          <span className="cadence-value">
-            <strong>{state.settings?.reconnectDays ?? 30}</strong> days
-          </span>
-          <button
-            className="step-btn step-btn--plus"
-            onClick={() =>
-              actions.setSettings({ reconnectDays: Math.min(365, (state.settings?.reconnectDays ?? 30) + 5) })
-            }
-            aria-label="More days"
-          >
-            +
-          </button>
-        </div>
-        )}
       </SettingsGroup>
 
       <SettingsSection label="App" hidden={!sectionShown('App')} />

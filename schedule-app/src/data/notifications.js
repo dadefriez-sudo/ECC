@@ -19,8 +19,15 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { todayISO, timeToMinutes, matchesRule, formatTime } from './helpers.js';
+import { contactDatesOn, contactDateLabel } from './contactDates.js';
 
 const isNative = Capacitor.isNativePlatform();
+
+// Birthdays/anniversaries have no per-contact reminder time (unlike goals),
+// so they get one fixed time of day instead — morning, so it reads as "here's
+// who to remember today" rather than an alert that could land at any hour
+// depending on when the app happens to be open.
+const CONTACT_DATE_REMINDER_MIN = 9 * 60; // 9:00 AM
 
 export function notificationsSupported() {
   return isNative || (typeof window !== 'undefined' && 'Notification' in window);
@@ -179,6 +186,17 @@ export function runReminderScan(state) {
     }
   }
 
+  // Birthdays/anniversaries: one per contact date landing today, from 9am
+  // onward — no upper cutoff like the others above, since missing the
+  // morning window on a once-a-year reminder because you opened the app at
+  // noon would be worse than a slightly-late nudge.
+  if (state.settings?.contactBirthdaysEnabled !== false && nowMin >= CONTACT_DATE_REMINDER_MIN) {
+    for (const entry of contactDatesOn(state.contacts, today)) {
+      const { text, detail } = contactDateLabel(entry);
+      fire(`contactdate:${entry.id}:${today}`, `${entry.kind === 'birthday' ? '🎂' : '💍'} ${text}`, detail);
+    }
+  }
+
   if (changed) saveFired(fired);
 }
 
@@ -249,6 +267,21 @@ export async function scheduleNativeReminders(state) {
         title: t.title || 'Task due',
         body: `Due at ${formatTime(t.dueTime)} · in ${lead} min`,
         at: trigger,
+      });
+    }
+  }
+
+  // Only scheduled here if 9am hasn't passed yet today — once it has, the
+  // foreground scan above is what catches it (no upper cutoff there, so it
+  // still fires whenever the app is next opened that day).
+  if (state.settings?.contactBirthdaysEnabled !== false && CONTACT_DATE_REMINDER_MIN >= nowMin) {
+    for (const entry of contactDatesOn(state.contacts, today)) {
+      const { text, detail } = contactDateLabel(entry);
+      upcoming.push({
+        key: `contactdate:${entry.id}:${today}`,
+        title: `${entry.kind === 'birthday' ? '🎂' : '💍'} ${text}`,
+        body: detail,
+        at: CONTACT_DATE_REMINDER_MIN,
       });
     }
   }
