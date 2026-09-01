@@ -44,6 +44,8 @@ const ProPage = lazy(() => import('./pages/ProPage.jsx'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
 const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
 const SearchPage = lazy(() => import('./pages/SearchPage.jsx'));
+const NotesPage = lazy(() => import('./pages/NotesPage.jsx'));
+const TasksPage = lazy(() => import('./pages/TasksPage.jsx'));
 
 // Keeps state.settings.isPro (read all over the app already) in sync with
 // the real subscription status from the backend, once someone's signed in.
@@ -594,6 +596,8 @@ export default function App() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/notes" element={<NotesPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

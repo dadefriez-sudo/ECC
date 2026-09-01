@@ -3384,6 +3384,11 @@ textarea {
   justify-content: space-between;
   min-height: 30px;
 }
+.section-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
 /* --- Collapsible settings cards ------------------------------------------ */
 /* Padding moves off the card and onto the head/body, so a collapsed card is
@@ -4494,6 +4499,14 @@ textarea {
   top: 8px;
   right: 8px;
   font-size: 12px;
+}
+/* Only ever shown on the dedicated Notes page — Home's own notes block
+   filters contact-linked notes out entirely, so this never renders there. */
+.note-contact-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
 }
 .note-title {
   display: block;

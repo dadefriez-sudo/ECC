@@ -645,7 +645,12 @@ export default function HomePage() {
           if (b.id === 'tasks') {
             return (
               <section className="detail-section" key="tasks">
-                <span className="detail-label">Tasks</span>
+                <div className="section-head">
+                  <span className="detail-label">Tasks</span>
+                  <button className="btn btn-ghost btn-sm" onClick={() => navigate('/tasks')}>
+                    See all
+                  </button>
+                </div>
                 <ul className="task-list">
                   {openTasks.map(renderTaskRow)}
                   {openTasks.length === 0 && doneTasks.length === 0 && (
@@ -694,9 +699,14 @@ export default function HomePage() {
               <section className="detail-section" key="notes">
                 <div className="section-head">
                   <span className="detail-label"><Icon name="note" /> Notes</span>
-                  <button className="btn btn-ghost btn-sm" onClick={openNewNote}>
-                    + Add
-                  </button>
+                  <div className="section-head-actions">
+                    <button className="btn btn-ghost btn-sm" onClick={() => navigate('/notes')}>
+                      See all
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={openNewNote}>
+                      + Add
+                    </button>
+                  </div>
                 </div>
                 {notes.length === 0 ? (
                   <p className="muted small">No notes yet.</p>
