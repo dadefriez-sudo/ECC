@@ -83,11 +83,12 @@ const SwipeRow = forwardRef(function SwipeRow(
     const allowed = actionFor(dxRaw);
     const clamped = allowed ? Math.max(-MAX_SWIPE_PX, Math.min(MAX_SWIPE_PX, dxRaw)) : 0;
     setDx(clamped);
-    const nowArmed = Math.abs(clamped) >= ARM_THRESHOLD_PX;
-    if (nowArmed !== g.armed) {
-      g.armed = nowArmed;
-      warnTick();
-    }
+    // Arming is tracked live (crossing the threshold still visibly commits
+    // the row to the action, on the way there), but the haptic itself only
+    // fires once on release — see onPointerUp — so it means "this happened"
+    // rather than firing again on every cross back and forth over the
+    // threshold mid-drag.
+    g.armed = Math.abs(clamped) >= ARM_THRESHOLD_PX;
   };
   const onPointerUp = (e) => {
     const g = gestureRef.current;
@@ -99,6 +100,7 @@ const SwipeRow = forwardRef(function SwipeRow(
     const action = actionFor(dx);
     if (g.armed && action) {
       if (action.destructive) {
+        warnTick();
         slideAway(dx > 0 ? 1 : -1, action.run);
       } else {
         // Snap back first — the row is staying, and running the action on
