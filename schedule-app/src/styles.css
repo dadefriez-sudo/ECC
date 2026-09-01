@@ -1881,10 +1881,18 @@ textarea {
 .editor-sheet {
   position: fixed;
   inset: 0;
-  /* dvh, not the implicit keyboard-inclusive height from inset:0 alone, so
-     the sheet shrinks with the on-screen keyboard — see .modal-sheet above
-     for why that matters for reaching fields near the bottom of the form. */
-  height: 100dvh;
+  /* No explicit height — inset:0 alone already pins this to the true
+     containing block on all four sides, which is the most robust way to
+     guarantee full coverage (an explicit `height: 100dvh` used to be here
+     instead, for keyboard-shrink behavior, but if dvh is ever computed even
+     slightly short on a given WebView, an explicit height wins the
+     over-constrained top/height/bottom resolution and `bottom` silently
+     stops being 0 — the sheet falls short of the real screen edge and
+     whatever's behind it, including the tab bar, shows through the gap).
+     Keyboard-shrink still works without it: the viewport meta tag already
+     sets `interactive-widget=resizes-content`, which makes the layout
+     viewport itself shrink when the keyboard opens, so inset:0's ordinary
+     sizing follows that automatically. */
   z-index: 1000;
   background: var(--surface);
   display: flex;

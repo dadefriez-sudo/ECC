@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { confirmTick, warnTick } from '../data/haptics.js';
 import { useBackDismissAdvanced } from '../data/useBackDismiss.js';
 
@@ -11,6 +12,17 @@ const DISMISS_THRESHOLD = 110;
 // `dirty` tells the sheet whether the draft differs from what it started
 // with — pass a cheap comparison (e.g. JSON.stringify(draft) !== initialJson)
 // from the caller, since only it knows its form shape.
+//
+// Rendered into <body> rather than inline (see ExpandableFab for the same
+// pattern) — Planner's own page wraps itself in a fixed, overflow: hidden
+// shell (.page--locked, for the locked header/tab bar) that stops short of
+// the tab bar on purpose. A position: fixed descendant still gets clipped
+// to an overflow: hidden ancestor's own bounds despite being fixed, so
+// without the portal this sheet was silently cut off at that same
+// boundary — full width and z-index correct, just short a strip at the
+// bottom, with the tab bar showing through the gap underneath the Done/
+// Save button. A portal takes it out of reach of any such ancestor,
+// permanently, regardless of what ends up wrapping whichever page opens it.
 export default function EditorSheet({
   open,
   title,
@@ -120,7 +132,7 @@ export default function EditorSheet({
     setDragY(0);
   };
 
-  return (
+  return createPortal(
     <div
       className="editor-sheet"
       style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}
@@ -195,6 +207,7 @@ export default function EditorSheet({
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
