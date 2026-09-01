@@ -3153,6 +3153,64 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
   );
 }
 
+// A bare month grid for jumping straight to a day — no events, no swipe,
+// just the same cell layout as the main calendar's Month view (see
+// MonthView above) scaled down into a popup. Kept local to this file since
+// it's only used by the schedule-from-calendar picker below for now; worth
+// promoting to components/ if another date-at-the-top ever wants the same
+// jump.
+function MiniMonthPicker({ open, month, selected, onClose, onPickMonth, onPickDate }) {
+  if (!open) return null;
+  const weeks = monthGrid(month);
+  const monthNum = month.getMonth();
+  const today = todayISO();
+  return (
+    <Modal open={open} title={formatMonthLabel(month)} onClose={onClose}>
+      <div className="mini-month-nav">
+        <button className="icon-btn" onClick={() => onPickMonth(addMonths(month, -1))} aria-label="Previous month">
+          <Chevron dir="left" />
+        </button>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            onPickMonth(startOfMonth(fromISODate(today)));
+            onPickDate(today);
+          }}
+        >
+          Today
+        </button>
+        <button className="icon-btn" onClick={() => onPickMonth(addMonths(month, 1))} aria-label="Next month">
+          <Chevron dir="right" />
+        </button>
+      </div>
+      <div className="month-grid mini-month-grid">
+        <div className="month-dow-row">
+          {WEEKDAY_LETTERS.map((l, i) => (
+            <span key={i}>{l}</span>
+          ))}
+        </div>
+        {weeks.map((week, wi) => (
+          <div className="month-week" key={wi}>
+            {week.map((d) => {
+              const iso = toISODate(d);
+              const inMonth = d.getMonth() === monthNum;
+              return (
+                <button
+                  key={iso}
+                  className={`month-cell${inMonth ? '' : ' month-cell--out'}${isToday(iso) ? ' month-cell--today' : ''}${iso === selected ? ' month-cell--cursor' : ''}`}
+                  onClick={() => onPickDate(iso)}
+                >
+                  <span className="month-daynum">{d.getDate()}</span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </Modal>
+  );
+}
+
 // --- Schedule-from-calendar: drag the draft event directly on the day timeline ---
 
 const SCHED_PX_PER_HOUR = 64;
@@ -3196,6 +3254,20 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
   for (let h = dayStart; h <= dayEnd; h++) hours.push(h);
 
   const stepDay = (n) => setDraft({ ...draft, date: toISODate(addDays(draft.date, n)) });
+
+  // Tapping the date label jumps straight to any day via a mini month grid
+  // instead of only one day at a time via the chevrons — the same jump the
+  // main calendar's own Month view offers, scaled down for this picker.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(() => startOfMonth(fromISODate(draft.date)));
+  const openPicker = () => {
+    setPickerMonth(startOfMonth(fromISODate(draft.date)));
+    setPickerOpen(true);
+  };
+  const pickDate = (iso) => {
+    setDraft({ ...draft, date: iso });
+    setPickerOpen(false);
+  };
 
   // Snap the view to the event's own time when this opens, and again every
   // time a swipe/chevron changes the day — rather than carrying over
@@ -3277,11 +3349,21 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
         <button className="icon-btn" onClick={() => stepDay(-1)} aria-label="Previous day">
           <Chevron dir="left" />
         </button>
-        <span className="week-label">{formatDayLabel(draft.date)}</span>
+        <button className="week-label" onClick={openPicker}>
+          {formatDayLabel(draft.date)}
+        </button>
         <button className="icon-btn" onClick={() => stepDay(1)} aria-label="Next day">
           <Chevron dir="right" />
         </button>
       </div>
+      <MiniMonthPicker
+        open={pickerOpen}
+        month={pickerMonth}
+        selected={draft.date}
+        onClose={() => setPickerOpen(false)}
+        onPickMonth={setPickerMonth}
+        onPickDate={pickDate}
+      />
       <div className="timeline">
         <div
           className="timeline-body"

@@ -2829,6 +2829,17 @@ textarea {
 .month-grid {
   margin-top: 12px;
 }
+/* --- Mini month picker (schedule-from-calendar's date popup) ------------ */
+.mini-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.mini-month-grid {
+  margin-top: 0;
+}
 .month-dow-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
