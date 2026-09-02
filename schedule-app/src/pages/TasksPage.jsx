@@ -11,6 +11,7 @@ import { useToast } from '../data/toast.jsx';
 import { useEdgeFade } from '../data/useEdgeFade.js';
 import { requestNotificationPermission, notificationsSupported } from '../data/notifications.js';
 import { todayISO, addDays, toISODate, formatTime, formatShortDate } from '../data/helpers.js';
+import { useBackDismiss } from '../data/useBackDismiss.js';
 
 const TASK_REMINDER_OFFSETS = [
   { mins: 15, label: '15 min before' },
@@ -40,6 +41,14 @@ export default function TasksPage() {
   const taskCompleteAnim = state.settings?.taskCompleteAnim ?? true;
   const taskSwipeRefs = useRef(new Map());
   const today = todayISO();
+
+  // Only reachable from Home's "See all" link, so the device's own back
+  // gesture (Android hardware/nav-bar back, iOS edge swipe) should return
+  // there — not wherever raw history happens to put it. Registered for the
+  // page's whole lifetime, layering correctly under any open editor sheet
+  // (its own useBackDismiss closes first; this one only fires once nothing
+  // else is intercepting).
+  useBackDismiss(true, () => navigate('/'));
 
   const deleteTaskWithUndo = (t) => {
     actions.deleteTask(t.id);
@@ -311,9 +320,6 @@ export default function TasksPage() {
     <div className="page">
       <header className="page-head">
         <div className="page-head-row">
-          <button className="icon-btn" onClick={() => navigate('/')} aria-label="Back">
-            <Icon name="chevronLeft" size={22} />
-          </button>
           <Brand>Tasks</Brand>
         </div>
       </header>

@@ -7,6 +7,7 @@ import { Brand } from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
 import { useToast } from '../data/toast.jsx';
 import { todayISO } from '../data/helpers.js';
+import { useBackDismiss } from '../data/useBackDismiss.js';
 
 // Fixed pale tints rather than theme colours — a tinted note forces dark
 // text (see .note-card--tinted), so every swatch has to stay light enough
@@ -49,6 +50,14 @@ export default function NotesPage() {
   const showToast = useToast();
   const today = todayISO();
   const [query, setQuery] = useState('');
+
+  // Only reachable from Home's "See all" link, so the device's own back
+  // gesture (Android hardware/nav-bar back, iOS edge swipe) should return
+  // there — not wherever raw history happens to put it. Registered for the
+  // page's whole lifetime, layering correctly under any open editor sheet
+  // (its own useBackDismiss closes first; this one only fires once nothing
+  // else is intercepting).
+  useBackDismiss(true, () => navigate('/'));
 
   const contactById = useMemo(
     () => Object.fromEntries((state.contacts || []).map((c) => [c.id, c])),
@@ -145,9 +154,6 @@ export default function NotesPage() {
     <div className="page">
       <header className="page-head">
         <div className="page-head-row">
-          <button className="icon-btn" onClick={() => navigate('/')} aria-label="Back">
-            <Icon name="chevronLeft" size={22} />
-          </button>
           <Brand>Notes</Brand>
         </div>
         <input
