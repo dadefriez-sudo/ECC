@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore, useActions } from '../data/store.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import Checkbox from '../components/Checkbox.jsx';
@@ -34,6 +35,7 @@ function CheckIcon() {
 export default function TasksPage() {
   const { state } = useStore();
   const actions = useActions();
+  const navigate = useNavigate();
   const showToast = useToast();
   const taskCompleteAnim = state.settings?.taskCompleteAnim ?? true;
   const taskSwipeRefs = useRef(new Map());
@@ -309,6 +311,9 @@ export default function TasksPage() {
     <div className="page">
       <header className="page-head">
         <div className="page-head-row">
+          <button className="icon-btn" onClick={() => navigate('/')} aria-label="Back">
+            <Icon name="chevronLeft" size={22} />
+          </button>
           <Brand>Tasks</Brand>
         </div>
       </header>

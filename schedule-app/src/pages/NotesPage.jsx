@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore, useActions } from '../data/store.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import Checkbox from '../components/Checkbox.jsx';
@@ -44,6 +45,7 @@ function CheckIcon() {
 export default function NotesPage() {
   const { state } = useStore();
   const actions = useActions();
+  const navigate = useNavigate();
   const showToast = useToast();
   const today = todayISO();
   const [query, setQuery] = useState('');
@@ -143,6 +145,9 @@ export default function NotesPage() {
     <div className="page">
       <header className="page-head">
         <div className="page-head-row">
+          <button className="icon-btn" onClick={() => navigate('/')} aria-label="Back">
+            <Icon name="chevronLeft" size={22} />
+          </button>
           <Brand>Notes</Brand>
         </div>
         <input
