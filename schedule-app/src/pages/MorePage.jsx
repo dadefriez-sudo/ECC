@@ -12,6 +12,9 @@ import {
   notificationsSupported,
   notificationPermission,
   requestNotificationPermission,
+  exactAlarmsConfigurable,
+  exactAlarmPermission,
+  requestExactAlarmPermission,
 } from '../data/notifications.js';
 import { downloadICS, parseICS } from '../data/ics.js';
 import { parseVCard, generateVCard } from '../data/vcard.js';
@@ -373,6 +376,11 @@ export default function MorePage() {
     const perm = await requestNotificationPermission();
     setPermTick((t) => t + 1);
     actions.setSettings({ notifications: perm === 'granted' });
+  };
+
+  const handleExactAlarms = async () => {
+    await requestExactAlarmPermission();
+    setPermTick((t) => t + 1);
   };
 
   const submitFeedback = (mode) => {
@@ -1184,6 +1192,17 @@ export default function MorePage() {
               : 'Get reminders for goals and events while Keystone is open. (A web app can’t alert you once it’s fully closed.)'
             : 'This browser doesn’t support notifications.'}
         </p>
+        {notifOn && exactAlarmsConfigurable() && exactAlarmPermission() !== 'granted' && (
+          <>
+            <p className="muted small">
+              One more Android setting is needed for reminders to fire at the exact time while Keystone is
+              closed — without it, Android can delay them.
+            </p>
+            <button className="btn btn-ghost full" onClick={handleExactAlarms}>
+              Enable exact-time reminders
+            </button>
+          </>
+        )}
       </SettingsGroup>
 
       <SettingsSection label="App" hidden={!sectionShown('App')} />

@@ -73,6 +73,49 @@ export async function requestNotificationPermission() {
   }
 }
 
+// Android 12+ (S) gates *exact*-time alarms behind a separate permission
+// from the notification permission above — without it, scheduleNativeReminders
+// below still schedules reminders, but Android defers them to its own Doze
+// maintenance windows instead of firing at the requested time (see
+// LocalNotificationManager.setExactIfPossible's fallback in the plugin's
+// Android source). That reads as "reminders don't fire when the app is
+// closed" even though they technically do, just late. Not a concept on iOS
+// or web, so this is Android-only; other platforms report "granted" so
+// callers don't need their own platform branch on top of this one.
+const isAndroid = isNative && Capacitor.getPlatform() === 'android';
+let exactAlarmState = 'granted'; // 'granted' | 'denied' | 'unknown' — only meaningful when isAndroid
+if (isAndroid) {
+  exactAlarmState = 'unknown';
+  LocalNotifications.checkExactNotificationSetting()
+    .then((s) => {
+      exactAlarmState = s.exact_alarm;
+    })
+    .catch(() => {});
+}
+
+export function exactAlarmsConfigurable() {
+  return isAndroid;
+}
+
+export function exactAlarmPermission() {
+  return exactAlarmState;
+}
+
+// Opens the system "Alarms & reminders" settings screen for this app (the
+// plugin's own wording — there's no in-app grant dialog for this one, per
+// Android's design for "special" permissions). Resolves once the user
+// returns to the app with their choice.
+export async function requestExactAlarmPermission() {
+  if (!isAndroid) return exactAlarmState;
+  try {
+    const s = await LocalNotifications.changeExactNotificationSetting();
+    exactAlarmState = s.exact_alarm;
+    return exactAlarmState;
+  } catch {
+    return exactAlarmState;
+  }
+}
+
 // Fires right now — used by runReminderScan() below and by the arrival-
 // reminder watch in App.jsx. On native, "right now" is a local notification
 // scheduled a few hundred ms out, since the plugin has no separate

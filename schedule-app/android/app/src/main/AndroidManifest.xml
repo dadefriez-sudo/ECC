@@ -47,4 +47,19 @@
          a contact's address, and arrival reminders. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- Android 12+ (S) gates *exact*-time alarms behind this separate
+         permission from plain notification permission. Without it,
+         @capacitor/local-notifications still schedules reminders (see
+         LocalNotificationManager.setExactIfPossible's fallback), but Android
+         defers them to its own Doze maintenance windows instead of firing
+         at the requested time — which reads as "reminders don't work when
+         the app is closed" even though they technically do, just late.
+         This is a "special" permission: declaring it doesn't show a
+         install-time prompt, and on Android 13+ it isn't auto-granted —
+         the user still has to flip it on via Settings (see
+         MorePage.jsx's "Enable exact-time reminders" button, which opens
+         that screen directly through the plugin's
+         changeExactNotificationSetting()). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 </manifest>
