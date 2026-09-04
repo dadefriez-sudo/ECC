@@ -2269,6 +2269,13 @@ textarea {
   border-radius: 11px;
   padding: 3px;
 }
+/* Planner's Day/Week/Month switcher sits next to the brand mark in the
+   same header row — the default seg-btn padding made three labels wide
+   enough to clip off the right edge on a phone-width screen. */
+.page-head-row .seg .seg-btn {
+  padding-left: 10px;
+  padding-right: 10px;
+}
 .seg--full {
   display: flex;
   width: 100%;

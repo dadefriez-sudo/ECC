@@ -3240,6 +3240,9 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
   const pxPerHour = SCHED_PX_PER_HOUR;
   const pxPerMin = pxPerHour / 60;
 
+  const nowMins = useMinuteOfDay();
+  const showNowLine = isToday(draft.date) && nowMins >= dayStart * 60 && nowMins <= (dayEnd + 1) * 60;
+
   const others = useMemo(
     () =>
       layout(
@@ -3249,7 +3252,7 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
   );
 
   const s = timeToMinutes(draft.start);
-  const e2 = Math.max(s + 15, timeToMinutes(draft.end));
+  const e2 = Math.max(s + 1, timeToMinutes(draft.end));
   const hours = [];
   for (let h = dayStart; h <= dayEnd; h++) hours.push(h);
 
@@ -3319,7 +3322,10 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
     const g = dragRef.current;
     if (!g) return;
     const dy = e.clientY - g.startClientY;
-    const deltaMin = Math.round(dy / pxPerMin / 15) * 15;
+    // Minute-level, not the day timeline's 15-minute snap — scheduling from
+    // the calendar is about landing on an exact time (e.g. a call that
+    // actually starts at 2:05), not roughing in a block.
+    const deltaMin = Math.round(dy / pxPerMin);
     const minStart = dayStart * 60;
     const maxEnd = dayEnd * 60;
     if (g.mode === 'move') {
@@ -3327,10 +3333,10 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
       let nextS = Math.max(minStart, Math.min(maxEnd - dur, g.startS + deltaMin));
       commit(nextS, nextS + dur, g.snapRef);
     } else if (g.mode === 'resize-top') {
-      const nextS = Math.max(minStart, Math.min(g.startE - 15, g.startS + deltaMin));
+      const nextS = Math.max(minStart, Math.min(g.startE - 1, g.startS + deltaMin));
       commit(nextS, g.startE, g.snapRef);
     } else if (g.mode === 'resize-bottom') {
-      const nextE = Math.min(maxEnd, Math.max(g.startS + 15, g.startE + deltaMin));
+      const nextE = Math.min(maxEnd, Math.max(g.startS + 1, g.startE + deltaMin));
       commit(g.startS, nextE, g.snapRef);
     }
   };
@@ -3388,6 +3394,17 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
               <div className="hour-line" />
             </div>
           ))}
+
+          {showNowLine && (
+            <div
+              className="now-line"
+              style={{ top: (nowMins - dayStart * 60) * pxPerMin }}
+              aria-hidden="true"
+            >
+              <span className="now-line-dot" />
+            </div>
+          )}
+
           <div className="event-layer">
             {others.map((ev) => (
               <div

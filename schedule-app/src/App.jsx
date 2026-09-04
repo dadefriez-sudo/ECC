@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import TabBar from './components/TabBar.jsx';
 import Tutorial from './components/Tutorial.jsx';
@@ -18,6 +19,7 @@ import { AI_ENABLED } from './data/aiConfig.js';
 import { setSyncStatus } from './data/syncStatus.js';
 import { useToast } from './data/toast.jsx';
 import { useStore, useActions } from './data/store.jsx';
+import { hasActiveBackHandler } from './data/useBackDismiss.js';
 // Home stays a static import — it's the default landing route (and where
 // the first-run tutorial always starts), so it needs to be there on first
 // paint with no extra chunk fetch in between; see the "no launch splash"
@@ -64,7 +66,7 @@ function SubscriptionSync() {
       // whoever uses this device next, entitlement unverified. Signing back
       // in re-syncs it from the server above.
       if (!isSignedIn)
-        actions.setSettings({ isPro: false, isLifetime: false, subscriptionStatus: null, googleConnected: false });
+        actions.setSettings({ isPro: false, isLifetime: false, isBetaTester: false, subscriptionStatus: null, googleConnected: false });
       return;
     }
     let cancelled = false;
@@ -74,6 +76,7 @@ function SubscriptionSync() {
           actions.setSettings({
             isPro: me.isPro,
             isLifetime: !!me.isLifetime,
+            isBetaTester: !!me.isBetaTester,
             // Only pre-switch subscribers have one; drives whether the
             // "manage billing" escape hatch is offered.
             subscriptionStatus: me.subscriptionStatus,
@@ -342,6 +345,39 @@ export default function App() {
     return () => {
       clearInterval(id);
       document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
+  // Android's hardware/gesture back button, wired up explicitly rather than
+  // left to Capacitor's own default handling. With no listener registered
+  // at all, Capacitor falls back to the native WebView's own canGoBack() —
+  // which doesn't reliably see history entries created by pure
+  // history.pushState() calls (what useBackDismiss.js uses for overlays and
+  // for pages like Notes/Tasks that treat their whole lifetime as "back
+  // goes to Home"), so a press that should have closed a sheet or gone Home
+  // was instead falling through to the OS default and exiting the app.
+  // Routing it through window.history.back() ourselves uses the document's
+  // own session history directly, which useBackDismiss's popstate listener
+  // already handles correctly — the same mechanism already verified for
+  // overlays. Only armed on native; the web build has no hardware back
+  // button, and browsers already fire their own back gesture correctly.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return undefined;
+    let handle;
+    CapacitorApp.addListener('backButton', () => {
+      if (hasActiveBackHandler()) {
+        window.history.back();
+      } else {
+        // Nothing registered to intercept this — we're at a top-level tab
+        // with no overlay open, which is where Android's own back-button
+        // convention says to exit rather than get stuck unresponsive.
+        CapacitorApp.exitApp();
+      }
+    }).then((h) => {
+      handle = h;
+    });
+    return () => {
+      handle?.remove();
     };
   }, []);
 

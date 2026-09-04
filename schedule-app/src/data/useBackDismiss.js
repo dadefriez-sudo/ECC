@@ -95,3 +95,11 @@ export function useBackDismissAdvanced(open, onBack) {
     return register(() => onBackRef.current());
   }, [open]);
 }
+
+// Whether anything registered above (an open overlay, or a page like
+// Notes/Tasks that treats its whole lifetime as one) currently wants to
+// intercept a back press — see App.jsx's native `backButton` listener for
+// why this needs to be checked from outside a React effect.
+export function hasActiveBackHandler() {
+  return stack.length > 0;
+}
