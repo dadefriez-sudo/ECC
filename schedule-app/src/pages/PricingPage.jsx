@@ -166,10 +166,14 @@ function NativePricingCTA({ isPro }) {
   const actions = useActions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
 
   // Re-pulls /api/me the same way SubscriptionSync (App.jsx) does on sign-
   // in — a purchase just verified server-side needs that same refresh to
-  // actually flip isPro in local state.
+  // actually flip isPro in local state. Returns the fetched isPro so callers
+  // (handleRestore) can tell whether anything actually came back, since the
+  // store's restore call itself resolves the same way whether or not it
+  // found a purchase to restore.
   const refreshMe = async () => {
     try {
       const me = await fetchMe(getToken);
@@ -179,8 +183,10 @@ function NativePricingCTA({ isPro }) {
         isBetaTester: !!me.isBetaTester,
         subscriptionStatus: me.subscriptionStatus,
       });
+      return me.isPro;
     } catch {
       /* the periodic SubscriptionSync poll will catch up regardless */
+      return null;
     }
   };
 
@@ -208,10 +214,16 @@ function NativePricingCTA({ isPro }) {
 
   const handleRestore = async () => {
     setError('');
+    setStatus('');
     setBusy(true);
     try {
       await restorePurchases();
-      await refreshMe();
+      // restorePurchases() itself resolves the same way whether or not the
+      // store account had anything to restore — the only way to tell the
+      // two apart, and the only feedback worth giving here, is whether the
+      // backend now reports Pro.
+      const found = await refreshMe();
+      setStatus(found ? 'Purchase restored — you have Pro.' : 'No previous purchase found on this account.');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -236,6 +248,7 @@ function NativePricingCTA({ isPro }) {
         </>
       )}
       {error && <p className="muted small center-pad pricing-disclaimer">{error}</p>}
+      {!error && status && <p className="muted small center-pad pricing-disclaimer">{status}</p>}
     </>
   );
 }
