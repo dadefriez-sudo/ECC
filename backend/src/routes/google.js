@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { google } from 'googleapis';
 import { requireUser } from '../middleware/requireUser.js';
 import { prisma } from '../db.js';
+import { encryptToken, decryptToken } from '../lib/tokenCrypto.js';
 
 const router = Router();
 
@@ -102,7 +103,7 @@ router.get('/callback', async (req, res) => {
     }
     await prisma.user.update({
       where: { id: userId },
-      data: { googleRefreshToken: tokens.refresh_token, googleConnectedAt: new Date() },
+      data: { googleRefreshToken: encryptToken(tokens.refresh_token), googleConnectedAt: new Date() },
     });
     res.redirect(`${frontend}/#/more?google=connected`);
   } catch (err) {
@@ -113,7 +114,7 @@ router.get('/callback', async (req, res) => {
 
 async function clientForUser(user) {
   const client = newOAuthClient();
-  client.setCredentials({ refresh_token: user.googleRefreshToken });
+  client.setCredentials({ refresh_token: decryptToken(user.googleRefreshToken) });
   return client;
 }
 
@@ -355,7 +356,7 @@ router.post('/disconnect', requireUser, async (req, res, next) => {
       // Best-effort — if Google's revoke endpoint is unreachable or already
       // sees it as revoked, we still want to forget it locally either way.
       await newOAuthClient()
-        .revokeToken(token)
+        .revokeToken(decryptToken(token))
         .catch(() => {});
     }
     await prisma.user.update({
