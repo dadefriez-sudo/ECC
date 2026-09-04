@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { useAuth, useUser, useClerk, UserButton } from '@clerk/clerk-react';
 import { useStore, useActions } from '../data/store.jsx';
 import Modal from '../components/Modal.jsx';
@@ -1178,7 +1179,9 @@ export default function MorePage() {
         </div>
         <p className="muted small">
           {notificationsSupported()
-            ? 'Get reminders for goals and events while Keystone is open. (A web app can’t alert you once it’s fully closed.)'
+            ? Capacitor.isNativePlatform()
+              ? 'Get reminders for goals, events, and tasks — these still fire even if Keystone is fully closed.'
+              : 'Get reminders for goals and events while Keystone is open. (A web app can’t alert you once it’s fully closed.)'
             : 'This browser doesn’t support notifications.'}
         </p>
       </SettingsGroup>
