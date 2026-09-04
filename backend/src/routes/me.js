@@ -7,16 +7,29 @@ const router = Router();
 
 const PRO_STATUSES = new Set(['active', 'trialing']);
 
+// Comma-separated allowlist for beta testers — grants Pro without a real
+// purchase, gated purely by env var so adding/removing someone never needs
+// a code deploy. Case-insensitive since Clerk itself normalizes email case
+// inconsistently across providers (Google sign-in vs. email/password).
+const BETA_TESTER_EMAILS = new Set(
+  (process.env.BETA_TESTER_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+);
+
 router.get('/', requireUser, (req, res) => {
   const u = req.dbUser;
   // Pro is a one-time purchase now; an active legacy subscription still
   // counts, so nobody who paid before the switch loses access.
   const isLifetime = !!u.lifetimePurchasedAt;
+  const isBetaTester = BETA_TESTER_EMAILS.has((u.email || '').toLowerCase());
   res.json({
     id: u.id,
     email: u.email,
-    isPro: isLifetime || PRO_STATUSES.has(u.subscriptionStatus),
+    isPro: isLifetime || PRO_STATUSES.has(u.subscriptionStatus) || isBetaTester,
     isLifetime,
+    isBetaTester,
     lifetimePurchasedAt: u.lifetimePurchasedAt,
     // Only set for pre-switch subscribers — the frontend uses this to decide
     // whether to offer the "manage billing" escape hatch at all.

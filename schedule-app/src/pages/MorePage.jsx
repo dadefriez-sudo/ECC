@@ -270,6 +270,7 @@ export default function MorePage() {
   const theme = state.settings?.theme || 'system';
   const notifOn = !!state.settings?.notifications && notificationPermission() === 'granted';
   const isPro = !!state.settings?.isPro;
+  const isBetaTester = !!state.settings?.isBetaTester;
   const googleConnected = !!state.settings?.googleConnected;
   const profileName = state.settings?.profileName || '';
   const profilePhoto = state.settings?.profilePhoto || '';
@@ -508,7 +509,9 @@ export default function MorePage() {
           <div>
             <strong>Keystone Pro</strong>
             <p className="muted small">
-              {CLERK_ENABLED && backendConfigured()
+              {isBetaTester
+                ? "You have Pro — beta tester access."
+                : CLERK_ENABLED && backendConfigured()
                 ? 'Unlocked for good — thanks for buying.'
                 : 'You have Pro (demo mode) active.'}
             </p>

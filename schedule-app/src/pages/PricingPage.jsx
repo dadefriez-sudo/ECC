@@ -173,7 +173,12 @@ function NativePricingCTA({ isPro }) {
   const refreshMe = async () => {
     try {
       const me = await fetchMe(getToken);
-      actions.setSettings({ isPro: me.isPro, isLifetime: !!me.isLifetime, subscriptionStatus: me.subscriptionStatus });
+      actions.setSettings({
+        isPro: me.isPro,
+        isLifetime: !!me.isLifetime,
+        isBetaTester: !!me.isBetaTester,
+        subscriptionStatus: me.subscriptionStatus,
+      });
     } catch {
       /* the periodic SubscriptionSync poll will catch up regardless */
     }
