@@ -616,6 +616,31 @@ export default function MorePage() {
         </button>
       </SettingsGroup>
 
+      {/* Temporary: sign-in is broken on the beta build (Clerk's WebView
+          handshake redirect), so there's no way to reach isPro through a
+          real account yet. Remove once that's fixed and back to relying on
+          RealPricingCTA/NativePricingCTA's normal purchase-or-signin flow. */}
+      {CLERK_ENABLED && (
+        <SettingsGroup {...grp('gProDemo')}>
+          <span className="detail-label">Pro demo (testing only)</span>
+          <div className="section-head">
+            <span>Force Pro locally</span>
+            <button
+              className={`toggle${isPro ? ' toggle--on' : ''}`}
+              role="switch"
+              aria-checked={isPro}
+              onClick={() => actions.setSettings({ isPro: !isPro })}
+            >
+              <span className="toggle-knob" />
+            </button>
+          </div>
+          <p className="muted small">
+            Previews Pro features without signing in. Local only — doesn't touch your account, and gets
+            overwritten the moment a real sign-in syncs.
+          </p>
+        </SettingsGroup>
+      )}
+
       <SettingsSection label="Appearance" hidden={!sectionShown('Appearance')} />
       <SettingsGroup {...grp('g4')}>
         <span className="detail-label">Theme &amp; colors</span>
