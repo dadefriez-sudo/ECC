@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification-tray small icon. Android status-bar icons are forced to a
+     flat white silhouette regardless of fill color, so this is a solid
+     union of Logo.jsx's arch body + keystone cap (no gold, no seam lines —
+     both are invisible at 24dp anyway). See capacitor.config.ts's
+     LocalNotifications.smallIcon, which points here; without a configured
+     smallIcon the plugin falls back to Android's own generic "i" info icon
+     (LocalNotificationManager.getDefaultSmallIcon -> ic_dialog_info). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M124,388 L124,258 A132,132 0 0 1 388,258 L388,388 L324,388 L324,258 A68,68 0 0 0 188,258 L188,388 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M206.5,135.6 A132,132 0 0 1 305.5,135.6 L281.5,195.0 A68,68 0 0 0 230.5,195.0 Z" />
+</vector>

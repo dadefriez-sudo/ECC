@@ -29,6 +29,18 @@ const config: CapacitorConfig = {
       launchAutoHide: false,
       backgroundColor: '#111113',
     },
+    LocalNotifications: {
+      // Without this, the plugin falls back to Android's own generic "i"
+      // info-dialog icon in the status bar (see
+      // LocalNotificationManager.getDefaultSmallIcon in the plugin's
+      // Android source) — this points it at the white silhouette in
+      // android/app/src/main/res/drawable/ic_stat_keystone.xml instead.
+      // iconColor tints the notification's icon background circle in the
+      // notification shade (the status bar icon itself is always plain
+      // white/monochrome per Android's own rules, regardless of this).
+      smallIcon: 'ic_stat_keystone',
+      iconColor: '#e0c15a',
+    },
   },
 };
 
