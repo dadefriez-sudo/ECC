@@ -622,9 +622,8 @@ export default function MorePage() {
           RealPricingCTA/NativePricingCTA's normal purchase-or-signin flow. */}
       {CLERK_ENABLED && (
         <SettingsGroup {...grp('gProDemo')}>
-          <span className="detail-label">Pro demo (testing only)</span>
           <div className="section-head">
-            <span>Force Pro locally</span>
+            <span className="detail-label">Pro demo (testing only)</span>
             <button
               className={`toggle${isPro ? ' toggle--on' : ''}`}
               role="switch"
