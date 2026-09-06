@@ -449,7 +449,14 @@ export default function MapPage() {
     if (!geoAvailable()) return alert('Location is not available in this browser.');
     getCurrentPosition()
       .then((pos) => mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15))
-      .catch(() => alert('Could not get your location. Check your location permissions.'));
+      .catch((err) => {
+        // The plugin's own message distinguishes denied vs. disabled vs.
+        // timed out (see @capacitor/geolocation's GeolocationErrors) — a
+        // blind "check your permissions" alert collapsed all of those into
+        // one unhelpful message, including "GPS is off" and "no signal
+        // indoors" cases that have nothing to do with app permissions at all.
+        alert(err?.message || 'Could not get your location.');
+      });
   };
 
   // openExternal, not window.open — see data/maps.js for why the latter
