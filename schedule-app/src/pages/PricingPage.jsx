@@ -161,12 +161,13 @@ function RealPricingCTA({ isPro, settings }) {
 // native app shell (App Store guideline 3.1.1 requires digital goods bought
 // in-app to go through the platform's own purchase system).
 function NativePricingCTA({ isPro }) {
-  const { isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const clerk = useClerk();
   const actions = useActions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [iapError, setIapError] = useState('');
 
   // Re-pulls /api/me the same way SubscriptionSync (App.jsx) does on sign-
   // in — a purchase just verified server-side needs that same refresh to
@@ -192,12 +193,24 @@ function NativePricingCTA({ isPro }) {
 
   useEffect(() => {
     if (!isSignedIn) return;
-    initIAP(getToken, refreshMe);
+    // initIAP's promise was previously left unhandled here — a failure
+    // (store.initialize() rejecting, the purchase plugin failing to load)
+    // was completely silent: no error, no console visibility without
+    // hooking up remote debugging. Surfaced now so "Unlock Pro" doing
+    // nothing has a visible reason instead of being a dead end to debug.
+    initIAP(getToken, refreshMe).catch((err) => setIapError(err?.message || String(err)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
 
   const handlePurchase = async () => {
-    if (!isSignedIn) return clerk.openSignIn();
+    if (!isSignedIn) {
+      try {
+        await clerk.openSignIn();
+      } catch (err) {
+        setError(err?.message || 'Could not open sign-in.');
+      }
+      return;
+    }
     setError('');
     setBusy(true);
     try {
@@ -249,6 +262,16 @@ function NativePricingCTA({ isPro }) {
       )}
       {error && <p className="muted small center-pad pricing-disclaimer">{error}</p>}
       {!error && status && <p className="muted small center-pad pricing-disclaimer">{status}</p>}
+      {iapError && (
+        <p className="muted small center-pad pricing-disclaimer">Purchases unavailable: {iapError}</p>
+      )}
+      {/* Temporary: makes Clerk's actual state visible on-screen while
+          diagnosing the sign-in-needs-a-restart bug, without needing
+          chrome://inspect hooked up to the device. Remove once that's
+          resolved. */}
+      <p className="muted small center-pad" style={{ opacity: 0.6 }}>
+        debug — clerk loaded: {String(isLoaded)}, signed in: {String(isSignedIn)}
+      </p>
     </>
   );
 }

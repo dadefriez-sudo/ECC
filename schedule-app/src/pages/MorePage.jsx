@@ -1570,7 +1570,7 @@ export default function MorePage() {
 }
 
 function AccountSection() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const clerk = useClerk();
   const navigate = useNavigate();
@@ -1650,6 +1650,13 @@ function AccountSection() {
           </button>
         </>
       )}
+      {/* Temporary: makes Clerk's actual state visible on-screen while
+          diagnosing the sign-in-needs-a-restart bug, without needing
+          chrome://inspect hooked up to the device. Remove once that's
+          resolved. */}
+      <p className="muted small" style={{ opacity: 0.6 }}>
+        debug — clerk loaded: {String(isLoaded)}, signed in: {String(isSignedIn)}
+      </p>
     </section>
   );
 }
