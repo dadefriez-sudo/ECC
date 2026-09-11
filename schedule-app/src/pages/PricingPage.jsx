@@ -6,6 +6,7 @@ import { Brand } from '../components/Logo.jsx';
 import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
 import { startCheckout, openBillingPortal, backendConfigured, fetchMe } from '../data/api.js';
 import { iapAvailable, initIAP, purchasePro, restorePurchases } from '../data/iap.js';
+import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
 
 // Pro is a one-time purchase. This is the only place the price is written
@@ -164,10 +165,8 @@ function NativePricingCTA({ isPro }) {
   const { isSignedIn, getToken } = useAuth();
   const clerk = useClerk();
   const actions = useActions();
+  const showToast = useToast();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [status, setStatus] = useState('');
-  const [iapError, setIapError] = useState('');
 
   // Re-pulls /api/me the same way SubscriptionSync (App.jsx) does on sign-
   // in — a purchase just verified server-side needs that same refresh to
@@ -198,7 +197,7 @@ function NativePricingCTA({ isPro }) {
     // was completely silent: no error, no console visibility without
     // hooking up remote debugging. Surfaced now so "Unlock Pro" doing
     // nothing has a visible reason instead of being a dead end to debug.
-    initIAP(getToken, refreshMe).catch((err) => setIapError(err?.message || String(err)));
+    initIAP(getToken, refreshMe).catch((err) => showToast(`Purchases unavailable: ${err?.message || err}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
 
@@ -207,11 +206,10 @@ function NativePricingCTA({ isPro }) {
       try {
         await openSignInWithRecovery(clerk);
       } catch (err) {
-        setError(err?.message || 'Could not open sign-in.');
+        showToast(err?.message || 'Could not open sign-in.');
       }
       return;
     }
-    setError('');
     setBusy(true);
     try {
       await purchasePro();
@@ -219,15 +217,13 @@ function NativePricingCTA({ isPro }) {
       // verify + refresh once the purchase clears — this just clears the
       // spinner once the order has been placed, not once it's finished.
     } catch (err) {
-      setError(err.message);
+      showToast(err.message);
     } finally {
       setBusy(false);
     }
   };
 
   const handleRestore = async () => {
-    setError('');
-    setStatus('');
     setBusy(true);
     try {
       await restorePurchases();
@@ -236,9 +232,9 @@ function NativePricingCTA({ isPro }) {
       // two apart, and the only feedback worth giving here, is whether the
       // backend now reports Pro.
       const found = await refreshMe();
-      setStatus(found ? 'Purchase restored — you have Pro.' : 'No previous purchase found on this account.');
+      showToast(found ? 'Purchase restored — you have Pro.' : 'No previous purchase found on this account.');
     } catch (err) {
-      setError(err.message);
+      showToast(err.message);
     } finally {
       setBusy(false);
     }
@@ -259,11 +255,6 @@ function NativePricingCTA({ isPro }) {
             Restore purchases
           </button>
         </>
-      )}
-      {error && <p className="muted small center-pad pricing-disclaimer">{error}</p>}
-      {!error && status && <p className="muted small center-pad pricing-disclaimer">{status}</p>}
-      {iapError && (
-        <p className="muted small center-pad pricing-disclaimer">Purchases unavailable: {iapError}</p>
       )}
     </>
   );
