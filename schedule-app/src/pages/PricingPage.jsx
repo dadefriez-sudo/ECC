@@ -161,7 +161,7 @@ function RealPricingCTA({ isPro, settings }) {
 // native app shell (App Store guideline 3.1.1 requires digital goods bought
 // in-app to go through the platform's own purchase system).
 function NativePricingCTA({ isPro }) {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   const clerk = useClerk();
   const actions = useActions();
   const [busy, setBusy] = useState(false);
@@ -265,13 +265,6 @@ function NativePricingCTA({ isPro }) {
       {iapError && (
         <p className="muted small center-pad pricing-disclaimer">Purchases unavailable: {iapError}</p>
       )}
-      {/* Temporary: makes Clerk's actual state visible on-screen while
-          diagnosing the sign-in-needs-a-restart bug, without needing
-          chrome://inspect hooked up to the device. Remove once that's
-          resolved. */}
-      <p className="muted small center-pad" style={{ opacity: 0.6 }}>
-        debug — clerk loaded: {String(isLoaded)}, signed in: {String(isSignedIn)}
-      </p>
     </>
   );
 }
