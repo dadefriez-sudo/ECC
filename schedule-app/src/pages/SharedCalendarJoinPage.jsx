@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useClerk } from '@clerk/clerk-react';
-import { CLERK_ENABLED } from '../data/clerkConfig.js';
+import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
 import { backendConfigured, acceptCalendarInvite } from '../data/api.js';
 
 // Where an invite link (see SharedCalendarDetailPage's "Create invite")
@@ -48,7 +48,7 @@ function SharedCalendarJoinInner() {
       {!isSignedIn ? (
         <div className="empty">
           <p className="muted">Sign in to accept this invite.</p>
-          <button className="btn btn-primary" onClick={() => clerk.openSignIn()}>
+          <button className="btn btn-primary" onClick={() => openSignInWithRecovery(clerk)}>
             Sign in
           </button>
         </div>

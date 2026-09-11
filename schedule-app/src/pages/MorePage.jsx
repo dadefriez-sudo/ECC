@@ -34,7 +34,7 @@ import SettingsSection from '../components/SettingsSection.jsx';
 import { HOME_BLOCK_TYPES, normalizeHomeBlocks } from '../data/homeBlocks.js';
 import { TAB_TYPES, normalizeTabOrder } from '../data/tabs.js';
 import { QUICK_ADD_TYPES, normalizeQuickAdd } from '../data/quickAdd.js';
-import { CLERK_ENABLED } from '../data/clerkConfig.js';
+import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
 import { AI_ENABLED } from '../data/aiConfig.js';
 import { MAP_STYLE_OPTIONS } from '../data/mapStyles.js';
 import {
@@ -1645,7 +1645,7 @@ function AccountSection() {
           <p className="muted small">
             Sign in to buy Pro, sync your data, and keep your purchase across devices.
           </p>
-          <button className="btn btn-ghost full" onClick={() => clerk.openSignIn()}>
+          <button className="btn btn-ghost full" onClick={() => openSignInWithRecovery(clerk)}>
             Sign in
           </button>
         </>

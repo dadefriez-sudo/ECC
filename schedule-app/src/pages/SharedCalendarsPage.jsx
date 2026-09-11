@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, useClerk } from '@clerk/clerk-react';
 import { useStore } from '../data/store.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
-import { CLERK_ENABLED } from '../data/clerkConfig.js';
+import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
 import { backendConfigured, fetchCalendars, createCalendar } from '../data/api.js';
 import Icon from '../components/Icon.jsx';
 
@@ -100,7 +100,7 @@ function SharedCalendarsInner() {
           <div className="empty-icon"><Icon name="users" size={48} /></div>
           <h2>Sign in to get started</h2>
           <p className="muted">Create a calendar and invite someone to see or add events together.</p>
-          <button className="btn btn-primary" onClick={() => clerk.openSignIn()}>
+          <button className="btn btn-primary" onClick={() => openSignInWithRecovery(clerk)}>
             Sign in
           </button>
         </div>

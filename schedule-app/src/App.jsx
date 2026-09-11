@@ -88,6 +88,44 @@ function SubscriptionSync() {
       cancelled = true;
     };
   }, [isLoaded, isSignedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // TEMPORARY watchdog for the stuck-post-sign-in bug — see
+  // clerkConfig.js's openSignInWithRecovery (which every clerk.openSignIn()
+  // call site now goes through instead of calling it directly) for the full
+  // story: Clerk's own sign-in network sequence reliably succeeds, but this
+  // running app's isSignedIn doesn't reliably notice. If an attempt was
+  // marked and isSignedIn still isn't true a generous 8s later, force one
+  // fresh reload — confirmed to reliably pick the now-real session up
+  // cleanly, the same as a manual app restart already did in testing.
+  useEffect(() => {
+    if (isSignedIn) {
+      try {
+        sessionStorage.removeItem('clerkSignInAttemptAt');
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    let attemptAt;
+    try {
+      attemptAt = Number(sessionStorage.getItem('clerkSignInAttemptAt') || 0);
+    } catch {
+      attemptAt = 0;
+    }
+    if (!attemptAt) return undefined;
+    const remaining = Math.max(0, attemptAt + 8000 - Date.now());
+    const timer = setTimeout(() => {
+      try {
+        if (sessionStorage.getItem('clerkSignInReloaded')) return;
+        sessionStorage.setItem('clerkSignInReloaded', '1');
+      } catch {
+        /* ignore */
+      }
+      window.location.reload();
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [isSignedIn]);
+
   return null;
 }
 

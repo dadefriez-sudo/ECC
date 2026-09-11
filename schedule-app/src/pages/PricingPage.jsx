@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, useClerk } from '@clerk/clerk-react';
 import { useStore, useActions } from '../data/store.jsx';
 import { Brand } from '../components/Logo.jsx';
-import { CLERK_ENABLED } from '../data/clerkConfig.js';
+import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
 import { startCheckout, openBillingPortal, backendConfigured, fetchMe } from '../data/api.js';
 import { iapAvailable, initIAP, purchasePro, restorePurchases } from '../data/iap.js';
 import Icon from '../components/Icon.jsx';
@@ -105,7 +105,7 @@ function RealPricingCTA({ isPro, settings }) {
     !!settings?.subscriptionStatus && !settings?.isLifetime;
 
   const handleUpgrade = async () => {
-    if (!isSignedIn) return clerk.openSignIn();
+    if (!isSignedIn) return openSignInWithRecovery(clerk);
     if (!backendConfigured()) return setError('Billing isn’t connected yet.');
     setError('');
     setBusy(true);
@@ -205,7 +205,7 @@ function NativePricingCTA({ isPro }) {
   const handlePurchase = async () => {
     if (!isSignedIn) {
       try {
-        await clerk.openSignIn();
+        await openSignInWithRecovery(clerk);
       } catch (err) {
         setError(err?.message || 'Could not open sign-in.');
       }
