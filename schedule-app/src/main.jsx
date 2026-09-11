@@ -20,19 +20,39 @@ const Root = ({ children }) =>
     children
   );
 
-createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <Root>
-      <HashRouter>
-        <StoreProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </StoreProvider>
-      </HashRouter>
-    </Root>
-  </React.StrictMode>
-);
+// Clerk's session-sync handshake (needed because cookies aren't reliable in
+// a WebView) lands back here as a real top-level navigation to
+// /?__clerk_handshake=... — but on native, Clerk's client-side SDK
+// consistently gets stuck mid-initialization on that exact load (isLoaded
+// never resolves), even though the handshake itself succeeded server-side
+// (confirmed via Clerk's own API: a retried sign-in correctly comes back
+// "Session already exists" / "You're already signed in" — the session is
+// real, the running app just never finds out). A manual app restart always
+// picks the already-valid session up cleanly, so this forces that same
+// "fresh load" once, automatically, instead of making testers close and
+// reopen the app by hand. Guarded by sessionStorage so it only fires once
+// per handshake, not in a loop if the second load still carries the param.
+const justHandshaked = window.location.search.includes('__clerk_handshake');
+if (Capacitor.isNativePlatform() && justHandshaked && !sessionStorage.getItem('clerkHandshakeReloaded')) {
+  sessionStorage.setItem('clerkHandshakeReloaded', '1');
+  window.location.reload();
+} else {
+  if (!justHandshaked) sessionStorage.removeItem('clerkHandshakeReloaded');
+
+  createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+      <Root>
+        <HashRouter>
+          <StoreProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </StoreProvider>
+        </HashRouter>
+      </Root>
+    </React.StrictMode>
+  );
+}
 
 // The app has deliberately never had a launch splash of its own (see the
 // comment in App.jsx) — the native shell's splash screen (shown instantly by
