@@ -32,6 +32,25 @@ const Root = ({ children }) =>
 // "fresh load" once, automatically, instead of making testers close and
 // reopen the app by hand. Guarded by sessionStorage so it only fires once
 // per handshake, not in a loop if the second load still carries the param.
+// Temporary: records what the page's full URL looked like on every boot of
+// this script (a real cold start, or one of the reloads below), so it can
+// be inspected later from the debug line on More -> Account — checking
+// location.href live in the console only shows whatever it's changed to
+// *since*, which by the time anyone gets to a console is already well past
+// the moment right after Clerk's redirect, after the app has navigated
+// around further. Keeps the last 5 boots. Remove once the stuck-isLoaded
+// issue is resolved.
+// localStorage, not sessionStorage — a force-closed app clears
+// sessionStorage along with it, which would erase the very entry (the boot
+// right after Clerk's redirect) checking the log later is meant to show.
+try {
+  const log = JSON.parse(localStorage.getItem('bootUrlLog') || '[]');
+  log.push(`${new Date().toISOString().slice(11, 19)} ${window.location.href}`);
+  localStorage.setItem('bootUrlLog', JSON.stringify(log.slice(-5)));
+} catch {
+  /* ignore — debug aid only */
+}
+
 const justHandshaked = window.location.search.includes('__clerk_handshake');
 if (Capacitor.isNativePlatform() && justHandshaked && !sessionStorage.getItem('clerkHandshakeReloaded')) {
   sessionStorage.setItem('clerkHandshakeReloaded', '1');

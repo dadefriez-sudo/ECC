@@ -1657,6 +1657,9 @@ function AccountSection() {
       <p className="muted small" style={{ opacity: 0.6 }}>
         debug — clerk loaded: {String(isLoaded)}, signed in: {String(isSignedIn)}
       </p>
+      <p className="muted small" style={{ opacity: 0.6, wordBreak: 'break-all' }}>
+        debug — boot urls: {localStorage.getItem('bootUrlLog') || '(none yet)'}
+      </p>
     </section>
   );
 }
