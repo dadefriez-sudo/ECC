@@ -403,8 +403,8 @@ export default function ContactsPage() {
           <div className="empty-icon"><Icon name="personPlus" size={48} /></div>
           <h2>Add the people who matter</h2>
           <p className="muted">
-            Keep track of friends, family, and anyone you want to stay close to —
-            with groups you define and a nudge when it's been a while.
+            Keep track of friends, family, and anyone you want to stay close to. Sort them into groups
+            you create, and get a nudge when it's time to reach out again.
           </p>
           <button className="btn btn-primary" onClick={startAdd}>
             + Add someone
@@ -565,7 +565,7 @@ export default function ContactsPage() {
                     addressLng: coords ? coords.lng : null,
                   })
                 }
-                placeholder="Optional — drops a map pin automatically"
+                placeholder="Optional, drops a map pin automatically"
               />
             </label>
             <label className="field">

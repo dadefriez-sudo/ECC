@@ -6,7 +6,7 @@ const STEPS = [
   {
     icon: <Logo size={56} />,
     title: 'Welcome to Keystone',
-    body: "A quick tour of what's here — six pages, and the gestures that make them fast to use.",
+    body: "A quick tour of what's here: six pages, and the gestures that make them fast to use.",
   },
   {
     icon: 'home',
@@ -22,12 +22,12 @@ const STEPS = [
     icon: 'calendar',
     title: 'Planner',
     body:
-      'Day, Week, and Month views. Tap empty space on the timeline to add an event. Press and hold a block, then drag up or down to change its time — drag it all the way to the edge of the screen to move it to another day. Swipe left or right (on the timeline or on an event) to change days.',
+      'Day, Week, and Month views. Tap empty space on the timeline to add an event. Press and hold a block, then drag up or down to change its time. Drag it all the way to the edge of the screen to move it to another day. Swipe left or right (on the timeline or on an event) to change days.',
   },
   {
     icon: 'users',
     title: 'People',
-    body: 'Keep track of the people in your life — groups, reconnect reminders, and notes. Pro unlocks groups and a full contact timeline.',
+    body: 'Keep track of the people in your life: groups, reconnect reminders, and notes. Pro unlocks groups and a full contact timeline.',
   },
   {
     icon: 'pin',
@@ -37,12 +37,12 @@ const STEPS = [
   {
     icon: 'gear',
     title: 'More',
-    body: 'Themes, notifications, backups, and everything else lives here — including this tour, if you ever want to replay it.',
+    body: 'Themes, notifications, backups, and everything else lives here, including this tour, if you ever want to replay it.',
   },
   {
     icon: 'check',
     title: "You're all set",
-    body: 'Jump in — nothing here is permanent, and you can always come back to More to explore further.',
+    body: 'Jump in. Nothing here is permanent, and you can always come back to More to explore further.',
   },
 ];
 

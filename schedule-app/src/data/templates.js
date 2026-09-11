@@ -76,7 +76,7 @@ export function instantiate(template, targetISO) {
         notes: '',
         kind: '',
         color: '',
-        reminder: 0,
+        reminder: [],
         repeat: 'none',
         repeatUntil: '',
         repeatDays: [],

@@ -82,7 +82,7 @@ export async function purchasePro() {
   const nativePlatform = Capacitor.getPlatform() === 'ios' ? Platform.APPLE_APPSTORE : Platform.GOOGLE_PLAY;
   const product = store.get(PRO_PRODUCT_ID, nativePlatform);
   const offer = product?.getOffer();
-  if (!offer) throw new Error('Pro isn’t available for purchase right now — try again in a moment.');
+  if (!offer) throw new Error('Pro isn’t available for purchase right now. Try again in a moment.');
   const err = await offer.order();
   if (err) throw new Error(err.message || 'Purchase failed.');
 }

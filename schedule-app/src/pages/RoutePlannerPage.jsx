@@ -164,7 +164,7 @@ export default function RoutePlannerPage() {
         </button>
         <h1><Icon name="compass" size={24} /> Plan my day</h1>
         <p className="muted small">
-          Pick who/where you want to visit today — overdue people are pre-selected — then get the
+          Pick who or where you want to visit today. Overdue people are pre-selected. Then get the
           shortest visiting order. Today's events with a location are listed too: those keep their
           booked time and their real length, and everything else is fitted around them. Distances
           and times are offline estimates from straight-line geometry, not turn-by-turn routing.
@@ -173,7 +173,7 @@ export default function RoutePlannerPage() {
 
       {pins.length === 0 ? (
         <p className="muted center-pad">
-          Nothing to route yet — drop some pins on the Map, or give today's events a location.
+          Nothing to route yet. Drop some pins on the Map, or give today's events a location.
         </p>
       ) : (
         <>
@@ -226,7 +226,7 @@ export default function RoutePlannerPage() {
               </div>
                             {route.startedFromStop ? (
                 <p className="muted small">
-                  Couldn't get your location — timing this from{' '}
+                  Couldn't get your location, so timing this from{' '}
                   {route.startedFromStop.label || 'your first stop'} instead.
                 </p>
               ) : null}

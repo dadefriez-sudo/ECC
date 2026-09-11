@@ -152,7 +152,7 @@ export default function SearchPage() {
 
       {!q ? (
         <p className="muted center-pad">
-          Search across everything — events, tasks, goals, people, and notes. Try "meetings with
+          Search across everything: events, tasks, goals, people, and notes. Try "meetings with
           Sam next week" or "birthdays this month".
         </p>
       ) : total === 0 ? (
@@ -248,7 +248,7 @@ function ResultGroup({ label, icon, items, onOpen, children }) {
         ))}
       </div>
       {items.length > MAX_PER_GROUP && (
-        <p className="muted small search-result-more">+{items.length - MAX_PER_GROUP} more — keep typing to narrow it down</p>
+        <p className="muted small search-result-more">+{items.length - MAX_PER_GROUP} more. Keep typing to narrow it down</p>
       )}
     </section>
   );

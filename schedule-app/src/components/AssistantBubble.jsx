@@ -153,7 +153,7 @@ export default function AssistantBubble() {
         // before the next turn reads the store again.
         await new Promise((r) => setTimeout(r, 0));
       }
-      setError('That got stuck going in circles — try asking a smaller question.');
+      setError('That got stuck going in circles. Try asking a smaller question.');
     },
     []
   );

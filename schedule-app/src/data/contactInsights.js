@@ -56,8 +56,8 @@ export function contactInsights(entries, { now = new Date() } = {}) {
         id: 'when',
         icon: 'clock',
         text: part
-          ? `Usually ${DAYS[topDay]} ${part}s — ${dayCounts[topDay]} of ${past.length} times.`
-          : `Usually a ${DAYS[topDay]} — ${dayCounts[topDay]} of ${past.length} times.`,
+          ? `Usually ${DAYS[topDay]} ${part}s, ${dayCounts[topDay]} of ${past.length} times.`
+          : `Usually a ${DAYS[topDay]}, ${dayCounts[topDay]} of ${past.length} times.`,
       });
     } else {
       const part = topPart(parts, timed);

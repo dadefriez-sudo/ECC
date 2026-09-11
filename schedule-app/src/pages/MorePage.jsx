@@ -63,7 +63,7 @@ const DESTRUCTIVE_ACTIONS = {
   },
   clearCache: {
     title: 'Clear cache?',
-    body: 'This clears the offline app-shell cache and reloads Keystone. Your data (goals, events, people, notes) is untouched — it lives in local storage, not the cache.',
+    body: 'This clears the offline app-shell cache and reloads Keystone. Your data (goals, events, people, notes) is untouched. It lives in local storage, not the cache.',
     cta: 'Clear cache',
   },
   clearContacts: {
@@ -304,7 +304,7 @@ export default function MorePage() {
             skipDates: [],
             kind: '',
             color: '',
-            reminder: 0,
+            reminder: [],
             contactIds: [],
             contactId: '',
           });
@@ -519,9 +519,9 @@ export default function MorePage() {
             <strong>Keystone Pro</strong>
             <p className="muted small">
               {isBetaTester
-                ? "You have Pro — beta tester access."
+                ? 'You have Pro through beta tester access.'
                 : CLERK_ENABLED && backendConfigured()
-                ? 'Unlocked for good — thanks for buying.'
+                ? 'Unlocked for good. Thanks for buying.'
                 : 'You have Pro (demo mode) active.'}
             </p>
           </div>
@@ -533,7 +533,7 @@ export default function MorePage() {
           <div>
             <strong>Unlock Keystone Pro</strong>
             <p className="muted small">
-              One payment, yours for good — timelines, sharing, sync, themes, and more.
+              One payment, yours for good. Timelines, sharing, sync, themes, and more.
             </p>
           </div>
           <span className="pro-bubble-lg-arrow">›</span>
@@ -576,7 +576,7 @@ export default function MorePage() {
         ) : (
           <p className="muted small">
             {isPro
-              ? "Sync isn't connected to a server yet — flipping this on doesn't move your data anywhere. It's here so the setting is ready once a backend exists."
+              ? "Sync isn't connected to a server yet, so flipping this on doesn't move your data anywhere. It's here so the setting is ready once a backend exists."
               : 'Keep your data synced across devices. Requires Pro.'}
           </p>
         )}
@@ -601,8 +601,8 @@ export default function MorePage() {
         )}
         <p className="muted small">
           {googleConnected
-            ? "Calendar (single events only, not repeating ones) stays synced both ways while Keystone is open. Contacts is a one-time import — tap \"Import contacts again\" any time for a fresh copy."
-            : 'A personal Keystone login (no Google needed) is free and always available — this is only for connecting your Google Calendar (kept in sync) and Contacts (a one-time import).'}
+            ? "Calendar (single events only, not repeating ones) stays synced both ways while Keystone is open. Contacts is a one-time import. Tap \"Import contacts again\" any time for a fresh copy."
+            : 'A personal Keystone login (no Google needed) is free and always available. This is only for connecting your Google Calendar (kept in sync) and Contacts (a one-time import).'}
         </p>
       </SettingsGroup>
       <SettingsGroup {...grp('g2')}>
@@ -634,7 +634,7 @@ export default function MorePage() {
             </button>
           </div>
           <p className="muted small">
-            Previews Pro features without signing in. Local only — doesn't touch your account, and gets
+            Previews Pro features without signing in. Local only, so it doesn't touch your account, and it gets
             overwritten the moment a real sign-in syncs.
           </p>
         </SettingsGroup>
@@ -715,7 +715,7 @@ export default function MorePage() {
       <SettingsGroup {...grp('g5')}>
         <span className="detail-label">Home screen {!isPro && '· Pro'}</span>
         <p className="muted small">
-          Choose which blocks show on Home, and drag to reorder them — or edit this right from the Home page itself
+          Choose which blocks show on Home, and drag to reorder them. Or edit this right from the Home page itself
           via the pencil icon in its header.
         </p>
         {isPro ? (
@@ -945,8 +945,8 @@ export default function MorePage() {
       <SettingsGroup {...grp('g15')}>
         <span className="detail-label">Event types</span>
         <p className="muted small">
-          Colors for calendar events. Everyone can recolor Call/Text/In Person/Travel/Email/Other
-          — reordering, hiding, and adding your own types beyond those is Pro.
+          Colors for calendar events. Everyone can recolor Call/Text/In Person/Travel/Email/Other.
+          Reordering, hiding, and adding your own types beyond those is Pro.
         </p>
         {isPro ? (
           <>
@@ -1075,8 +1075,8 @@ export default function MorePage() {
         </div>
         <p className="muted small">
           Surface a person's birthday or anniversary on Home and the calendar, and send a
-          reminder notification the morning of. Each date is still optional per person —
-          set them from a contact's Edit sheet.
+          reminder notification the morning of. Each date is still optional per person.
+          Set them from a contact's Edit sheet.
         </p>
         <div className="section-head">
           <span>Reconnect reminders</span>
@@ -1093,7 +1093,7 @@ export default function MorePage() {
         </div>
         <p className="muted small">
           Flag people on the People tab when you haven't been in touch for this long.
-          Only applies to people you've actually logged contact with — someone you've
+          Only applies to people you've actually logged contact with. Someone you've
           added but never spoken to has no lapse to report. You can override the
           interval per person.
         </p>
@@ -1134,8 +1134,8 @@ export default function MorePage() {
           options={MAP_STYLE_OPTIONS}
         />
         <p className="muted small">
-          "Match app theme" uses a light or dark basemap to match whichever the app is showing —
-          a bright white map inside a dark app is the thing most worth avoiding here.
+          "Match app theme" uses a light or dark basemap to match whichever the app is showing.
+          A bright white map inside a dark app is the thing most worth avoiding here.
         </p>
         <div className="section-head">
           <span>Show contact places</span>
@@ -1190,7 +1190,7 @@ export default function MorePage() {
         </div>
         <p className="muted small">
           {geoAvailable()
-            ? 'Get notified when you’re near a place you’ve pinned on the Map with a reminder radius set. Only works while Keystone is open or freshly backgrounded — true background tracking needs a permission this build doesn’t request yet.'
+            ? 'Get notified when you’re near a place you’ve pinned on the Map with a reminder radius set. Only works while Keystone is open or freshly backgrounded. True background tracking needs a permission this build doesn’t request yet.'
             : 'This device doesn’t support location.'}
         </p>
       </SettingsGroup>
@@ -1212,7 +1212,7 @@ export default function MorePage() {
         <p className="muted small">
           {notificationsSupported()
             ? Capacitor.isNativePlatform()
-              ? 'Get reminders for goals, events, and tasks — these still fire even if Keystone is fully closed.'
+              ? 'Get reminders for goals, events, and tasks. These still fire even if Keystone is fully closed.'
               : 'Get reminders for goals and events while Keystone is open. (A web app can’t alert you once it’s fully closed.)'
             : 'This browser doesn’t support notifications.'}
         </p>
@@ -1220,7 +1220,7 @@ export default function MorePage() {
           <>
             <p className="muted small">
               One more Android setting is needed for reminders to fire at the exact time while Keystone is
-              closed — without it, Android can delay them.
+              closed. Without it, Android can delay them.
             </p>
             <button className="btn btn-ghost full" onClick={handleExactAlarms}>
               Enable exact-time reminders
@@ -1244,8 +1244,8 @@ export default function MorePage() {
             </button>
           </div>
           <p className="muted small">
-            A chat bubble that can read your calendar, tasks and people, and add things for you —
-            anything it adds can be undone from the chat. Needs Pro and a signed-in account, and it
+            A chat bubble that can read your calendar, tasks and people, and add things for you.
+            Anything it adds can be undone from the chat. Needs Pro and a signed-in account, and it
             only appears when the server it talks to has been set up for it. What you ask goes to
             Anthropic's Claude along with a summary of your schedule and the names of your contacts;
             notes, phone numbers and photos are never sent unless you ask about them.
@@ -1630,11 +1630,11 @@ function AccountSection() {
           >
             <p>
               This permanently deletes your Keystone account, your Pro purchase record, and
-              everything stored on the server for it — cloud-synced data and any shared calendars
+              everything stored on the server for it: cloud-synced data and any shared calendars
               you own. It can't be undone.
             </p>
             <p className="muted small">
-              Data already saved on this device isn't touched — that's a separate, local action
+              Data already saved on this device isn't touched. That's a separate, local action
               under Settings → Your data if you want it gone too.
             </p>
             {deleteError && <p className="muted small">{deleteError}</p>}
@@ -1676,7 +1676,7 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
       actions.setSettings({ googleConnected: true });
       reimportContacts();
     } else {
-      showToast('Connecting Google didn’t work — try again.');
+      showToast('Connecting Google didn’t work. Try again.');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1789,7 +1789,7 @@ function CloudSyncStatus({ cloudSyncOn }) {
   if (status.phase === 'error') {
     return (
       <p className="muted small">
-        Couldn't reach the server — changes are saved on this device and will sync when it's back.
+        Couldn't reach the server. Changes are saved on this device and will sync when it's back.
       </p>
     );
   }

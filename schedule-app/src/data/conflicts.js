@@ -70,20 +70,24 @@ export function findDayConflicts(occurrences, state) {
     .sort((a, b) => a.s - b.s || a.e2 - b.e2);
   const out = [];
 
+  // Events that mutually overlap are unioned into one cluster below and
+  // reported as a single warning, rather than one per pair — three events
+  // piled on top of each other is one situation to resolve, not three.
+  const parent = timed.map((_, i) => i);
+  const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const union = (i, j) => {
+    const ri = find(i);
+    const rj = find(j);
+    if (ri !== rj) parent[ri] = rj;
+  };
+
   for (let i = 0; i < timed.length; i++) {
     for (let j = i + 1; j < timed.length; j++) {
       const a = timed[i];
       const b = timed[j];
 
       if (a.s < b.e2 && b.s < a.e2) {
-        out.push({
-          id: `overlap:${a.id}:${a.recDate || ''}:${b.id}:${b.recDate || ''}`,
-          kind: 'overlap',
-          a,
-          b,
-          text: `"${label(a)}" and "${label(b)}" overlap`,
-          detail: `${formatTime(a.start)}–${formatTime(a.end)} vs ${formatTime(b.start)}–${formatTime(b.end)}`,
-        });
+        union(i, j);
         continue;
       }
 
@@ -119,6 +123,35 @@ export function findDayConflicts(occurrences, state) {
       break;
     }
   }
+
+  // One warning per overlap cluster (2+ mutually-overlapping events),
+  // built from the unions collected above instead of one per pair.
+  const clusters = new Map();
+  timed.forEach((o, i) => {
+    const r = find(i);
+    if (!clusters.has(r)) clusters.set(r, []);
+    clusters.get(r).push(o);
+  });
+  for (const members of clusters.values()) {
+    if (members.length < 2) continue;
+    const text =
+      members.length === 2
+        ? `"${label(members[0])}" and "${label(members[1])}" overlap`
+        : `${members.length} events overlap: ${members.map((m) => `"${label(m)}"`).join(', ')}`;
+    out.push({
+      id: `overlap:${members.map((m) => `${m.id}:${m.recDate || ''}`).join(':')}`,
+      kind: 'overlap',
+      members,
+      text,
+      detail: members.map((m) => `${formatTime(m.start)}–${formatTime(m.end)}`).join(', '),
+    });
+  }
+
+  // Chronological by the earliest event each warning involves, so the two
+  // conflict kinds (collected in separate passes above) still interleave by
+  // when they actually happen on the day rather than travel warnings always
+  // sorting after every overlap cluster.
+  out.sort((x, y) => (x.kind === 'overlap' ? x.members[0].s : x.a.s) - (y.kind === 'overlap' ? y.members[0].s : y.a.s));
 
   return out;
 }

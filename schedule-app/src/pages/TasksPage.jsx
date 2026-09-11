@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore, useActions } from '../data/store.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import Checkbox from '../components/Checkbox.jsx';
@@ -37,6 +37,7 @@ export default function TasksPage() {
   const { state } = useStore();
   const actions = useActions();
   const navigate = useNavigate();
+  const location = useLocation();
   const showToast = useToast();
   const taskCompleteAnim = state.settings?.taskCompleteAnim ?? true;
   const taskSwipeRefs = useRef(new Map());
@@ -162,6 +163,17 @@ export default function TasksPage() {
     setEditingTask(d);
     initialTaskJson.current = JSON.stringify(d);
   };
+  // Arriving here from Home's "Important reminders" (openTaskId in nav
+  // state) opens that task's editor directly, instead of just landing on
+  // the list and leaving it to be found by hand.
+  useEffect(() => {
+    const id = location.state?.openTaskId;
+    if (!id) return;
+    const t = state.tasks.find((x) => x.id === id);
+    if (t) openEditTask(t);
+    window.history.replaceState({}, '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const addTaskSubtask = () =>
     setEditingTask((t) => ({ ...t, subtasks: [...(t.subtasks || []), { text: '', done: false }] }));
   const taskDirty = editingTask ? JSON.stringify(editingTask) !== initialTaskJson.current : false;

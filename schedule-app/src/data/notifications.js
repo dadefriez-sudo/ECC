@@ -189,30 +189,33 @@ export function runReminderScan(state) {
     changed = true;
   };
 
-  // Goal reminders: a fixed time-of-day nudge, if the goal isn't already met.
+  // Goal reminders: each selected time of day fires its own nudge, if the
+  // goal isn't already met.
   for (const g of state.goals || []) {
-    const time = g.reminder?.time;
-    if (!time) continue;
-    const due = timeToMinutes(time);
-    if (nowMin >= due && nowMin - due <= 30) {
-      if (g.period === 'daily' && (g.progress?.[today] || 0) >= g.target) continue; // met
-      fire(`goal:${g.id}:${today}`, 'Goal reminder', `Time for: ${g.title}`);
+    if (g.period === 'daily' && (g.progress?.[today] || 0) >= g.target) continue; // met
+    for (const time of g.reminder?.times || []) {
+      const due = timeToMinutes(time);
+      if (nowMin >= due && nowMin - due <= 30) {
+        fire(`goal:${g.id}:${time}:${today}`, 'Goal reminder', `Time for: ${g.title}`);
+      }
     }
   }
 
-  // Event reminders: fire `reminder` minutes before an occurrence's start.
+  // Event reminders: each selected lead time fires once, counting back from
+  // an occurrence's start.
   for (const e of state.events || []) {
-    const lead = Number(e.reminder) || 0;
-    if (!lead) continue;
+    if (!(e.reminder || []).length) continue;
     if (!matchesRule(e, today) || (e.skipDates || []).includes(today)) continue;
     const start = timeToMinutes(e.start);
-    const trigger = start - lead;
-    if (nowMin >= trigger && nowMin <= start) {
-      fire(
-        `event:${e.id}:${today}`,
-        e.title || 'Upcoming event',
-        `Starts at ${formatTime(e.start)}${lead ? ` · in ${lead} min` : ''}`
-      );
+    for (const lead of e.reminder) {
+      const trigger = start - lead;
+      if (nowMin >= trigger && nowMin <= start) {
+        fire(
+          `event:${e.id}:${lead}:${today}`,
+          e.title || 'Upcoming event',
+          `Starts at ${formatTime(e.start)}${lead ? ` · in ${lead} min` : ''}`
+        );
+      }
     }
   }
 
@@ -276,27 +279,28 @@ export async function scheduleNativeReminders(state) {
   const upcoming = [];
 
   for (const g of state.goals || []) {
-    const time = g.reminder?.time;
-    if (!time) continue;
-    const due = timeToMinutes(time);
-    if (due < nowMin) continue;
     if (g.period === 'daily' && (g.progress?.[today] || 0) >= g.target) continue;
-    upcoming.push({ key: `goal:${g.id}:${today}`, title: 'Goal reminder', body: `Time for: ${g.title}`, at: due });
+    for (const time of g.reminder?.times || []) {
+      const due = timeToMinutes(time);
+      if (due < nowMin) continue;
+      upcoming.push({ key: `goal:${g.id}:${time}:${today}`, title: 'Goal reminder', body: `Time for: ${g.title}`, at: due });
+    }
   }
 
   for (const e of state.events || []) {
-    const lead = Number(e.reminder) || 0;
-    if (!lead) continue;
+    if (!(e.reminder || []).length) continue;
     if (!matchesRule(e, today) || (e.skipDates || []).includes(today)) continue;
     const start = timeToMinutes(e.start);
-    const trigger = start - lead;
-    if (trigger < nowMin) continue;
-    upcoming.push({
-      key: `event:${e.id}:${today}`,
-      title: e.title || 'Upcoming event',
-      body: `Starts at ${formatTime(e.start)}${lead ? ` · in ${lead} min` : ''}`,
-      at: trigger,
-    });
+    for (const lead of e.reminder) {
+      const trigger = start - lead;
+      if (trigger < nowMin) continue;
+      upcoming.push({
+        key: `event:${e.id}:${lead}:${today}`,
+        title: e.title || 'Upcoming event',
+        body: `Starts at ${formatTime(e.start)}${lead ? ` · in ${lead} min` : ''}`,
+        at: trigger,
+      });
+    }
   }
 
   for (const t of state.tasks || []) {

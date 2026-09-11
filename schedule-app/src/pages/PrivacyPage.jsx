@@ -11,14 +11,14 @@ export default function PrivacyPage() {
       <p>
         Keystone is made by KeyStone Software and built around one idea: your calendar, your
         goals, and your people are your data, kept on your device by default. This page explains
-        what that means in practice — what Keystone collects, when (if ever) it leaves your
+        what that means in practice: what Keystone collects, when (if ever) it leaves your
         device, and how to delete it.
       </p>
 
       <h2>What stays on your device</h2>
       <p>
-        Everything you enter — events, goals, tasks, notes, contacts, map pins, and app settings
-        — is stored locally on your device. Keystone works fully offline, and none of this is
+        Everything you enter (events, goals, tasks, notes, contacts, map pins, and app settings)
+        is stored locally on your device. Keystone works fully offline, and none of this is
         sent anywhere unless you turn on one of the optional features below.
       </p>
 
@@ -35,19 +35,19 @@ export default function PrivacyPage() {
         </li>
         <li>
           <b>Shared calendars (optional, Pro).</b> If you create or join a shared calendar, the
-          specific events on that calendar are visible to the specific people on it — nothing
+          specific events on that calendar are visible to the specific people on it. Nothing
           else in your data is shared.
         </li>
         <li>
           <b>Location (optional).</b> Keystone only uses your device's location if you actively
-          use a location feature — dropping a pin, geocoding a contact's address, or setting up
+          use a location feature: dropping a pin, geocoding a contact's address, or setting up
           an arrival reminder. It doesn't track your location in the background beyond what an
           arrival reminder you've explicitly set up needs to fire.
         </li>
         <li>
           <b>Map search and address lookup.</b> Searching the map, dropping a pin by address, or
           entering a contact's address sends that search text to OpenStreetMap's Nominatim
-          service to look up coordinates, and map tiles are loaded from OpenStreetMap — both
+          service to look up coordinates, and map tiles are loaded from OpenStreetMap. Both
           happen directly from your device, without going through our server. Keystone doesn't
           control what OpenStreetMap does with that traffic; see their own privacy policy.
         </li>
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
           into your local data, same as picking a <code>.vcf</code> file. Calendar is kept in
           sync going forward, in both directions, while the app is open: single (non-repeating)
           events you create, edit, or delete in Keystone are pushed to your Google Calendar, and
-          changes made on Google are pulled in the same way — this only happens while Keystone is
+          changes made on Google are pulled in the same way. This only happens while Keystone is
           open, not in the background. Our server holds a Google-issued token to do this, until
           you tap Disconnect (which also revokes it). Keystone's use of information received from
           Google APIs adheres to the{' '}
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
         <li>
           <b>Payment (Pro purchase).</b> Payment is handled entirely by Stripe, the App Store, or
           Google Play, depending on how you bought Pro. Keystone never sees or stores your card
-          details — only whether the purchase succeeded.
+          details, only whether the purchase succeeded.
         </li>
       </ul>
 
@@ -93,15 +93,15 @@ export default function PrivacyPage() {
       <ul>
         <li>Delete individual events, goals, contacts, or notes any time, right in the app.</li>
         <li>
-          Disconnect Google any time from Settings → Account & sync — this revokes its access on
+          Disconnect Google any time from Settings → Account & sync. This revokes its access on
           Google's side and deletes the stored token; it doesn't remove events/contacts already
           imported, which is a separate, local action like anything else you've entered.
         </li>
         <li>
-          Clear all local data from Settings → Your data — this resets the app on this device.
+          Clear all local data from Settings → Your data. This resets the app on this device.
         </li>
         <li>
-          Delete your account entirely from Settings → Account — this permanently removes your
+          Delete your account entirely from Settings → Account. This permanently removes your
           account, your Pro purchase record, and anything stored on the server for it (synced
           data, shared calendars you own). It doesn't touch data already saved on your device,
           which is a separate, local action.

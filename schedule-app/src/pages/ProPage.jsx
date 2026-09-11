@@ -89,7 +89,7 @@ export default function ProPage() {
         <div className="pricing-crown"><Icon name="crown" size={40} /></div>
         <h1>{name ? `Thank you, ${name}!` : 'Thank you!'}</h1>
         <p className="muted">
-          Your one-time purchase unlocked everything below — for good, including everything
+          Your one-time purchase unlocked everything below for good, including everything
           added later.
         </p>
       </section>

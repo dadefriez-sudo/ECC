@@ -613,7 +613,7 @@ export default function ContactTimelinePage() {
         <p>
           You'll have a moment to undo this.
           {selectedEntries().some((e) => e.type === 'event' && (e.occ.repeat || 'none') !== 'none') &&
-            ' Repeating events lose only the occurrence you picked — the rest of the series stays.'}
+            ' Repeating events lose only the occurrence you picked. The rest of the series stays.'}
         </p>
       </Modal>
 
@@ -685,7 +685,7 @@ export default function ContactTimelinePage() {
                 rows="3"
                 value={editingInteraction.text}
                 onChange={(e) => setEditingInteraction({ ...editingInteraction, text: e.target.value })}
-                placeholder="What happened — a call, a visit, anything worth remembering"
+                placeholder="What happened? A call, a visit, anything worth remembering"
               />
             </label>
           </div>

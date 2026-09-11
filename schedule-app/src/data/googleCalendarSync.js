@@ -31,7 +31,7 @@ const NEW_EVENT_DEFAULTS = {
   skipDates: [],
   kind: '',
   color: '',
-  reminder: 0,
+  reminder: [],
   contactIds: [],
   contactId: '',
   repeat: 'none',

@@ -183,7 +183,10 @@ const TOOLS = {
         notes: notes || '',
         repeat: repeat && repeat !== 'none' ? repeat : 'none',
         kind: '',
-        reminder: Number.isFinite(reminderMinutes) ? reminderMinutes : (state.settings?.defaultReminderLead || 0),
+        reminder: (() => {
+          const mins = Number.isFinite(reminderMinutes) ? reminderMinutes : state.settings?.defaultReminderLead || 0;
+          return mins ? [mins] : [];
+        })(),
       },
       contactId ? [contactId] : []
     );

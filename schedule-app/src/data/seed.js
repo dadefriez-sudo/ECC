@@ -237,7 +237,7 @@ export function makeSeed() {
       target: 8,
       unit: 'glasses',
       progress: { [today]: 3 },
-      reminder: { time: '09:00' },
+      reminder: { times: ['09:00'] },
       createdAt: today,
     },
     {
@@ -292,7 +292,7 @@ export function makeSeed() {
       target: 10,
       unit: 'minutes',
       progress: { [today]: 5 },
-      reminder: { time: '07:30' },
+      reminder: { times: ['07:30'] },
       createdAt: today,
     },
     {
@@ -486,7 +486,7 @@ export function makeSeed() {
     skipDates: [],
     kind: '',
     color: '',
-    reminder: 0,
+    reminder: [],
   };
   // Five fully-populated upcoming days (today+2 through today+6) — enough
   // to show what a real week looks like on the calendar, not just the two
@@ -512,7 +512,7 @@ export function makeSeed() {
       notes: '',
       repeat: 'daily',
       kind: 'inPerson',
-      reminder: 15,
+      reminder: [15],
     },
     {
       ...baseEvent,
@@ -666,7 +666,7 @@ export function makeSeed() {
       location: 'Dentist office',
       notes: '',
       kind: 'other',
-      reminder: 60,
+      reminder: [60],
     },
     {
       ...baseEvent,
@@ -717,7 +717,7 @@ export function makeSeed() {
       location: 'SFO Airport',
       notes: 'Long-term parking, lot D.',
       kind: 'travel',
-      reminder: 30,
+      reminder: [30],
     },
     {
       ...baseEvent,
@@ -914,7 +914,7 @@ export function makeSeed() {
       location: "Nina's office",
       notes: 'Partnership terms.',
       kind: 'inPerson',
-      reminder: 15,
+      reminder: [15],
     },
     {
       ...baseEvent,
@@ -989,7 +989,7 @@ export function makeSeed() {
       location: "Doctor's office",
       notes: '',
       kind: 'other',
-      reminder: 30,
+      reminder: [30],
     },
     {
       ...baseEvent,

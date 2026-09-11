@@ -14,6 +14,15 @@ const LEGACY_DEFAULT_TYPE_COLORS = {
   et_social: '#e08a1e',
 };
 
+// A goal reminder used to be a single time of day ({ time }); now it's a
+// set, so more than one can be selected and fire. Migrate the old shape
+// forward once, here, so every other read site only ever sees `times`.
+function normalizeGoalReminder(reminder) {
+  if (!reminder) return null;
+  if (Array.isArray(reminder.times)) return reminder;
+  return reminder.time ? { times: [reminder.time] } : null;
+}
+
 // --- Persistence -----------------------------------------------------------
 
 function loadState() {
@@ -31,7 +40,7 @@ function loadState() {
         period: 'weekly',
         ...g,
         progress: g.progress || g.weeklyProgress || {},
-        reminder: g.reminder || null,
+        reminder: normalizeGoalReminder(g.reminder),
       })),
       // Event types used to be a separate user-managed list (label + color)
       // that events pointed at by id. That's gone — an event now just
@@ -66,6 +75,14 @@ function loadState() {
         // independent of that guard.
         if (!e.color && !e.kind && LEGACY_DEFAULT_TYPE_COLORS[e.typeId]) {
           e = { ...e, color: LEGACY_DEFAULT_TYPE_COLORS[e.typeId] };
+        }
+        // Reminders used to be a single lead time in minutes (0/undefined =
+        // none); now they're a set, matching tasks' reminderOffsets, so more
+        // than one can be selected and fire. Migrate the old bare number
+        // forward once, here, so every other read site only ever sees the
+        // array shape.
+        if (!Array.isArray(e.reminder)) {
+          e = { ...e, reminder: e.reminder ? [Number(e.reminder)] : [] };
         }
         return e;
       }),

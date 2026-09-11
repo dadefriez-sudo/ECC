@@ -112,7 +112,7 @@ function ReviewCard({ contact, title, onResolve, onSkip, onClose }) {
         </label>
         {lookupFailed && (
           <p className="muted small danger-text">
-            Still couldn't find that address — try picking a suggestion, or drop a pin below.
+            Still couldn't find that address. Try picking a suggestion, or drop a pin below.
           </p>
         )}
 

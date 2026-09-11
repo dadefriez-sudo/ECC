@@ -206,32 +206,13 @@ predates:
 
 ## Known gaps / next steps
 
-- **The lifetime-purchase migration hasn't been run.** Pro switched from a
-  subscription to a one-time purchase;
-  `prisma/migrations/20260727010000_lifetime_purchase` adds the
-  `lifetimePurchasedAt` / `lifetimeSessionId` columns that grant it. Until
-  it's applied, `/api/me` will error on the missing columns. Run
-  `npm run db:migrate` locally or `npm run db:deploy` in production. The
-  migration is additive and leaves the old subscription columns alone, so
-  anyone who subscribed before the switch keeps working — `isPro` is true
-  for a lifetime purchase *or* an still-active legacy subscription, and the
-  pricing page offers those users a "Manage billing" link to cancel. Don't
-  forget to swap the Stripe price (see §3) — the old recurring price will be
-  rejected in `payment` mode.
-
-- **The shared-calendars migration hasn't been applied.** The
-  `SharedCalendar` / `SharedCalendarMember` / `SharedCalendarInvite` /
-  `SharedEvent` models in `prisma/schema.prisma`, the routes in
-  `src/routes/calendars.js`, and `prisma/migrations/
-  20260811161029_shared_calendars` are all in place and verified (create →
-  invite → accept → add an event → delete-cascades-correctly, exercised
-  directly against a throwaway Postgres instance) — same shape as the
-  lifetime-purchase gap above, just needs `npm run db:migrate` locally or
-  `npm run db:deploy` in production to actually create the tables. Until
-  then the routes 500 on the missing tables, and the frontend shows its
-  honest "not connected yet" state (see `backendConfigured()` gating in
-  `schedule-app/src/pages/SharedCalendarsPage.jsx`) rather than pretending
-  to work.
+- Both the lifetime-purchase migration (`20260727010000_lifetime_purchase`)
+  and the shared-calendars migration (`20260811161029_shared_calendars`)
+  have been applied (`npm run db:deploy`) against the current database, so
+  both features are live. If `/api/me` errors or shared calendars still
+  shows "not connected" on a build with `VITE_BACKEND_URL` and Clerk
+  configured, check the deployed backend's actual `DATABASE_URL` and its
+  server logs rather than assuming a missing migration again.
 
   Invites still don't send an email, deliberately — there's no email
   provider wired up (nothing like Postmark/Resend/SMTP configured

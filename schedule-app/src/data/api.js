@@ -74,8 +74,7 @@ export const askAssistant = (getToken, messages, context) =>
   request('/api/assistant', { getToken, method: 'POST', body: { messages, context } });
 
 // Shared calendars — invite someone to see/add simple events with you.
-// Backend-only feature (see backend/README.md's "Known gaps" section for
-// what still needs deploying before these calls will succeed).
+// Backend-only feature, requires the backend and Clerk to be configured.
 export const fetchCalendars = (getToken) => request('/api/calendars', { getToken });
 export const createCalendar = (getToken, name, color) =>
   request('/api/calendars', { getToken, method: 'POST', body: { name, color } });

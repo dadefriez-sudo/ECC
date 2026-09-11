@@ -71,13 +71,14 @@ const DAY_END = 23;
 const PX_PER_HOUR = 56;
 const LONG_PRESS_MS = 500;
 const MOVE_TOLERANCE_PX = 9;
-const REMINDER_OPTIONS = [
-  { v: 0, l: 'No reminder' },
-  { v: 5, l: '5 min before' },
-  { v: 10, l: '10 min before' },
-  { v: 15, l: '15 min before' },
-  { v: 30, l: '30 min before' },
-  { v: 60, l: '1 hour before' },
+// Chip-style multi-select, matching TasksPage's reminderOffsets — an event
+// can fire more than one reminder (e.g. a day before and 15 minutes before).
+const EVENT_REMINDER_OFFSETS = [
+  { mins: 5, label: '5 min before' },
+  { mins: 10, label: '10 min before' },
+  { mins: 15, label: '15 min before' },
+  { mins: 30, label: '30 min before' },
+  { mins: 60, label: '1 hour before' },
 ];
 const COLOR_SWATCHES = ['#1f5f8b', '#8a5cd1', '#2e9e6b', '#e08a1e', '#d1495b', '#3a9188', '#c2547a', '#5b7fb0'];
 
@@ -126,7 +127,7 @@ function setMembership(arr, value, present) {
 const emptyDraft = (date, start, extra, opts = {}) => {
   const dayEndHour = opts.dayEndHour ?? DAY_END;
   const duration = opts.duration ?? 60;
-  const reminder = opts.reminder ?? 0;
+  const reminder = opts.reminder ?? [];
   return {
     title: '',
     date,
@@ -193,7 +194,11 @@ export default function PlannerPage() {
 
   const openNew = (date, start = '09:00', extra = {}) =>
     setEditing(
-      emptyDraft(date, start, extra, { dayEndHour, duration: defaultDuration, reminder: defaultReminder })
+      emptyDraft(date, start, extra, {
+        dayEndHour,
+        duration: defaultDuration,
+        reminder: defaultReminder ? [defaultReminder] : [],
+      })
     );
 
   const openView = (occ) => setViewing(occ);
@@ -1982,7 +1987,7 @@ function DayView({
                     <span className="event-time">
                       {formatTime(minutesToTime(displayStartMin))} – {formatTime(minutesToTime(displayEndMin))}
                       {recurring && <span className="repeat-glyph"> <Icon name={ev.isException ? 'pencil' : 'repeat'} size={13} /></span>}
-                      {ev.reminder > 0 && <span className="repeat-glyph"> <Icon name="bell" size={13} /></span>}
+                      {ev.reminder?.length > 0 && <span className="repeat-glyph"> <Icon name="bell" size={13} /></span>}
                     </span>
                     <span className="event-title">{ev.title || 'Untitled'}</span>
                     {(who || kindLabel) && (
@@ -2066,7 +2071,7 @@ function DayView({
                       <span className="event-time">
                         {formatTime(minutesToTime(displayStartMin))} – {formatTime(minutesToTime(displayEndMin))}
                         {recurring && <span className="repeat-glyph"> <Icon name={occ.isException ? 'pencil' : 'repeat'} size={13} /></span>}
-                        {occ.reminder > 0 && <span className="repeat-glyph"> <Icon name="bell" size={13} /></span>}
+                        {occ.reminder?.length > 0 && <span className="repeat-glyph"> <Icon name="bell" size={13} /></span>}
                       </span>
                       <span className="event-title">{occ.title || 'Untitled'}</span>
                       {(who || kindLabel) && (
@@ -2337,7 +2342,7 @@ function WeekView({
                       {selectMode && <span className={`select-dot${isSel ? ' select-dot--on' : ''}`} />}
                       <span className="chip-time">{formatTime(ev.start)}</span>
                       <span className="chip-title">{ev.title || 'Untitled'}</span>
-                      {ev.reminder > 0 && <span className="repeat-glyph"><Icon name="bell" size={13} /></span>}
+                      {ev.reminder?.length > 0 && <span className="repeat-glyph"><Icon name="bell" size={13} /></span>}
                       {recurring && <span className="repeat-glyph"><Icon name={ev.isException ? 'pencil' : 'repeat'} size={13} /></span>}
                     </button>
                   );
@@ -2367,6 +2372,7 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
   const [swipeDragging, setSwipeDragging] = useState(false);
   const suppressClickRef = useRef(false);
   const contactColor = useMemo(() => makeContactColor(contacts, statuses), [contacts, statuses]);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
 
   // Direction of the most recent month change, for the same slide-in
   // treatment the day timeline uses — same reasoning, diffs a comparable
@@ -2386,9 +2392,10 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
     return new Set(contactDatesInMonth(contacts, monthStart).map((d) => d.nextDate));
   }, [contacts, monthStart, birthdaysEnabled]);
 
-  // The grid alone rarely fills the page, leaving a big dead gap above the
-  // tab bar — a scannable list of what's actually coming up this month puts
-  // that space to use instead of just padding it out.
+  // A scannable list of what's actually coming up this month, collapsed
+  // into a dropdown below the grid (upcomingOpen) rather than always
+  // expanded, so it's available without permanently pushing the tab bar
+  // down on a month with a lot going on.
   const today = todayISO();
   const upcoming = useMemo(() => {
     const fromToday = todayISO() >= toISODate(monthStart);
@@ -2480,7 +2487,16 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
       </div>
       {upcoming.length > 0 && (
         <section className="month-upcoming">
-          <div className="detail-label">Upcoming this month</div>
+          <button
+            type="button"
+            className="month-upcoming-toggle"
+            onClick={() => setUpcomingOpen((v) => !v)}
+            aria-expanded={upcomingOpen}
+          >
+            <span className="detail-label">Upcoming this month ({upcoming.length})</span>
+            <Icon name="chevronDown" size={18} className={`month-upcoming-chevron${upcomingOpen ? ' month-upcoming-chevron--open' : ''}`} />
+          </button>
+          {upcomingOpen && (
           <div className="agenda-events">
             {upcoming.map((ev) => {
               const recurring = ev.repeat && ev.repeat !== 'none';
@@ -2495,12 +2511,13 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
                     {formatShortDate(ev.iso)} · {formatTime(ev.start)}
                   </span>
                   <span className="chip-title">{ev.title || 'Untitled'}</span>
-                  {ev.reminder > 0 && <span className="repeat-glyph"><Icon name="bell" size={13} /></span>}
+                  {ev.reminder?.length > 0 && <span className="repeat-glyph"><Icon name="bell" size={13} /></span>}
                   {recurring && <span className="repeat-glyph"><Icon name={ev.isException ? 'pencil' : 'repeat'} size={13} /></span>}
                 </button>
               );
             })}
           </div>
+          )}
         </section>
       )}
     </>
@@ -2617,10 +2634,12 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindL
               <span className="detail-value">{repeatLabel(occ.repeat, occ.repeatDays)}</span>
             </div>
           )}
-          {occ.reminder > 0 && (
+          {occ.reminder?.length > 0 && (
             <div className="detail-field">
-              <span className="detail-label">Reminder</span>
-              <span className="detail-value">{occ.reminder} min before</span>
+              <span className="detail-label">{occ.reminder.length > 1 ? 'Reminders' : 'Reminder'}</span>
+              <span className="detail-value">
+                {[...occ.reminder].sort((a, b) => a - b).join(', ')} min before
+              </span>
             </div>
           )}
           {occ.location && (
@@ -2768,7 +2787,7 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
       repeatDays: editing.repeatDays || [],
       kind: editing.kind || '',
       color: editing.color || '',
-      reminder: Number(editing.reminder) || 0,
+      reminder: Array.isArray(editing.reminder) ? editing.reminder : [],
       link: editing.linkKind && editing.linkId ? `${editing.linkKind}:${editing.linkId}` : '',
       recDate: editing.recDate || editing.date,
       occDate: editing.occDate || editing.date,
@@ -2823,9 +2842,13 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
   const thisScope = draft.scope === 'this';
   const recurring = draft.repeat !== 'none';
 
-  const setReminder = async (mins) => {
-    setDraft({ ...draft, reminder: mins });
-    if (mins > 0) {
+  const toggleReminder = async (mins) => {
+    const on = !draft.reminder.includes(mins);
+    setDraft({
+      ...draft,
+      reminder: on ? [...draft.reminder, mins] : draft.reminder.filter((m) => m !== mins),
+    });
+    if (on) {
       await requestNotificationPermission();
       setSettings({ notifications: true });
     }
@@ -2875,7 +2898,7 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
   return (
     <EditorSheet
       open={!!editing}
-      title={scheduling ? `Schedule — ${formatShortDate(draft.date)}` : editing.id ? 'Edit event' : 'New event'}
+      title={scheduling ? `Schedule for ${formatShortDate(draft.date)}` : editing.id ? 'Edit event' : 'New event'}
       dirty={dirty}
       onSave={doSave}
       onDiscard={onClose}
@@ -3011,13 +3034,20 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
         )}
 
         <label className="field">
-          <span>Reminder</span>
-          <Select
-            value={draft.reminder}
-            onChange={(v) => setReminder(Number(v))}
-            options={REMINDER_OPTIONS.map((o) => ({ value: o.v, label: o.l }))}
-          />
-          {draft.reminder > 0 && !notificationsSupported() && (
+          <span>Reminders</span>
+          <div className="chips">
+            {EVENT_REMINDER_OFFSETS.map((o) => (
+              <button
+                key={o.mins}
+                type="button"
+                className={`chip${draft.reminder.includes(o.mins) ? ' chip--on' : ''}`}
+                onClick={() => toggleReminder(o.mins)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {draft.reminder?.length > 0 && !notificationsSupported() && (
             <span className="muted small">This browser can't show notifications.</span>
           )}
         </label>

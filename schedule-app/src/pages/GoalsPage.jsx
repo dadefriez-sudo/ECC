@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore, useActions } from '../data/store.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import Checkbox from '../components/Checkbox.jsx';
@@ -42,13 +42,14 @@ const emptyGoal = (period) => ({
   unit: '',
   repeatDays: [],
   reminderOn: false,
-  reminderTime: '09:00',
+  reminderTimes: ['09:00'],
 });
 
 export default function GoalsPage() {
   const { state } = useStore();
   const actions = useActions();
   const navigate = useNavigate();
+  const location = useLocation();
   const isPro = !!state.settings?.isPro;
   // Habits (the existing daily/weekly streak tracker) and Objectives (the
   // higher-level quarterly/annual layer with milestones) share this one tab
@@ -236,7 +237,7 @@ export default function GoalsPage() {
       ...g,
       repeatDays: g.repeatDays || [],
       reminderOn: !!g.reminder,
-      reminderTime: g.reminder?.time || '09:00',
+      reminderTimes: g.reminder?.times?.length ? g.reminder.times : ['09:00'],
     };
     setEditing(d);
     initialJsonRef.current = JSON.stringify(d);
@@ -245,6 +246,17 @@ export default function GoalsPage() {
     // quietly turned off.
     setShowAdvanced(d.repeatDays.length > 0 || !!d.category || d.reminderOn);
   };
+  // Arriving here from Home's "Important reminders" (openGoalId in nav
+  // state) opens that goal's editor directly, instead of just landing on
+  // the list and leaving it to be found by hand.
+  useEffect(() => {
+    const id = location.state?.openGoalId;
+    if (!id) return;
+    const g = state.goals.find((x) => x.id === id);
+    if (g) openEdit(g);
+    window.history.replaceState({}, '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const openNew = () => {
     const d = emptyGoal(period);
     setEditing(d);
@@ -260,10 +272,27 @@ export default function GoalsPage() {
     setEditing({ ...editing, repeatDays: [...set].sort() });
   };
 
+  // A goal can nudge you at more than one time of day — add/remove/edit
+  // entries in editing.reminderTimes, same list-editing shape used
+  // elsewhere for repeatable rows.
+  const addReminderTime = () => {
+    const last = editing.reminderTimes[editing.reminderTimes.length - 1] || '09:00';
+    setEditing({ ...editing, reminderTimes: [...editing.reminderTimes, last] });
+  };
+  const updateReminderTime = (i, time) => {
+    const times = [...editing.reminderTimes];
+    times[i] = time;
+    setEditing({ ...editing, reminderTimes: times });
+  };
+  const removeReminderTime = (i) => {
+    setEditing({ ...editing, reminderTimes: editing.reminderTimes.filter((_, idx) => idx !== i) });
+  };
+
   const saveGoal = async () => {
     const title = editing.title.trim();
     if (!title) return;
-    if (editing.reminderOn) {
+    const times = editing.reminderOn ? editing.reminderTimes.filter(Boolean) : [];
+    if (times.length) {
       await requestNotificationPermission();
       actions.setSettings({ notifications: true });
     }
@@ -274,7 +303,7 @@ export default function GoalsPage() {
       target: Math.max(1, Number(editing.target) || 1),
       unit: editing.unit.trim(),
       repeatDays: editing.period === 'daily' ? editing.repeatDays || [] : [],
-      reminder: editing.reminderOn ? { time: editing.reminderTime } : null,
+      reminder: times.length ? { times } : null,
     };
     if (editing.id) actions.updateGoal({ ...editing, ...payload });
     else actions.addGoal(payload);
@@ -509,7 +538,7 @@ export default function GoalsPage() {
                   )}
                   {outOfFreezes && (
                     <button className="freeze-row freeze-row--locked" data-haptic="select" onClick={() => navigate('/pricing')}>
-                      <Icon name="lock" size={15} /> Out of freezes this month — get 5/mo with Pro
+                      <Icon name="lock" size={15} /> Out of freezes this month. Get 5/mo with Pro
                     </button>
                   )}
                 </div>
@@ -661,11 +690,28 @@ export default function GoalsPage() {
                   </label>
                   {editing.reminderOn && (
                     <>
-                      <input
-                        type="time"
-                        value={editing.reminderTime}
-                        onChange={(e) => setEditing({ ...editing, reminderTime: e.target.value })}
-                      />
+                      {editing.reminderTimes.map((time, i) => (
+                        <div key={i} className="reminder-time-row">
+                          <input
+                            type="time"
+                            value={time}
+                            onChange={(e) => updateReminderTime(i, e.target.value)}
+                          />
+                          {editing.reminderTimes.length > 1 && (
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              onClick={() => removeReminderTime(i)}
+                              aria-label="Remove this reminder time"
+                            >
+                              <Icon name="close" size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={addReminderTime}>
+                        + Add another time
+                      </button>
                       {!notificationsSupported() && (
                         <span className="muted small">This browser can't show notifications.</span>
                       )}
@@ -773,8 +819,8 @@ function EmptyState({ isDaily, onAdd }) {
       <h2>{isDaily ? 'Set a daily goal' : 'Set a weekly goal'}</h2>
       <p className="muted">
         {isDaily
-          ? 'Small daily habits — water, reading, steps — with progress that resets each day.'
-          : 'Weekly targets like workouts or people to reach out to, tracked across the week.'}
+          ? 'Track small daily habits like water, reading, or steps. Your progress resets fresh each day.'
+          : 'Set weekly targets, like workouts or people to reach out to, and watch your progress build across the week.'}
       </p>
       <button className="btn btn-primary" onClick={onAdd}>
         + New goal

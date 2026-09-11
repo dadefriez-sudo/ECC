@@ -232,7 +232,7 @@ function SharedCalendarDetailInner() {
           />
         </label>
         <p className="muted small">
-          Keystone doesn't send the invite email itself — copy this link and send it to them
+          Keystone doesn't send the invite email itself. Copy this link and send it to them
           yourself once it's created.
         </p>
         {inviteLink && (

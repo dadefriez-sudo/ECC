@@ -8,9 +8,10 @@ import { backendConfigured, fetchCalendars, createCalendar } from '../data/api.j
 import Icon from '../components/Icon.jsx';
 
 // Pro + backend feature: invite someone to see/add simple events with you
-// on a calendar separate from your own private one (see backend/README.md
-// "Known gaps" — the routes exist but nothing's been deployed/migrated yet,
-// so this only shows the honest "not connected" state until that happens).
+// on a calendar separate from your own private one. Needs a live backend
+// (VITE_BACKEND_URL set at build time) and Clerk configured; shows an
+// honest "not connected" state below instead of the real feature when
+// either is missing, rather than erroring.
 export default function SharedCalendarsPage() {
   const { state } = useStore();
   const navigate = useNavigate();

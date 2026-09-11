@@ -16,7 +16,7 @@ export default function TermsPage() {
       <p>
         Keystone is a personal calendar, goals, and contacts app. Core features are free. Pro is
         an optional one-time purchase that unlocks additional features listed on the pricing
-        page — it is not a subscription, and there's nothing to cancel once purchased.
+        page. It is not a subscription, and there's nothing to cancel once purchased.
       </p>
 
       <h2>Accounts</h2>
@@ -29,14 +29,14 @@ export default function TermsPage() {
       <h2>Purchases</h2>
       <p>
         Pro is billed once, through Stripe, the App Store, or Google Play depending on where you
-        bought it. Refunds are handled according to that platform's own refund policy — Apple's
+        bought it. Refunds are handled according to that platform's own refund policy: Apple's
         or Google's store policies for purchases made there, or by contacting us directly for
         purchases made through Stripe.
       </p>
 
       <h2>Your content</h2>
       <p>
-        You own what you put into Keystone — your events, goals, notes, and contacts. You're
+        You own what you put into Keystone: your events, goals, notes, and contacts. You're
         responsible for the accuracy of anything you enter, including information about other
         people (for example, a contact's phone number or address). Don't use shared calendars or
         invites to spam, harass, or contact someone who hasn't agreed to it.
@@ -52,7 +52,7 @@ export default function TermsPage() {
       <h2>Disclaimer</h2>
       <p>
         Keystone is provided "as is." Reminders, travel-time warnings, and route suggestions are
-        estimates meant to help you plan — they're not guarantees, and you're responsible for
+        estimates meant to help you plan. They're not guarantees, and you're responsible for
         confirming anything time-sensitive or safety-related yourself. To the extent the law
         allows, we aren't liable for indirect or consequential damages arising from your use of
         the app.

@@ -139,7 +139,7 @@ function RealPricingCTA({ isPro, settings }) {
           {hasLegacySubscription && (
             <>
               <p className="muted small">
-                You're on the old monthly/annual plan. Pro is a one-time purchase now — cancel here
+                You're on the old monthly/annual plan. Pro is a one-time purchase now. Cancel here
                 and your access stays until the period you've already paid for ends.
               </p>
               <button className="btn btn-ghost full" onClick={handleManage} disabled={busy}>
@@ -150,7 +150,7 @@ function RealPricingCTA({ isPro, settings }) {
         </div>
       ) : (
         <button className="btn btn-primary full pricing-cta" onClick={handleUpgrade} disabled={busy}>
-          {isSignedIn ? `Unlock Pro — ${PRO_PRICE} once` : 'Sign in to unlock Pro'}
+          {isSignedIn ? `Unlock Pro for ${PRO_PRICE} once` : 'Sign in to unlock Pro'}
         </button>
       )}
       {error && <p className="muted small center-pad pricing-disclaimer">{error}</p>}
@@ -232,7 +232,7 @@ function NativePricingCTA({ isPro }) {
       // two apart, and the only feedback worth giving here, is whether the
       // backend now reports Pro.
       const found = await refreshMe();
-      showToast(found ? 'Purchase restored — you have Pro.' : 'No previous purchase found on this account.');
+      showToast(found ? 'Purchase restored. You have Pro.' : 'No previous purchase found on this account.');
     } catch (err) {
       showToast(err.message);
     } finally {
@@ -249,7 +249,7 @@ function NativePricingCTA({ isPro }) {
       ) : (
         <>
           <button className="btn btn-primary full pricing-cta" onClick={handlePurchase} disabled={busy}>
-            {isSignedIn ? `Unlock Pro — ${PRO_PRICE} once` : 'Sign in to unlock Pro'}
+            {isSignedIn ? `Unlock Pro for ${PRO_PRICE} once` : 'Sign in to unlock Pro'}
           </button>
           <button className="btn btn-ghost full" onClick={handleRestore} disabled={busy}>
             Restore purchases
@@ -275,12 +275,12 @@ function DemoPricingCTA({ isPro }) {
         </div>
       ) : (
         <button className="btn btn-primary full pricing-cta" onClick={() => actions.setSettings({ isPro: true })}>
-          Try Pro (demo) — {PRO_PRICE} once
+          Try Pro (demo) for {PRO_PRICE} once
         </button>
       )}
       <p className="muted small center-pad pricing-disclaimer">
         This build has no payment processor connected yet, so "Try Pro" just flips a local demo
-        flag to preview Pro features — it doesn't charge you anything.
+        flag to preview Pro features. It doesn't charge you anything.
       </p>
     </>
   );

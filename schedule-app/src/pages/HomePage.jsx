@@ -226,12 +226,14 @@ export default function HomePage() {
   const reminders = useMemo(() => {
     const out = [];
     for (const g of state.goals) {
-      if (!g.reminder?.time) continue;
+      if (!g.reminder?.times?.length) continue;
       const isDaily = (g.period || 'weekly') === 'daily';
       if (isDaily && g.repeatDays?.length && !g.repeatDays.includes(todayDow)) continue;
       const key = isDaily ? today : weekKey(new Date());
       if ((g.progress?.[key] || 0) >= g.target) continue;
-      out.push({ kind: 'goal', id: g.id, label: g.title, time: g.reminder.time });
+      for (const time of g.reminder.times) {
+        out.push({ kind: 'goal', id: `${g.id}:${time}`, goalId: g.id, label: g.title, time });
+      }
     }
     for (const t of state.tasks || []) {
       if (t.done || t.dueDate !== today) continue;
@@ -239,7 +241,15 @@ export default function HomePage() {
     }
     for (const e of state.events) {
       for (const occ of expandEventOnDay(e, today)) {
-        if (!occ.done) out.push({ kind: 'event', id: `${occ.id}:${occ.recDate}`, label: occ.title, time: occ.start });
+        if (!occ.done)
+          out.push({
+            kind: 'event',
+            id: `${occ.id}:${occ.recDate}`,
+            occId: occ.id,
+            occDate: occ.recDate,
+            label: occ.title,
+            time: occ.start,
+          });
       }
     }
     return out.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')).slice(0, 6);
@@ -628,8 +638,10 @@ export default function HomePage() {
                       <button
                         className="reminder-row"
                         onClick={() => {
-                          if (r.kind === 'goal') navigate('/goals');
-                          else if (r.kind === 'event') navigate('/planner');
+                          if (r.kind === 'goal') navigate('/goals', { state: { openGoalId: r.goalId } });
+                          else if (r.kind === 'event')
+                            navigate('/planner', { state: { openEventId: r.occId, openEventDate: r.occDate } });
+                          else if (r.kind === 'task') navigate('/tasks', { state: { openTaskId: r.id } });
                         }}
                       >
                         <span className={`reminder-kind reminder-kind--${r.kind}`}>{r.kind}</span>

@@ -29,7 +29,7 @@ export function computeNudges(state) {
       nudges.push({
         id: `date:${dueToday.id}`,
         icon,
-        text: `${text} is today${detail ? ` — ${detail}` : ''}.`,
+        text: `${text} is today${detail ? `. ${detail}` : ''}.`,
         to: `/contacts/${dueToday.contactId}`,
       });
     } else if (dates.length > 0) {
@@ -66,7 +66,7 @@ export function computeNudges(state) {
     nudges.push({
       id: `streak:${atRisk.id}`,
       icon: 'flame',
-      text: `Don't lose your ${atRiskStreak}-day streak on "${atRisk.title}" — log it before today ends.`,
+      text: `Don't lose your ${atRiskStreak}-day streak on "${atRisk.title}". Log it before today ends.`,
       to: '/goals',
     });
   }

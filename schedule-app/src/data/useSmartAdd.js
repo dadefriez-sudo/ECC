@@ -36,7 +36,7 @@ export function useSmartAdd(fallbackDate) {
             repeatDays: parsed.repeatDays || [],
             kind: '',
             color: '',
-            reminder: parsed.reminderMinutes || 0,
+            reminder: parsed.reminderMinutes ? [parsed.reminderMinutes] : [],
           },
           parsed.contactId ? [parsed.contactId] : []
         )

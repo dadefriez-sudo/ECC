@@ -114,7 +114,7 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
         <h2>Objectives are a Pro feature</h2>
         <p className="muted">
           Track quarterly and annual goals broken into milestones, with progress that rolls up
-          automatically — and the option to link a daily or weekly habit as the cadence behind it.
+          automatically. You can also link a daily or weekly habit as the cadence behind it.
         </p>
         <button className="btn btn-primary" onClick={() => navigate('/pricing')}>
           See Pro plans
@@ -255,8 +255,8 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
           </div>
           <h2>Set a high-level goal</h2>
           <p className="muted">
-            Quarterly or annual objectives, broken into milestones you can actually check off —
-            optionally driven by one of your daily or weekly habits.
+            Quarterly or annual objectives, broken into milestones you can actually check off.
+            Optionally driven by one of your daily or weekly habits.
           </p>
           <button className="btn btn-primary" onClick={openNewObjective}>
             + New objective

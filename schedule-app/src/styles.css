@@ -3045,8 +3045,27 @@ textarea {
 .month-upcoming {
   margin-top: 18px;
 }
-.month-upcoming .detail-label {
+.month-upcoming-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
   margin-bottom: 8px;
+  cursor: pointer;
+}
+.month-upcoming-toggle .detail-label {
+  margin-bottom: 0;
+}
+.month-upcoming-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+.month-upcoming-chevron--open {
+  transform: rotate(180deg);
 }
 .month-upcoming .agenda-events {
   gap: 8px;
@@ -4469,6 +4488,12 @@ textarea {
   align-items: center;
   gap: 8px;
 }
+.reminder-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
 .task-check--sm {
   width: 18px;
   height: 18px;
@@ -5577,19 +5602,13 @@ body.is-scrolled .page-head::before {
   margin: 0;
 }
 .contact-notes {
-  /* Sticky (not static) so notes stay reachable at any scroll position —
-     landing on "today" scrolls past several future events on open, which
-     would otherwise bury them off-screen every time the page opens. */
-  position: sticky;
-  z-index: 9;
-  background: var(--bg);
+  /* Normal flow, not sticky — sticky with its own internal scroll used to
+     dock the first note flush under the header's own fade-to-transparent
+     edge, which read as that note being faded and cut off at the top. */
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 14px;
-  max-height: 32vh;
-  overflow-y: auto;
-  padding-bottom: 2px;
 }
 .contact-note {
   display: flex;
@@ -6009,14 +6028,6 @@ button.timeline-item {
 }
 
 /* --- Contact timeline: collapsed view, insights, note reader -------------- */
-/* Notes are in normal flow now (they used to be sticky with their own
-   overflow, which clipped the first one under the header). */
-.contact-notes {
-  position: static;
-  max-height: none;
-  overflow: visible;
-  margin-bottom: 14px;
-}
 /* Two lines rather than one ellipsised line: enough to tell two notes apart
    without turning the list into the notes themselves. The full text is a tap
    away in the reader. */
