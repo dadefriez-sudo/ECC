@@ -832,16 +832,17 @@ export default function MorePage() {
         </div>
 
         {/* The two schedule warnings the planner can raise, separately
-            switchable — the travel estimate is a guess from straight-line
-            distance and some people will want it quiet while still being
-            told about a genuine double-booking, which is a fact. */}
+            switchable and with different defaults: travel time is on (a
+            guess from straight-line distance, but it only ever flags a real
+            problem), overlaps are off (double-booking is often deliberate,
+            so it needs an opt-in). */}
         <div className="section-head">
           <span>Warn about overlapping events</span>
           <button
-            className={`toggle${s.warnOverlaps !== false ? ' toggle--on' : ''}`}
+            className={`toggle${s.warnOverlaps === true ? ' toggle--on' : ''}`}
             role="switch"
-            aria-checked={s.warnOverlaps !== false}
-            onClick={() => actions.setSettings({ warnOverlaps: s.warnOverlaps === false })}
+            aria-checked={s.warnOverlaps === true}
+            onClick={() => actions.setSettings({ warnOverlaps: s.warnOverlaps !== true })}
           >
             <span className="toggle-knob" />
           </button>

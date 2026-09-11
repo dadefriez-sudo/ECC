@@ -114,11 +114,15 @@ function loadState() {
         timelineStartHour: 6,
         timelineEndHour: 23,
         showTasksOnTimeline: false,
-        // Schedule warnings, on by default — the point of them is to catch a
-        // clash you hadn't noticed, which only works if they're on until you
-        // decide otherwise. Read as `!== false` everywhere so an older saved
-        // settings object (which has neither key) still gets them.
-        warnOverlaps: true,
+        // Travel-time warnings are on by default (they only ever fire for a
+        // real, specific problem: not enough time to physically get from one
+        // place to the next) — read as `!== false` everywhere so an older
+        // saved settings object (no such key) still gets them. Overlap
+        // warnings are off by default (double-booking is often deliberate —
+        // a call during a commute, a note-taking block alongside a meeting —
+        // so it needs an opt-in) — read as `=== true` everywhere so an older
+        // saved settings object also starts off.
+        warnOverlaps: false,
         warnTravelTime: true,
         eventBlockOpacity: 100,
         // Map

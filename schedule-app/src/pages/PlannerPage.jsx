@@ -698,7 +698,7 @@ export default function PlannerPage() {
     const found = findDayConflicts(occurrencesFor(state.events, cursor), state);
     return found.filter((c) =>
       c.kind === 'overlap'
-        ? state.settings?.warnOverlaps !== false
+        ? state.settings?.warnOverlaps === true
         : state.settings?.warnTravelTime !== false
     );
   }, [mode, state, cursor]);
@@ -2407,7 +2407,9 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
         rows.push({ ...ev, iso, dayNum: d.getDate() });
       }
     }
-    return rows.slice(0, 8);
+    // The dropdown itself scrolls past a few events now, so this is just a
+    // sanity cap for a genuinely packed month, not the effective limit.
+    return rows.slice(0, 50);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, monthStart]);
 

@@ -3069,6 +3069,11 @@ textarea {
 }
 .month-upcoming .agenda-events {
   gap: 8px;
+  /* Scrolls its own contents past this height instead of growing the whole
+     page — a month with a lot going on shouldn't push the tab bar down
+     further with every event added to the list. */
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
 /* --- FAB ---------------------------------------------------------------- */
