@@ -21,18 +21,6 @@ const config: CapacitorConfig = {
     // needs that domain added here too.
     allowNavigation: ['*.clerk.accounts.dev'],
   },
-  // TEMPORARY, for debugging the Clerk sign-in issue via chrome://inspect:
-  // Capacitor only enables WebView remote-debugging by default when the
-  // app's own "debuggable" flag is set, which a properly signed release
-  // build (required for Play Billing to recognize the app at all) never
-  // has — so a release build never shows up in chrome://inspect without
-  // this override. Remove once the sign-in issue is resolved; leaving
-  // this on ships a small, real info-disclosure surface (anyone with the
-  // device and a USB cable could inspect the running app) that a real
-  // release doesn't want.
-  android: {
-    webContentsDebuggingEnabled: true,
-  },
   plugins: {
     SplashScreen: {
       // main.jsx hides this itself the instant the app has rendered — the
