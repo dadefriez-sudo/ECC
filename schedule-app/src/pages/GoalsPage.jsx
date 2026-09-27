@@ -231,6 +231,23 @@ export default function GoalsPage() {
     return [...map.entries()];
   }, [goals]);
 
+  // Reverse of Objectives' "Link habits" field — a quarterly/annual
+  // objective can name this goal as one of its habits, but until now that
+  // only showed up on the Objectives tab, not here where the goal itself
+  // lives. Keyed by goal id so a weekly goal's card can say what it's
+  // actually in service of.
+  const objectivesByGoal = useMemo(() => {
+    const map = new Map();
+    for (const o of state.objectives) {
+      if (o.status === 'archived') continue;
+      for (const gid of o.linkedGoalIds || []) {
+        if (!map.has(gid)) map.set(gid, []);
+        map.get(gid).push(o);
+      }
+    }
+    return map;
+  }, [state.objectives]);
+
   const initialJsonRef = useRef('');
   const openEdit = (g) => {
     const d = {
@@ -516,6 +533,15 @@ export default function GoalsPage() {
                       </button>
                     </div>
                   </div>
+                  {!isDaily && objectivesByGoal.get(g.id)?.length > 0 && (
+                    <div className="objective-linked">
+                      {objectivesByGoal.get(g.id).map((o) => (
+                        <span key={o.id} className="objective-linked-chip">
+                          <Icon name="trophy" size={13} /> Supports {o.title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {!isDaily && g.target > 0 && (
                     <WeekPace
                       goal={g}

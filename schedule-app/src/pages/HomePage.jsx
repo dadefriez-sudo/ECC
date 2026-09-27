@@ -67,6 +67,7 @@ const TASK_REMINDER_OFFSETS = [
   { mins: 15, label: '15 min before' },
   { mins: 30, label: '30 min before' },
   { mins: 60, label: '1 hour before' },
+  { mins: 1440, label: '1 day before' },
 ];
 
 export default function HomePage() {

@@ -83,11 +83,18 @@ const PATHS = {
   chevronDown: <path d="M5.5 9.5L12 16l6.5-6.5" {...S} />,
   // A paper-plane "go there" arrow, used for directions and outbound links.
   send: <path d="M20.5 3.5L10 14M20.5 3.5l-6.6 17-3.9-6.5L3.5 10z" {...S} />,
+  // Previously drawn as two bare arcs plus a vertical+horizontal "hook" at
+  // each end meant to read as an arrowhead — the hooks didn't point along
+  // the arc's own direction of travel, so they rendered as stray marks
+  // rather than arrows (confirmed by rendering it). Redrawn as two
+  // corner-cut loops, each closed off by a real chevron arrowhead angled
+  // along its own line.
   repeat: (
     <>
-      <path d="M4 11a7 7 0 0 1 11.9-5H19" {...S} />
-      <path d="M20 13a7 7 0 0 1-11.9 5H5" {...S} />
-      <path d="M16 3v3h3M8 21v-3H5" {...S} />
+      <path d="M17 1l4 4-4 4" {...S} />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" {...S} />
+      <path d="M7 23l-4-4 4-4" {...S} />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" {...S} />
     </>
   ),
   bell: (

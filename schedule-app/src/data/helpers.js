@@ -724,6 +724,13 @@ function makeOccurrence(event, recDate, occDate, ov) {
     contactIds,
     contactId: contactIds[0] || '',
     location: ov?.location ?? event.location ?? '',
+    // Saved onto the override alongside location (see PlannerPage's doSave
+    // "this occurrence only" fields) but never read back here — an
+    // occurrence with its own location kept showing the master event's pin
+    // position on the map (or none, if the master had none) instead of its
+    // own.
+    locLat: ov && 'locLat' in ov ? ov.locLat : event.locLat,
+    locLng: ov && 'locLng' in ov ? ov.locLng : event.locLng,
     notes: ov?.notes ?? event.notes ?? '',
     done: repeat === 'none' ? !!event.done : (event.doneDates || []).includes(recDate),
     isException: !!ov,

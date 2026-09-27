@@ -6,6 +6,7 @@ import Select from '../components/Select.jsx';
 import Icon from '../components/Icon.jsx';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import { selectTick, successTick } from '../data/haptics.js';
+import { requestNotificationPermission, notificationsSupported } from '../data/notifications.js';
 import {
   todayISO,
   fromISODate,
@@ -46,7 +47,19 @@ const emptyMilestone = (objectiveId) => ({
   current: '',
   unit: '',
   done: false,
+  reminderDaysBefore: [],
 });
+
+// A milestone only has a target *date* (no time of day), so its reminders
+// are day-granularity lead times rather than the minute offsets tasks and
+// events use — each fires at a fixed morning time on the earlier date (see
+// data/notifications.js).
+const MILESTONE_REMINDER_OFFSETS = [
+  { days: 0, label: 'On the day' },
+  { days: 1, label: '1 day before' },
+  { days: 3, label: '3 days before' },
+  { days: 7, label: '1 week before' },
+];
 
 const PACE_LABEL = {
   'on-track': 'On track',
@@ -181,13 +194,27 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
     msInitialJsonRef.current = JSON.stringify(d);
   };
   const openEditMilestone = (m) => {
-    const d = { ...m, quantifiable: !!(m.target && m.target > 0), target: m.target || '', current: m.current || 0 };
+    const d = {
+      ...m,
+      quantifiable: !!(m.target && m.target > 0),
+      target: m.target || '',
+      current: m.current || 0,
+      reminderDaysBefore: m.reminderDaysBefore || [],
+    };
     setEditingMilestone(d);
     msInitialJsonRef.current = JSON.stringify(d);
   };
   const msDirty = editingMilestone ? JSON.stringify(editingMilestone) !== msInitialJsonRef.current : false;
+  const toggleMilestoneReminderOffset = (days) => {
+    setEditingMilestone((m) => ({
+      ...m,
+      reminderDaysBefore: m.reminderDaysBefore.includes(days)
+        ? m.reminderDaysBefore.filter((d) => d !== days)
+        : [...m.reminderDaysBefore, days],
+    }));
+  };
 
-  const saveMilestone = () => {
+  const saveMilestone = async () => {
     const title = editingMilestone.title.trim();
     if (!title) return;
     const { quantifiable } = editingMilestone;
@@ -197,6 +224,11 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
     const wasDone = editingMilestone.id
       ? !!state.milestones.find((m) => m.id === editingMilestone.id)?.done
       : false;
+    const reminderDaysBefore = editingMilestone.targetDate ? editingMilestone.reminderDaysBefore : [];
+    if (reminderDaysBefore.length) {
+      await requestNotificationPermission();
+      actions.setSettings({ notifications: true });
+    }
     const payload = {
       objectiveId: editingMilestone.objectiveId,
       title,
@@ -206,6 +238,7 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
       unit: quantifiable ? editingMilestone.unit.trim() : '',
       done,
       doneAt: done ? editingMilestone.doneAt || todayISO() : '',
+      reminderDaysBefore,
     };
     if (editingMilestone.id) actions.updateMilestone({ ...editingMilestone, ...payload });
     else actions.addMilestone(payload);
@@ -580,6 +613,26 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
                 onChange={(e) => setEditingMilestone({ ...editingMilestone, targetDate: e.target.value })}
               />
             </label>
+            {editingMilestone.targetDate && (
+              <div className="field">
+                <span>Remind me</span>
+                <div className="chips">
+                  {MILESTONE_REMINDER_OFFSETS.map((o) => (
+                    <button
+                      key={o.days}
+                      type="button"
+                      className={`chip${editingMilestone.reminderDaysBefore.includes(o.days) ? ' chip--on' : ''}`}
+                      onClick={() => toggleMilestoneReminderOffset(o.days)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                {!notificationsSupported() && (
+                  <span className="muted small">This browser can't show notifications.</span>
+                )}
+              </div>
+            )}
             <label className="check-row">
               <Checkbox
                 checked={editingMilestone.quantifiable}

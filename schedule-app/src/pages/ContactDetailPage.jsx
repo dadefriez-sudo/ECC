@@ -153,9 +153,19 @@ export default function ContactDetailPage() {
           <button className="back-btn" onClick={() => navigate('/contacts')}>
             ‹ People
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={startEdit}>
-            Edit
-          </button>
+          <div className="page-head-actions">
+            <button
+              className={`icon-btn${contact.favorite ? ' contact-fav-btn--on' : ''}`}
+              onClick={() => actions.updateContact({ ...contact, favorite: !contact.favorite })}
+              aria-label={contact.favorite ? 'Remove from favorites' : 'Add to favorites'}
+              aria-pressed={!!contact.favorite}
+            >
+              <Icon name="star" size={18} />
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={startEdit}>
+              Edit
+            </button>
+          </div>
         </div>
       </header>
 

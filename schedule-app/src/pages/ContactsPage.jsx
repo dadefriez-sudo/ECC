@@ -53,7 +53,25 @@ export default function ContactsPage() {
   const deleteContactWithUndo = useDeleteContactWithUndo();
   const showToast = useToast();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState(''); // statusId, '__overdue', or ''
+  const [filter, setFilter] = useState(''); // '__overdue', '__favorites', or ''
+  // Group chips are multi-select (show anyone in ANY of these groups) —
+  // separate from `filter` above, which stays a single mutually-exclusive
+  // choice between All/Reconnect/Favorites. Picking a group exits whichever
+  // of those was active, and picking one of those clears any group picks.
+  const [groupFilters, setGroupFilters] = useState(() => new Set());
+  const toggleGroupFilter = (id) => {
+    setFilter('');
+    setGroupFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const setSpecialFilter = (v) => {
+    setGroupFilters(new Set());
+    setFilter(v);
+  };
   const [sortMode, setSortMode] = useState('name'); // 'name' | 'added' | 'contacted'
   const [adding, setAdding] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
@@ -63,6 +81,13 @@ export default function ContactsPage() {
   // Contacts from the most recent vCard import that didn't come out the
   // other side with a pin — reviewed one at a time via ImportAddressReview.
   const [addressReview, setAddressReview] = useState([]);
+  // Offered once, right after a vCard import finishes — a fast way to file
+  // an entire imported batch (often all from the same source, e.g. a synced
+  // church or work directory) into one group instead of tagging them one by
+  // one afterward. Only ever offered, never forced: skipping just leaves
+  // them ungrouped, same as before this existed.
+  const [importGroupPrompt, setImportGroupPrompt] = useState(null); // { contactIds, count } | null
+  const [importGroupChoice, setImportGroupChoice] = useState('');
 
   const toggleSelected = (id) => {
     setSelected((prev) => {
@@ -134,14 +159,18 @@ export default function ContactsPage() {
     [state.contacts, isOverdue]
   );
 
+  const favoriteCount = useMemo(() => state.contacts.filter((c) => c.favorite).length, [state.contacts]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return state.contacts
       .filter((c) =>
-        filter === '__overdue'
+        groupFilters.size > 0
+          ? groupFilters.has(c.statusId)
+          : filter === '__overdue'
           ? isOverdue(c)
-          : filter
-          ? c.statusId === filter
+          : filter === '__favorites'
+          ? c.favorite
           : true
       )
       .filter((c) =>
@@ -152,9 +181,9 @@ export default function ContactsPage() {
           : true
       )
       .sort(CONTACT_SORTS[sortMode] || CONTACT_SORTS.name);
-  }, [state.contacts, query, filter, isOverdue, sortMode]);
+  }, [state.contacts, query, filter, groupFilters, isOverdue, sortMode]);
 
-  const showBanner = !query.trim() && filter === '' && overdue.length > 0;
+  const showBanner = !query.trim() && filter === '' && groupFilters.size === 0 && overdue.length > 0;
 
   const initialAddJsonRef = useRef('');
   const startAdd = () => {
@@ -209,6 +238,7 @@ export default function ContactsPage() {
       notes: adding.notes.trim(),
       lastContacted: '',
       createdAt: new Date().toISOString().slice(0, 10),
+      favorite: false,
     };
     actions.addContact(contact);
     if (address) syncContactAddressPin(contact, state, actions);
@@ -242,7 +272,15 @@ export default function ContactsPage() {
           createdAt: todayISO(),
         }));
         newContacts.forEach((contact) => actions.addContact(contact));
-        alert(`Imported ${newContacts.length} contact${newContacts.length === 1 ? '' : 's'}.`);
+        // Groups are a Pro feature — offering to sort into one that can't
+        // be seen or used afterward would just be confusing, so non-Pro
+        // (or nothing to sort into yet) falls back to the plain count.
+        if (isPro && state.statuses.length > 0) {
+          setImportGroupChoice('');
+          setImportGroupPrompt({ contactIds: newContacts.map((c) => c.id), count: newContacts.length });
+        } else {
+          alert(`Imported ${newContacts.length} contact${newContacts.length === 1 ? '' : 's'}.`);
+        }
         // Geocoding pins one at a time in the background, a beat apart —
         // Nominatim's public endpoint enforces roughly one request per
         // second, and firing every contact's lookup at once (the previous
@@ -290,6 +328,19 @@ export default function ContactsPage() {
     setAddressReview((q) => q.filter((c) => c.id !== contactId));
   };
 
+  const applyImportGroup = () => {
+    const { contactIds, count } = importGroupPrompt;
+    if (importGroupChoice) {
+      for (const id of contactIds) {
+        const c = state.contacts.find((x) => x.id === id);
+        if (c) actions.updateContact({ ...c, statusId: importGroupChoice });
+      }
+      const group = state.statuses.find((s) => s.id === importGroupChoice);
+      showToast(`Added ${count} ${count === 1 ? 'contact' : 'contacts'} to ${group?.label || 'the group'}`);
+    }
+    setImportGroupPrompt(null);
+  };
+
   return (
     <div className="page">
       <header className="page-head">
@@ -313,28 +364,45 @@ export default function ContactsPage() {
           ref={chipsRef}
           className={`chips${chipsFade.left ? ' chips--fade-left' : ''}${chipsFade.right ? ' chips--fade-right' : ''}`}
         >
-          <button className={`chip${!filter ? ' chip--on' : ''}`} onClick={() => setFilter('')}>
+          <button
+            className={`chip${!filter && groupFilters.size === 0 ? ' chip--on' : ''}`}
+            onClick={() => setSpecialFilter('')}
+          >
             All
           </button>
           {overdue.length > 0 && (
             <button
               className={`chip chip--alert${filter === '__overdue' ? ' chip--on' : ''}`}
-              onClick={() => setFilter(filter === '__overdue' ? '' : '__overdue')}
+              onClick={() => setSpecialFilter(filter === '__overdue' ? '' : '__overdue')}
             >
               Reconnect · {overdue.length}
             </button>
           )}
+          {favoriteCount > 0 && (
+            <button
+              className={`chip${filter === '__favorites' ? ' chip--on' : ''}`}
+              onClick={() => setSpecialFilter(filter === '__favorites' ? '' : '__favorites')}
+            >
+              <Icon name="star" size={13} /> Favorites · {favoriteCount}
+            </button>
+          )}
           {isPro ? (
-            state.statuses.map((s) => (
-              <button
-                key={s.id}
-                className={`chip${filter === s.id ? ' chip--on' : ''}`}
-                style={filter === s.id ? { background: s.color, borderColor: s.color, color: '#fff' } : { borderColor: s.color, color: s.color }}
-                onClick={() => setFilter(filter === s.id ? '' : s.id)}
-              >
-                {s.label}
-              </button>
-            ))
+            // Multi-select: tap any number of groups on at once to see
+            // everyone in any of them, not just one group at a time.
+            state.statuses.map((s) => {
+              const on = groupFilters.has(s.id);
+              return (
+                <button
+                  key={s.id}
+                  className={`chip${on ? ' chip--on' : ''}`}
+                  style={on ? { background: s.color, borderColor: s.color, color: '#fff' } : { borderColor: s.color, color: s.color }}
+                  onClick={() => toggleGroupFilter(s.id)}
+                  aria-pressed={on}
+                >
+                  {s.label}
+                </button>
+              );
+            })
           ) : (
             state.statuses.length > 0 && (
               <button className="chip" onClick={() => navigate('/pricing')}>
@@ -425,28 +493,43 @@ export default function ContactsPage() {
                   swipeRight={swipeFor(swipeRightKey, c)}
                   swipeLeft={swipeFor(swipeLeftKey, c)}
                 >
-                  <button
-                    className="contact-row"
-                    onClick={() => (selectMode ? toggleSelected(c.id) : navigate(`/contacts/${c.id}`))}
-                  >
-                    {selectMode && <span className={`select-dot${isSel ? ' select-dot--on' : ''}`} />}
-                    <span className="avatar-slot">
-                      <Avatar name={c.name} photo={c.photo} color={st?.color} size={iconSize} />
-                      {over && <span className="overdue-dot" aria-hidden="true" />}
-                    </span>
-                    <span className="contact-main">
-                      <span className="contact-name">
-                        {c.name}
-                        {over && <span className="overdue-tag">Reconnect</span>}
+                  <div className="contact-row-inner">
+                    <button
+                      className="contact-row"
+                      onClick={() => (selectMode ? toggleSelected(c.id) : navigate(`/contacts/${c.id}`))}
+                    >
+                      {selectMode && <span className={`select-dot${isSel ? ' select-dot--on' : ''}`} />}
+                      <span className="avatar-slot">
+                        <Avatar name={c.name} photo={c.photo} color={st?.color} size={iconSize} />
+                        {over && <span className="overdue-dot" aria-hidden="true" />}
                       </span>
-                      <span className="contact-sub muted">
-                        {st && <span className="dot-badge" style={{ color: st.color }}>{st.label}</span>}
-                        {st && ' · '}
-                        Last: {daysAgoLabel(c.lastContacted)}
+                      <span className="contact-main">
+                        <span className="contact-name">
+                          {c.name}
+                          {over && <span className="overdue-tag">Reconnect</span>}
+                        </span>
+                        <span className="contact-sub muted">
+                          {st && <span className="dot-badge" style={{ color: st.color }}>{st.label}</span>}
+                          {st && ' · '}
+                          Last: {daysAgoLabel(c.lastContacted)}
+                        </span>
                       </span>
-                    </span>
-                    {!selectMode && <Chevron />}
-                  </button>
+                      {!selectMode && <Chevron />}
+                    </button>
+                    {!selectMode && (
+                      <button
+                        className={`contact-fav-btn${c.favorite ? ' contact-fav-btn--on' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          actions.updateContact({ ...c, favorite: !c.favorite });
+                        }}
+                        aria-label={c.favorite ? `Remove ${c.name} from favorites` : `Add ${c.name} to favorites`}
+                        aria-pressed={!!c.favorite}
+                      >
+                        <Icon name="star" size={18} />
+                      </button>
+                    )}
+                  </div>
                 </SwipeRow>
               </li>
             );
@@ -502,6 +585,36 @@ export default function ContactsPage() {
             onKeyDown={(e) => e.key === 'Enter' && applyBulkTag()}
           />
         </label>
+      </Modal>
+
+      <Modal
+        open={!!importGroupPrompt}
+        title="Sort into a group?"
+        onClose={() => setImportGroupPrompt(null)}
+        footer={
+          <div className="modal-actions">
+            <button className="btn btn-ghost" onClick={() => setImportGroupPrompt(null)}>
+              Skip
+            </button>
+            <button className="btn btn-primary" onClick={applyImportGroup} disabled={!importGroupChoice}>
+              Apply
+            </button>
+          </div>
+        }
+      >
+        {importGroupPrompt && (
+          <div className="form">
+            <p className="muted small">
+              Imported {importGroupPrompt.count} {importGroupPrompt.count === 1 ? 'contact' : 'contacts'}. Add
+              {importGroupPrompt.count === 1 ? ' it' : ' all of them'} to one group now, or skip and sort them
+              individually later.
+            </p>
+            <label className="field">
+              <span>Group</span>
+              <GroupPicker value={importGroupChoice} onChange={setImportGroupChoice} />
+            </label>
+          </div>
+        )}
       </Modal>
 
       {addressReview.length > 0 && (

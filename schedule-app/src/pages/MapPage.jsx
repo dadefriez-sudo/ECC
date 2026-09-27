@@ -15,6 +15,7 @@ import { resolveMapStyle, MAP_STYLE_OPTIONS } from '../data/mapStyles.js';
 import { eventPinIdentity } from '../data/pinLabel.js';
 import { ROUTE_PLANNER_ENABLED } from '../data/routePlannerConfig.js';
 import { geoAvailable, getCurrentPosition, isLocationGranted } from '../data/geo.js';
+import { useTodayResync } from '../data/useTodayResync.js';
 import Icon from '../components/Icon.jsx';
 import AddressField from '../components/AddressField.jsx';
 
@@ -63,23 +64,35 @@ export default function MapPage() {
     });
   };
 
+  // `todayISO()` was previously called straight inside the memo below — that
+  // reads fine at first glance, but a memo only re-runs when one of its own
+  // deps changes, and neither state.events nor state.contacts change just
+  // because the clock crossed midnight. A PWA gets backgrounded and resumed
+  // far more often than actually reloaded, so a Map tab left open overnight
+  // kept computing "today" as whatever day it was when the memo last ran —
+  // Planner's `cursor` and Goals' `day` hit this same defect independently;
+  // see useTodayResync's own comment. `today` here is a real dependency, so
+  // crossing midnight (caught on the next focus/visibility change or the
+  // hook's own interval) actually triggers a recompute.
+  const [today, setToday] = useState(() => todayISO());
+  useTodayResync(() => setToday(todayISO()));
+
   // Today's events that have a location, shown as temporary pins that are
   // simply gone tomorrow. They're derived from the calendar rather than
   // saved to state.pins — an event's location is already recorded on the
   // event, and writing a second copy into the pin list would mean cleaning
   // it up again at midnight and reconciling every edit in between.
   const eventPins = useMemo(() => {
-    const iso = todayISO();
     const byId = Object.fromEntries(state.contacts.map((c) => [c.id, c]));
     return state.events
-      .flatMap((e) => expandEventOnDay(e, iso))
+      .flatMap((e) => expandEventOnDay(e, today))
       .filter((o) => typeof o.locLat === 'number' && typeof o.locLng === 'number')
       .map((o) => {
         // A pin can only stand for one person — the first linked contact,
         // same policy as the event block's own color (eventColor()).
         const primaryContactId = eventContactIds(o)[0] || '';
         return {
-          id: `event:${o.id}:${o.recDate || iso}`,
+          id: `event:${o.id}:${o.recDate || today}`,
           ...eventPinIdentity(o, { contact: byId[primaryContactId], eventKind: o.kind }),
           lat: o.locLat,
           lng: o.locLng,
@@ -88,7 +101,7 @@ export default function MapPage() {
           start: o.start,
         };
       });
-  }, [state.events, state.contacts]);
+  }, [state.events, state.contacts, today]);
 
   const pins = useMemo(() => {
     const saved = (state.pins || []).filter((p) =>

@@ -860,7 +860,7 @@ export default function PlannerPage() {
           dayStart={dayStartHour}
           dayEnd={dayEndHour}
           opacity={state.settings?.isPro ? state.settings?.eventBlockOpacity ?? 100 : 100}
-          tasks={state.settings?.showTasksOnTimeline ? state.tasks : null}
+          tasks={state.settings?.showTasksOnTimeline !== false ? state.tasks : null}
           onToggleTask={(t) => actions.updateTask({ ...t, done: !t.done })}
           birthdaysEnabled={state.settings?.contactBirthdaysEnabled !== false}
           onOpenContact={openContact}
@@ -1874,8 +1874,8 @@ function DayView({
             transition: swipeDragging ? 'none' : `transform ${SWIPE_SNAP_BACK_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
           }}
         >
-          {hours.map((h) => (
-            <div className="hour-row" key={h} style={{ height: pxPerHour }}>
+          {hours.map((h, i) => (
+            <div className={`hour-row${i === 0 ? ' hour-row--first' : ''}`} key={h} style={{ height: pxPerHour }}>
               <span className="hour-label">{formatTime(`${String(h).padStart(2, '0')}:00`)}</span>
               <div className="hour-line" />
             </div>
@@ -3420,8 +3420,8 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
               transition: swipeDragging ? 'none' : `transform ${SWIPE_SNAP_BACK_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
             }}
           >
-          {hours.map((h) => (
-            <div className="hour-row" key={h} style={{ height: pxPerHour }}>
+          {hours.map((h, i) => (
+            <div className={`hour-row${i === 0 ? ' hour-row--first' : ''}`} key={h} style={{ height: pxPerHour }}>
               <span className="hour-label">{formatTime(`${String(h).padStart(2, '0')}:00`)}</span>
               <div className="hour-line" />
             </div>

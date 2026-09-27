@@ -113,7 +113,11 @@ function loadState() {
         defaultReminderLead: 0,
         timelineStartHour: 6,
         timelineEndHour: 23,
-        showTasksOnTimeline: false,
+        // On by default: a task with a due date is exactly the kind of
+        // thing someone expects to see on their calendar at that time,
+        // not an opt-in extra. Read as `!== false` everywhere so an older
+        // saved settings object (no such key) is also treated as on.
+        showTasksOnTimeline: true,
         // Travel-time warnings are on by default (they only ever fire for a
         // real, specific problem: not enough time to physically get from one
         // place to the next) — read as `!== false` everywhere so an older

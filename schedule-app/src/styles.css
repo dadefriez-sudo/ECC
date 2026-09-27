@@ -2559,6 +2559,14 @@ textarea {
   text-align: right;
   padding-right: 6px;
 }
+/* The first row's label would otherwise poke 8px above the timeline's own
+   top edge (same -8px offset as every other row, centering the label on its
+   hour-line) — with nothing above it to render into, that poke gets clipped
+   by the scroll boundary instead of just showing. Only the first row needs
+   this: every other row has the row above it to poke into. */
+.hour-row--first .hour-label {
+  top: 0;
+}
 .hour-line {
   position: absolute;
   top: 0;
@@ -3227,6 +3235,35 @@ textarea {
   cursor: pointer;
   text-align: left;
   box-shadow: var(--shadow);
+}
+/* Favorite star sits beside the row rather than inside its button — a
+   button can't nest inside another button, and the row itself is already
+   the full-width tap target that opens the contact. */
+.contact-row-inner {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.contact-row-inner .contact-row {
+  flex: 1;
+  min-width: 0;
+}
+.contact-fav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.contact-fav-btn--on {
+  color: var(--warn);
+  border-color: var(--warn);
 }
 
 /* --- Search results ------------------------------------------------------- */

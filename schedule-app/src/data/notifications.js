@@ -18,7 +18,7 @@
 // it runs.
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { todayISO, timeToMinutes, matchesRule, formatTime } from './helpers.js';
+import { todayISO, timeToMinutes, matchesRule, formatTime, addDays, toISODate, formatShortDate } from './helpers.js';
 import { contactDatesOn, contactDateLabel } from './contactDates.js';
 
 const isNative = Capacitor.isNativePlatform();
@@ -28,6 +28,21 @@ const isNative = Capacitor.isNativePlatform();
 // who to remember today" rather than an alert that could land at any hour
 // depending on when the app happens to be open.
 const CONTACT_DATE_REMINDER_MIN = 9 * 60; // 9:00 AM
+
+// Milestones only have a target *date*, no time of day, so "N days before"
+// fires at a fixed morning time on that earlier date — same convention as
+// birthdays/anniversaries above.
+const MILESTONE_REMINDER_MIN = 9 * 60; // 9:00 AM
+
+// A task's own due date + due time, as a real Date. Building this from the
+// actual calendar date (rather than doing minutes-since-midnight math scoped
+// to "today") is what lets a lead time cross a day boundary correctly — a
+// 30-min lead on a task due at 00:15, or a 1-day-before lead on any task,
+// both used to compute a negative "minutes since midnight", which never
+// matched any same-day comparison window and just silently never fired.
+function taskDueAt(t) {
+  return new Date(`${t.dueDate}T${t.dueTime}`);
+}
 
 export function notificationsSupported() {
   return isNative || (typeof window !== 'undefined' && 'Notification' in window);
@@ -220,15 +235,47 @@ export function runReminderScan(state) {
   }
 
   // Task reminders: each selected lead time fires once, counting back from
-  // the task's own due date+time (only meaningful when both are set).
+  // the task's own due date+time (only meaningful when both are set). Not
+  // restricted to today's due date — a long lead (1 day before) on a task
+  // due tomorrow can trigger today, and taskDueAt/real-Date subtraction
+  // handles that crossing correctly instead of wrapping within one day.
   for (const t of state.tasks || []) {
-    if (t.done || t.dueDate !== today || !t.dueTime) continue;
-    const due = timeToMinutes(t.dueTime);
+    if (t.done || !t.dueDate || !t.dueTime) continue;
+    const due = taskDueAt(t);
     for (const lead of t.reminderOffsets || []) {
-      const trigger = due - lead;
-      if (nowMin >= trigger && nowMin <= due) {
-        fire(`task:${t.id}:${lead}:${today}`, t.title || 'Task due', `Due at ${formatTime(t.dueTime)} · in ${lead} min`);
+      const triggerMs = due.getTime() - lead * 60000;
+      const diffMin = (now.getTime() - triggerMs) / 60000;
+      // A short, fixed window (not "however long the lead is") — this scan
+      // runs every 30s, so a couple of minutes of slack is plenty, and a
+      // window that scaled with the lead itself (the old due-minus-lead..due
+      // shape) would mean a 1-day-before reminder could fire at ANY point
+      // during that entire day rather than near the one moment it should.
+      if (diffMin >= 0 && diffMin <= 2) {
+        fire(
+          `task:${t.id}:${lead}:${toISODate(due)}`,
+          t.title || 'Task due',
+          lead >= 1440
+            ? `Due ${formatShortDate(t.dueDate)} at ${formatTime(t.dueTime)}`
+            : `Due at ${formatTime(t.dueTime)} · in ${lead} min`
+        );
       }
+    }
+  }
+
+  // Milestone reminders: "N days before" fires at a fixed morning time on
+  // that earlier date, the same way birthdays/anniversaries do — a
+  // milestone only has a target *date*, no time of day to count back from.
+  for (const m of state.milestones || []) {
+    if (m.done || !m.targetDate || !(m.reminderDaysBefore || []).length) continue;
+    if (nowMin < MILESTONE_REMINDER_MIN || nowMin - MILESTONE_REMINDER_MIN > 30) continue;
+    for (const daysBefore of m.reminderDaysBefore) {
+      const fireDate = toISODate(addDays(m.targetDate, -daysBefore));
+      if (fireDate !== today) continue;
+      fire(
+        `milestone:${m.id}:${daysBefore}:${today}`,
+        'Milestone reminder',
+        daysBefore === 0 ? `${m.title} is due today` : `${m.title} due ${formatShortDate(m.targetDate)}`
+      );
     }
   }
 
@@ -303,17 +350,40 @@ export async function scheduleNativeReminders(state) {
     }
   }
 
+  // Not limited to tasks due today — a 1-day-before lead needs tomorrow's
+  // due tasks considered too, or it would never get a chance to schedule.
+  // Still bounded (today/tomorrow only, not every future task) to match
+  // this function's own "refreshed each time the app opens" design.
   for (const t of state.tasks || []) {
-    if (t.done || t.dueDate !== today || !t.dueTime) continue;
-    const due = timeToMinutes(t.dueTime);
+    if (t.done || !t.dueDate || !t.dueTime) continue;
+    if (t.dueDate !== today && t.dueDate !== toISODate(addDays(today, 1))) continue;
+    const due = taskDueAt(t);
     for (const lead of t.reminderOffsets || []) {
-      const trigger = due - lead;
-      if (trigger < nowMin) continue;
+      const trigger = new Date(due.getTime() - lead * 60000);
+      if (trigger.getTime() < now.getTime()) continue;
       upcoming.push({
-        key: `task:${t.id}:${lead}:${today}`,
+        key: `task:${t.id}:${lead}:${toISODate(due)}`,
         title: t.title || 'Task due',
-        body: `Due at ${formatTime(t.dueTime)} · in ${lead} min`,
+        body:
+          lead >= 1440
+            ? `Due ${formatShortDate(t.dueDate)} at ${formatTime(t.dueTime)}`
+            : `Due at ${formatTime(t.dueTime)} · in ${lead} min`,
         at: trigger,
+      });
+    }
+  }
+
+  for (const m of state.milestones || []) {
+    if (m.done || !m.targetDate || !(m.reminderDaysBefore || []).length) continue;
+    for (const daysBefore of m.reminderDaysBefore) {
+      const fireDate = toISODate(addDays(m.targetDate, -daysBefore));
+      if (fireDate !== today) continue;
+      if (MILESTONE_REMINDER_MIN < nowMin) continue;
+      upcoming.push({
+        key: `milestone:${m.id}:${daysBefore}:${today}`,
+        title: 'Milestone reminder',
+        body: daysBefore === 0 ? `${m.title} is due today` : `${m.title} due ${formatShortDate(m.targetDate)}`,
+        at: MILESTONE_REMINDER_MIN,
       });
     }
   }
@@ -344,7 +414,10 @@ export async function scheduleNativeReminders(state) {
           id: idFromKey(u.key),
           title: u.title,
           body: u.body,
-          schedule: { at: atMinuteToday(u.at) },
+          // Tasks push a real Date (their trigger may land tomorrow);
+          // everything else still pushes a plain minutes-of-day number
+          // meant for today, same as atMinuteToday always assumed.
+          schedule: { at: u.at instanceof Date ? u.at : atMinuteToday(u.at) },
         })),
       });
     }
