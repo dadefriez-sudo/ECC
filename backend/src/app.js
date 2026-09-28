@@ -6,6 +6,7 @@ import meRoutes from './routes/me.js';
 import billingRoutes from './routes/billing.js';
 import dataRoutes from './routes/data.js';
 import calendarsRoutes from './routes/calendars.js';
+import accountabilityRoutes from './routes/accountability.js';
 import googleRoutes from './routes/google.js';
 import assistantRoutes from './routes/assistant.js';
 import stripeWebhookRouter from './routes/webhooksStripe.js';
@@ -76,6 +77,7 @@ export function createApp() {
   app.use('/api/billing', billingRoutes);
   app.use('/api/data', dataRoutes);
   app.use('/api/calendars', calendarsRoutes);
+  app.use('/api/accountability', accountabilityRoutes);
   app.use('/api/google', googleRoutes);
   app.use('/api/assistant', assistantRoutes);
 

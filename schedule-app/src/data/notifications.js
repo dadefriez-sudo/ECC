@@ -417,7 +417,18 @@ export async function scheduleNativeReminders(state) {
           // Tasks push a real Date (their trigger may land tomorrow);
           // everything else still pushes a plain minutes-of-day number
           // meant for today, same as atMinuteToday always assumed.
-          schedule: { at: u.at instanceof Date ? u.at : atMinuteToday(u.at) },
+          schedule: {
+            at: u.at instanceof Date ? u.at : atMinuteToday(u.at),
+            // Without this, the plugin's Android side calls plain
+            // AlarmManager.setExact() — which sounds precise, but is still
+            // deferred by Doze once the device has been idle a while,
+            // exactly like an inexact alarm. allowWhileIdle switches it to
+            // setExactAndAllowWhileIdle(), the actual "fire even during
+            // Doze" call. This was the real cause of reminders firing late
+            // or seemingly at random — they were never exempt from Doze
+            // batching in the first place, exact-alarm permission or not.
+            allowWhileIdle: true,
+          },
         })),
       });
     }

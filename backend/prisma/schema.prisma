@@ -50,6 +50,9 @@ model User {
   data                 UserData?
   ownedCalendars       SharedCalendar[]       @relation("OwnedCalendars")
   calendarMemberships  SharedCalendarMember[]
+  accountabilityPartnersOwned AccountabilityPartner[] @relation("PartnerOwner")
+  accountabilityPartnersOf    AccountabilityPartner[] @relation("PartnerTarget")
+  accountabilitySnapshot      AccountabilitySnapshot?
 }
 
 // The whole app data blob (goals, events, contacts, notes, ...) as one JSON
@@ -130,4 +133,51 @@ model SharedEvent {
   createdBy  String
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
+}
+
+// --- Accountability partners --------------------------------------------
+//
+// A two-way relationship: each side can see the other's goal/task progress
+// summary. Stored as one row per direction (both created together, in a
+// transaction, when an invite is accepted) so "who are my partners" is a
+// plain lookup by userId rather than a union query across both columns.
+//
+// Deliberately NOT reusing UserData for the progress each side sees — full
+// cloud sync (UserData) is Pro-gated, but accountability partners aren't
+// (free up to one), so a free user would have nothing on the server for
+// their partner to read. AccountabilitySnapshot below is a small, separate,
+// un-gated summary each side pushes instead.
+
+model AccountabilityPartner {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("PartnerOwner", fields: [userId], references: [id], onDelete: Cascade)
+  partnerId String
+  partner   User     @relation("PartnerTarget", fields: [partnerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, partnerId])
+}
+
+// A pending invite by email, accepted via a tokenized link — same shape as
+// SharedCalendarInvite, including the plain (non-relational) fromUserId.
+model AccountabilityInvite {
+  id         String    @id @default(cuid())
+  token      String    @unique @default(cuid())
+  fromUserId String
+  email      String
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  acceptedAt DateTime?
+}
+
+// The small progress summary each user pushes (active goals' progress,
+// today's task completion) — opaque JSON as far as the backend's concerned,
+// shaped and read by the frontend the same way UserData's blob is.
+model AccountabilitySnapshot {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      Json
+  updatedAt DateTime @updatedAt
 }

@@ -3,6 +3,7 @@
 // content — the goal rings, the whole reminders list, the whole task list,
 // the whole notes grid — never a shrunk-down counter/stat tile.
 export const HOME_BLOCK_TYPES = [
+  { id: 'challenge', label: "Today's challenge", icon: 'compass' },
   { id: 'goals', label: 'Goals', icon: 'target' },
   { id: 'nudges', label: 'Nudges', icon: 'lightbulb' },
   { id: 'reminders', label: 'Important reminders', icon: 'bell' },

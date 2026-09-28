@@ -21,6 +21,8 @@ import {
 } from '../data/helpers.js';
 import { requestNotificationPermission, notificationsSupported } from '../data/notifications.js';
 import { HOME_BLOCK_TYPES, normalizeHomeBlocks } from '../data/homeBlocks.js';
+import { todaysChallenge } from '../data/dailyChallenges.js';
+import { successTick, selectTick } from '../data/haptics.js';
 import { computeWeeklyRecap } from '../data/weeklyRecap.js';
 import { computeNudges } from '../data/nudges.js';
 import { useEdgeFade } from '../data/useEdgeFade.js';
@@ -521,6 +523,26 @@ export default function HomePage() {
   const recap = useMemo(() => computeWeeklyRecap(state), [state]);
   const nudges = useMemo(() => computeNudges(state), [state]);
 
+  // Today's challenge — the same prompt for everyone on a given date (see
+  // todaysChallenge), shown until acted on or skipped. challengeStatus is
+  // keyed by date so it naturally resets tomorrow without any cleanup.
+  const todayForChallenge = todayISO();
+  const challenge = useMemo(() => todaysChallenge(todayForChallenge), [todayForChallenge]);
+  const challengeDone = state.settings?.challengeStatus?.date === todayForChallenge;
+  const addChallenge = () => {
+    if (challenge.type === 'goal') {
+      actions.addGoal({ title: challenge.text, category: 'Challenge', target: 1 });
+    } else {
+      actions.addTask({ title: challenge.text, dueDate: todayForChallenge });
+    }
+    actions.setSettings({ challengeStatus: { date: todayForChallenge, status: 'added' } });
+    successTick();
+  };
+  const skipChallenge = () => {
+    actions.setSettings({ challengeStatus: { date: todayForChallenge, status: 'skipped' } });
+    selectTick();
+  };
+
   return (
     <div className="page">
       <header className="page-head">
@@ -561,6 +583,32 @@ export default function HomePage() {
         <p className="muted center-pad">{emptyHomeMessage}</p>
       ) : (
         visibleBlocks.map((b) => {
+          if (b.id === 'challenge') {
+            return (
+              <section className="detail-section challenge-block" key="challenge">
+                <span className="detail-label"><Icon name="compass" /> Today's challenge</span>
+                {challengeDone ? (
+                  <p className="muted small">
+                    {state.settings.challengeStatus.status === 'added'
+                      ? "Added. Check back tomorrow for the next one."
+                      : "Skipped for today. Check back tomorrow for the next one."}
+                  </p>
+                ) : (
+                  <>
+                    <p className="challenge-text">{challenge.text}</p>
+                    <div className="challenge-actions">
+                      <button className="btn btn-primary btn-sm" onClick={addChallenge}>
+                        Add as {challenge.type === 'goal' ? 'a goal' : 'a task'}
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={skipChallenge}>
+                        Skip today
+                      </button>
+                    </div>
+                  </>
+                )}
+              </section>
+            );
+          }
           if (b.id === 'goals') {
             return (
               <button key="goals" className="detail-section home-block-goals" onClick={() => navigate('/goals')}>

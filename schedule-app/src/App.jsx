@@ -12,7 +12,8 @@ import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
 import { setUse24hFormat, setSundayWeekStart, distanceMeters } from './data/helpers.js';
 import { setHapticsEnabled } from './data/haptics.js';
-import { fetchMe, backendConfigured, fetchSyncedData, pushSyncedData } from './data/api.js';
+import { fetchMe, backendConfigured, fetchSyncedData, pushSyncedData, pushAccountabilitySnapshot } from './data/api.js';
+import { buildAccountabilitySnapshot } from './data/accountabilitySnapshot.js';
 import { runGoogleCalendarSync } from './data/googleCalendarSync.js';
 import { CLERK_ENABLED } from './data/clerkConfig.js';
 import { AI_ENABLED } from './data/aiConfig.js';
@@ -41,6 +42,8 @@ const MorePage = lazy(() => import('./pages/MorePage.jsx'));
 const SharedCalendarsPage = lazy(() => import('./pages/SharedCalendarsPage.jsx'));
 const SharedCalendarDetailPage = lazy(() => import('./pages/SharedCalendarDetailPage.jsx'));
 const SharedCalendarJoinPage = lazy(() => import('./pages/SharedCalendarJoinPage.jsx'));
+const AccountabilityPartnersPage = lazy(() => import('./pages/AccountabilityPartnersPage.jsx'));
+const AccountabilityJoinPage = lazy(() => import('./pages/AccountabilityJoinPage.jsx'));
 const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
 const ProPage = lazy(() => import('./pages/ProPage.jsx'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
@@ -241,6 +244,32 @@ function DataSync() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, active]);
+
+  return null;
+}
+
+// A much lighter one-way push than DataSync above, and deliberately NOT
+// Pro-gated — accountability partners are free up to one, so the progress
+// summary a partner reads has to reach the server even for a free account
+// that never gets full cloud sync. See accountabilitySnapshot.js for what's
+// actually sent (goal progress + today's tasks, not the whole app state).
+function AccountabilitySync() {
+  const { state } = useStore();
+  const { isSignedIn, getToken } = useAuth();
+  const active = isSignedIn && backendConfigured();
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  useEffect(() => {
+    if (!active) return undefined;
+    const timer = setTimeout(() => {
+      pushAccountabilitySnapshot(getToken, buildAccountabilitySnapshot(stateRef.current)).catch((err) => {
+        console.warn('Accountability snapshot push failed:', err.message);
+      });
+    }, PUSH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.goals, state.tasks, active]);
 
   return null;
 }
@@ -641,6 +670,7 @@ export default function App() {
     <div className="app">
       {CLERK_ENABLED && <SubscriptionSync />}
       {CLERK_ENABLED && <DataSync />}
+      {CLERK_ENABLED && <AccountabilitySync />}
       {CLERK_ENABLED && <GoogleCalendarSync />}
       <ArrivalWatch />
       <main className="app-main" key={location.pathname}>
@@ -665,6 +695,8 @@ export default function App() {
             <Route path="/shared-calendars" element={<SharedCalendarsPage />} />
             <Route path="/shared-calendars/join/:token" element={<SharedCalendarJoinPage />} />
             <Route path="/shared-calendars/:id" element={<SharedCalendarDetailPage />} />
+            <Route path="/accountability" element={<AccountabilityPartnersPage />} />
+            <Route path="/accountability/join/:token" element={<AccountabilityJoinPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/pro" element={<ProPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />

@@ -134,6 +134,7 @@ const SETTINGS_INDEX = [
       { id: 'g0', title: 'Profile', keywords: 'name photo picture avatar you' },
       { id: 'g1', title: 'Account & sync', keywords: 'sign in log out cloud backup device' },
       { id: 'g2', title: 'Shared calendars', keywords: 'share family invite together members' },
+      { id: 'g3', title: 'Accountability partners', keywords: 'accountability partner invite goals check in stay on track' },
     ],
   },
   {
@@ -607,12 +608,22 @@ export default function MorePage() {
       </SettingsGroup>
       <SettingsGroup {...grp('g2')}>
         <span className="detail-label">Shared calendars</span>
-        <p className="muted small">Invite someone to see or add events with you on a calendar you both share.</p>
-        <button
-          className="btn btn-ghost full"
-          onClick={() => (isPro ? navigate('/shared-calendars') : navigate('/pricing'))}
-        >
-          <Icon name="users" /> Manage shared calendars {!isPro && '· Pro'}
+        <p className="muted small">
+          Invite someone to see or add events with you on a calendar you both share. Free for up to 3
+          calendars, Pro for more.
+        </p>
+        <button className="btn btn-ghost full" onClick={() => navigate('/shared-calendars')}>
+          <Icon name="users" /> Manage shared calendars
+        </button>
+      </SettingsGroup>
+      <SettingsGroup {...grp('g3')}>
+        <span className="detail-label">Accountability partners</span>
+        <p className="muted small">
+          Invite someone to see each other's goal and task progress and help you both stay on track.
+          Free for 1 partner, Pro for more.
+        </p>
+        <button className="btn btn-ghost full" onClick={() => navigate('/accountability')}>
+          <Icon name="personCheck" /> Manage accountability partners
         </button>
       </SettingsGroup>
 

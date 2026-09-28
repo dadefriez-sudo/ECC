@@ -100,4 +100,21 @@ export const updateSharedEvent = (getToken, id, eventId, patch) =>
 export const deleteSharedEvent = (getToken, id, eventId) =>
   request(`/api/calendars/${id}/events/${eventId}`, { getToken, method: 'DELETE' });
 
+// Accountability partners — a two-way relationship where each side can see
+// the other's goal/task progress summary. Backend-only, but NOT Pro-gated
+// (free up to one partner) — see accountability.js's own comment on why
+// pushSnapshot is deliberately separate from the Pro-gated cloud sync blob.
+export const fetchAccountabilityPartners = (getToken) => request('/api/accountability/partners', { getToken });
+export const removeAccountabilityPartner = (getToken, userId) =>
+  request(`/api/accountability/partners/${userId}`, { getToken, method: 'DELETE' });
+export const pushAccountabilitySnapshot = (getToken, data) =>
+  request('/api/accountability/snapshot', { getToken, method: 'PUT', body: { data } });
+export const fetchAccountabilityInvites = (getToken) => request('/api/accountability/invites', { getToken });
+export const inviteAccountabilityPartner = (getToken, email) =>
+  request('/api/accountability/invites', { getToken, method: 'POST', body: { email } });
+export const revokeAccountabilityInvite = (getToken, inviteId) =>
+  request(`/api/accountability/invites/${inviteId}`, { getToken, method: 'DELETE' });
+export const acceptAccountabilityInvite = (getToken, token) =>
+  request(`/api/accountability/invites/${token}/accept`, { getToken, method: 'POST' });
+
 export const backendConfigured = () => !!BASE_URL;

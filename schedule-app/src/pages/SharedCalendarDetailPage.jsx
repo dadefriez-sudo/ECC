@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
-import { useStore } from '../data/store.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import Modal from '../components/Modal.jsx';
 import { CLERK_ENABLED } from '../data/clerkConfig.js';
@@ -18,20 +17,19 @@ import { formatShortDate, formatTime } from '../data/helpers.js';
 import Icon from '../components/Icon.jsx';
 
 export default function SharedCalendarDetailPage() {
-  const { state } = useStore();
   const navigate = useNavigate();
-  const isPro = !!state.settings?.isPro;
 
   // The list page explains the "not connected" state — landing here
   // directly (bookmark, back button) just bounces back to it. Navigating
   // during render (rather than an effect) isn't safe/reliable in React, so
-  // both redirect cases live in the same effect.
+  // this lives in an effect. Shared calendars themselves aren't Pro-gated
+  // (free up to a few owned, unlimited to view/use as a member) — only
+  // needs a live backend + Clerk.
   useEffect(() => {
-    if (!isPro) navigate('/pricing', { replace: true });
-    else if (!CLERK_ENABLED || !backendConfigured()) navigate('/shared-calendars', { replace: true });
-  }, [isPro, navigate]);
+    if (!CLERK_ENABLED || !backendConfigured()) navigate('/shared-calendars', { replace: true });
+  }, [navigate]);
 
-  if (!isPro || !CLERK_ENABLED || !backendConfigured()) return null;
+  if (!CLERK_ENABLED || !backendConfigured()) return null;
 
   return <SharedCalendarDetailInner />;
 }

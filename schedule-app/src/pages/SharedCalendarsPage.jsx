@@ -7,21 +7,18 @@ import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
 import { backendConfigured, fetchCalendars, createCalendar } from '../data/api.js';
 import Icon from '../components/Icon.jsx';
 
-// Pro + backend feature: invite someone to see/add simple events with you
-// on a calendar separate from your own private one. Needs a live backend
-// (VITE_BACKEND_URL set at build time) and Clerk configured; shows an
-// honest "not connected" state below instead of the real feature when
+// Backend feature: invite someone to see/add simple events with you on a
+// calendar separate from your own private one. Free up to
+// FREE_OWNED_CALENDAR_LIMIT calendars owned (matches backend/routes/
+// calendars.js's own limit — the server is the real enforcement, this is
+// just so the UI can show the same number and fail nicely). Needs a live
+// backend (VITE_BACKEND_URL set at build time) and Clerk configured; shows
+// an honest "not connected" state below instead of the real feature when
 // either is missing, rather than erroring.
+const FREE_OWNED_CALENDAR_LIMIT = 3;
+
 export default function SharedCalendarsPage() {
-  const { state } = useStore();
   const navigate = useNavigate();
-  const isPro = !!state.settings?.isPro;
-
-  useEffect(() => {
-    if (!isPro) navigate('/pricing', { replace: true });
-  }, [isPro, navigate]);
-  if (!isPro) return null;
-
   if (!CLERK_ENABLED || !backendConfigured()) {
     return (
       <div className="page">
@@ -47,6 +44,8 @@ export default function SharedCalendarsPage() {
 
 function SharedCalendarsInner() {
   const navigate = useNavigate();
+  const { state } = useStore();
+  const isPro = !!state.settings?.isPro;
   const { isSignedIn, getToken } = useAuth();
   const clerk = useClerk();
   const [calendars, setCalendars] = useState(null); // null = loading
@@ -68,6 +67,9 @@ function SharedCalendarsInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
 
+  const ownedCount = calendars ? calendars.filter((c) => c.role === 'owner').length : 0;
+  const atFreeLimit = !isPro && ownedCount >= FREE_OWNED_CALENDAR_LIMIT;
+
   const saveNew = async () => {
     const name = adding.name.trim();
     if (!name) return;
@@ -76,6 +78,11 @@ function SharedCalendarsInner() {
       setAdding(null);
       load();
     } catch (err) {
+      if (err.code === 'shared_calendar_limit') {
+        setAdding(null);
+        navigate('/pricing');
+        return;
+      }
       setError(err.message);
     }
   };
@@ -87,13 +94,24 @@ function SharedCalendarsInner() {
           <button className="back-btn" onClick={() => navigate('/more')}>
             ‹ More
           </button>
-          {isSignedIn && (
-            <button className="btn btn-primary btn-sm" onClick={() => setAdding({ name: '' })}>
-              + New
-            </button>
-          )}
+          {isSignedIn &&
+            (atFreeLimit ? (
+              <button className="btn btn-primary btn-sm" onClick={() => navigate('/pricing')}>
+                <Icon name="lock" size={14} /> Upgrade
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-sm" onClick={() => setAdding({ name: '' })}>
+                + New
+              </button>
+            ))}
         </div>
         <h1><Icon name="users" size={24} /> Shared calendars</h1>
+        {isSignedIn && !isPro && calendars && calendars.length > 0 && (
+          <p className="muted small">
+            {ownedCount} of {FREE_OWNED_CALENDAR_LIMIT} free calendars created
+            {atFreeLimit ? ' — upgrade to Pro for more' : ''}
+          </p>
+        )}
       </header>
 
       {!isSignedIn ? (

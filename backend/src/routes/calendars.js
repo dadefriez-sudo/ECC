@@ -8,6 +8,30 @@ const router = Router();
 const INVITE_TTL_DAYS = 7;
 const EDIT_ROLES = new Set(['owner', 'editor']);
 
+// Free accounts can own up to this many shared calendars; Pro removes the
+// cap. Deliberately counts calendars this user OWNS, not every calendar
+// they're a member of — being invited onto someone else's calendar (free
+// or not) never counts against your own quota.
+const FREE_OWNED_CALENDAR_LIMIT = 3;
+// Same isPro computation as routes/me.js (duplicated rather than shared,
+// matching how routes/assistant.js already does its own copy) — Pro is a
+// one-time purchase now; an active legacy subscription and the beta-tester
+// allowlist both still count.
+const PRO_STATUSES = new Set(['active', 'trialing']);
+const BETA_TESTER_EMAILS = new Set(
+  (process.env.BETA_TESTER_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+);
+function isPro(u) {
+  return (
+    !!u.lifetimePurchasedAt ||
+    PRO_STATUSES.has(u.subscriptionStatus) ||
+    BETA_TESTER_EMAILS.has((u.email || '').toLowerCase())
+  );
+}
+
 // These three create rows an owner could otherwise script into a flood
 // (calendars, invites — which also spend an email address's goodwill if a
 // provider ever gets wired up, see README — and events). Update/delete
@@ -85,6 +109,15 @@ router.post('/', requireUser, createCalendarLimiter, async (req, res, next) => {
   if (!name) return res.status(400).json({ error: 'name is required' });
   const color = typeof req.body?.color === 'string' ? req.body.color : undefined;
   try {
+    if (!isPro(req.dbUser)) {
+      const owned = await prisma.sharedCalendar.count({ where: { ownerId: req.dbUser.id } });
+      if (owned >= FREE_OWNED_CALENDAR_LIMIT) {
+        return res.status(402).json({
+          error: `Free accounts can create up to ${FREE_OWNED_CALENDAR_LIMIT} shared calendars. Upgrade to Pro for more.`,
+          code: 'shared_calendar_limit',
+        });
+      }
+    }
     const calendar = await prisma.sharedCalendar.create({
       data: {
         name,
