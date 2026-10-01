@@ -131,6 +131,7 @@ export default function ContactDetailPage() {
       addressLat: editing.addressLat ?? null,
       addressLng: editing.addressLng ?? null,
       photo: editing.photo || '',
+      favorite: !!editing.favorite,
       statusId: editing.statusId,
       notes: (editing.notes || '').trim(),
       birthday: editing.birthday || '',
@@ -154,14 +155,6 @@ export default function ContactDetailPage() {
             ‹ People
           </button>
           <div className="page-head-actions">
-            <button
-              className={`icon-btn${contact.favorite ? ' contact-fav-btn--on' : ''}`}
-              onClick={() => actions.updateContact({ ...contact, favorite: !contact.favorite })}
-              aria-label={contact.favorite ? 'Remove from favorites' : 'Add to favorites'}
-              aria-pressed={!!contact.favorite}
-            >
-              <Icon name="star" size={18} />
-            </button>
             <button className="btn btn-ghost btn-sm" onClick={startEdit}>
               Edit
             </button>
@@ -393,6 +386,15 @@ export default function ContactDetailPage() {
       >
         {editing && (
           <div className="form">
+            <button
+              type="button"
+              className={`contact-fav-field${editing.favorite ? ' contact-fav-field--on' : ''}`}
+              onClick={() => setEditing({ ...editing, favorite: !editing.favorite })}
+              aria-pressed={!!editing.favorite}
+            >
+              <Icon name="star" size={18} />
+              <span>{editing.favorite ? 'Favorite' : 'Mark as favorite'}</span>
+            </button>
             <AvatarPicker
               name={editing.name}
               photo={editing.photo}

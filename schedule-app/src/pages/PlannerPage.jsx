@@ -2938,6 +2938,16 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
         </label>
 
         <label className="field">
+          <span>Notes</span>
+          <textarea
+            rows="2"
+            value={draft.notes}
+            onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+            placeholder="Optional"
+          />
+        </label>
+
+        <label className="field">
           <span>Type</span>
           <Select
             value={draft.kind || ''}
@@ -3110,15 +3120,6 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
           </div>
         </div>
 
-        <label className="field">
-          <span>Notes</span>
-          <textarea
-            rows="2"
-            value={draft.notes}
-            onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-            placeholder="Optional"
-          />
-        </label>
         <label className="field">
           <span>Link to goal / task</span>
           <Select

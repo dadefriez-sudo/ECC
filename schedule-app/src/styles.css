@@ -3265,6 +3265,25 @@ textarea {
   color: var(--warn);
   border-color: var(--warn);
 }
+.contact-fav-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px 14px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.contact-fav-field--on {
+  color: var(--warn);
+  border-color: var(--warn);
+}
 
 /* --- Search results ------------------------------------------------------- */
 .search-result-list {
