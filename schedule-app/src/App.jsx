@@ -48,9 +48,15 @@ const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
 const ProPage = lazy(() => import('./pages/ProPage.jsx'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
 const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
+const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage.jsx'));
 const SearchPage = lazy(() => import('./pages/SearchPage.jsx'));
 const NotesPage = lazy(() => import('./pages/NotesPage.jsx'));
 const TasksPage = lazy(() => import('./pages/TasksPage.jsx'));
+
+// Routes meant to work as a standalone direct link — store-listing legal
+// pages, the account-deletion page — independent of whether the visitor has
+// ever opened (or finished the tour for) the rest of the app.
+const TOUR_EXEMPT_PATHS = new Set(['/privacy', '/terms', '/delete-account']);
 
 // Keeps state.settings.isPro (read all over the app already) in sync with
 // the real subscription status from the backend, once someone's signed in.
@@ -610,6 +616,11 @@ export default function App() {
     }
   }, [location]);
   useEffect(() => {
+    // Standalone public routes (store-listing links, deletion requests) are
+    // meant to work as a direct link for someone who may never open the
+    // rest of the app — bouncing them to Home to force the tour first would
+    // mean a reviewer or a user following the link never sees the page.
+    if (TOUR_EXEMPT_PATHS.has(location.pathname)) return;
     if (showTour && location.pathname !== '/') navigate('/', { replace: true });
   }, [showTour, location.pathname, navigate]);
 
@@ -701,6 +712,7 @@ export default function App() {
             <Route path="/pro" element={<ProPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/delete-account" element={<DeleteAccountPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/notes" element={<NotesPage />} />
             <Route path="/tasks" element={<TasksPage />} />
@@ -713,7 +725,7 @@ export default function App() {
           CLERK_ENABLED is still required underneath it: AssistantBubble calls
           useAuth(), which needs a ClerkProvider above it. */}
       {AI_ENABLED && CLERK_ENABLED && <AssistantBubble />}
-      {showTour && (
+      {showTour && !TOUR_EXEMPT_PATHS.has(location.pathname) && (
         <Tutorial
           onDone={() => {
             setReplayTour(false);
