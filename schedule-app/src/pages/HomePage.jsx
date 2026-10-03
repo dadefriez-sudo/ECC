@@ -584,6 +584,7 @@ export default function HomePage() {
       ) : (
         visibleBlocks.map((b) => {
           if (b.id === 'challenge') {
+            if (state.settings?.showDailyChallenge === false) return null;
             return (
               <section className="detail-section challenge-block" key="challenge">
                 <span className="detail-label"><Icon name="compass" /> Today's challenge</span>

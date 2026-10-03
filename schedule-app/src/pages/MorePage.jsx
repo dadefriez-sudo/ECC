@@ -140,7 +140,7 @@ const SETTINGS_INDEX = [
   {
     label: 'Appearance',
     groups: [
-      { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font' },
+      { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
       { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout' },
       { id: 'g6', title: 'Quick-add menu', keywords: 'customize fab plus button actions reorder' },
       { id: 'g7', title: 'Navigation tabs', keywords: 'customize tab bar bottom reorder hide' },
@@ -718,6 +718,18 @@ export default function MorePage() {
             role="switch"
             aria-checked={s.hapticsEnabled ?? true}
             onClick={() => actions.setSettings({ hapticsEnabled: !(s.hapticsEnabled ?? true) })}
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
+
+        <div className="section-head">
+          <span>Daily challenge on Home</span>
+          <button
+            className={`toggle${(s.showDailyChallenge ?? true) ? ' toggle--on' : ''}`}
+            role="switch"
+            aria-checked={s.showDailyChallenge ?? true}
+            onClick={() => actions.setSettings({ showDailyChallenge: !(s.showDailyChallenge ?? true) })}
           >
             <span className="toggle-knob" />
           </button>
