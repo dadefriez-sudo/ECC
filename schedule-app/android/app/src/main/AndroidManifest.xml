@@ -3,7 +3,7 @@
     <!-- allowBackup is explicitly off: Android's default Auto Backup snapshots
          the WebView's storage directory, where all app data (events, goals,
          contacts, everything in localStorage) actually lives. That directory
-         isn't reliably backup-safe for WebViews -- a snapshot taken mid-write,
+         isn't reliably backup-safe for WebViews: a snapshot taken mid-write,
          or restored in a state the WebView can't parse, reads back as empty,
          and the app falls back to its demo seed. Confirmed cause of a real
          data-loss report after an in-place Play Store update. -->
