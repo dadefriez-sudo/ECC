@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- allowBackup is explicitly off: Android's default Auto Backup snapshots
+         the WebView's storage directory, where all app data (events, goals,
+         contacts, everything in localStorage) actually lives. That directory
+         isn't reliably backup-safe for WebViews -- a snapshot taken mid-write,
+         or restored in a state the WebView can't parse, reads back as empty,
+         and the app falls back to its demo seed. Confirmed cause of a real
+         data-loss report after an in-place Play Store update. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
