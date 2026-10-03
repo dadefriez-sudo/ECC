@@ -9,7 +9,6 @@ import calendarsRoutes from './routes/calendars.js';
 import accountabilityRoutes from './routes/accountability.js';
 import googleRoutes from './routes/google.js';
 import assistantRoutes from './routes/assistant.js';
-import stripeWebhookRouter from './routes/webhooksStripe.js';
 import clerkWebhookRouter from './routes/webhooksClerk.js';
 
 export function createApp() {
@@ -51,10 +50,9 @@ export function createApp() {
   );
 
   // Webhooks need the raw request body for signature verification — mount
-  // them before express.json() touches the stream. Left outside apiLimiter:
-  // they're server-to-server from Stripe/Clerk, already signature-verified,
-  // and rate-limiting them risks dropping a retry of a webhook that matters.
-  app.use('/api/webhooks/stripe', stripeWebhookRouter);
+  // before express.json() touches the stream. Left outside apiLimiter: it's
+  // server-to-server from Clerk, already signature-verified, and rate-
+  // limiting it risks dropping a retry of a webhook that matters.
   app.use('/api/webhooks/clerk', clerkWebhookRouter);
 
   // Liveness probe — must not depend on Clerk/DB being configured, since

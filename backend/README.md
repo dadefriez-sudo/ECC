@@ -57,37 +57,14 @@ backend also lazily creates the row on first authenticated request, so
 things still work if the webhook hasn't fired yet — but the webhook is
 what keeps emails in sync and cleans up on account deletion.)
 
-## 3. Set up Stripe
-
-1. Create/use a [Stripe](https://dashboard.stripe.com) account. Use
-   **test mode** until you're ready to charge real cards.
-2. **Product catalog** → create a "Keystone Pro" product with a **one-time**
-   price (Stripe calls this "One off" / non-recurring). Copy its Price ID
-   into `STRIPE_PRICE_ID_LIFETIME`. It must not be a recurring price —
-   checkout runs in `payment` mode and Stripe rejects recurring prices there.
-3. **Developers → API keys** → copy the Secret key into `STRIPE_SECRET_KEY`.
-4. **Developers → Webhooks** → add an endpoint at
-   `https://<your-backend-domain>/api/webhooks/stripe`. Subscribe to
-   `checkout.session.completed` — that is what grants Pro. If you have
-   subscribers from before the switch, also keep
-   `customer.subscription.created`, `customer.subscription.updated`, and
-   `customer.subscription.deleted` so their access stays accurate. Copy the
-   **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
-5. **Customer portal** (Settings → Billing → Customer portal) → only needed
-   if you have pre-switch subscribers; it is how they cancel. New buyers
-   never see it, since a one-time purchase has nothing to manage.
-
-Test the whole loop with Stripe's test card `4242 4242 4242 4242`, any
-future expiry, any CVC.
-
-## 4. Set up Google sync (optional)
+## 3. Set up Google sync (optional)
 
 Google Contacts is a **one-time, read-only import**. Google Calendar is an
 **ongoing two-way sync** (single, non-repeating events only) that runs while
 the app is open — not a background/webhook sync, so a change made on Google
 shows up the next time the app is opened, not instantly. Entirely optional:
 leave the vars below unset and the "Sign in with Google" button in the app
-just errors instead of working, same as the Stripe/IAP vars.
+just errors instead of working, same as the IAP vars.
 
 1. Create/use a project in the [Google Cloud Console](https://console.cloud.google.com).
 2. **APIs & Services → Library** → enable the **Google Calendar API** and
@@ -105,7 +82,7 @@ just errors instead of working, same as the Stripe/IAP vars.
    into `GOOGLE_CLIENT_SECRET`, and set `GOOGLE_REDIRECT_URI` to the exact
    same redirect URI from step 4.
 
-## 5. Deploy (Render or Railway)
+## 4. Deploy (Render or Railway)
 
 Both work the same way for this service:
 
