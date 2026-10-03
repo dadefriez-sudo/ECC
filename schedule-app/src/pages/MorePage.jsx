@@ -44,6 +44,7 @@ import {
 } from '../data/contactSwipe.js';
 import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disconnectGoogle } from '../data/api.js';
 import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
+import { backupSupported, writeBackupNow } from '../data/backup.js';
 import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
 
@@ -399,7 +400,20 @@ export default function MorePage() {
     setFeedback(null);
   };
 
-  const exportData = () => {
+  const exportData = async () => {
+    // A blob + <a download> click never reliably triggers a real download
+    // inside the native WebView (no download-manager integration there),
+    // which is why this button did nothing on Android/iOS — it only ever
+    // worked on the actual web build. Native writes a real file instead.
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const filename = await writeBackupNow(state);
+        showToast(filename ? `Saved ${filename} to Documents` : 'Backup saved to Documents');
+      } catch (err) {
+        showToast(err.message || 'Could not save the backup.');
+      }
+      return;
+    }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1300,6 +1314,19 @@ export default function MorePage() {
           Everything is stored privately on this device. {counts.goals} goals · {counts.events} events ·{' '}
           {counts.contacts} people.
         </p>
+        {backupSupported() && (
+          <div className="section-head">
+            <span>Automatic on-device backup</span>
+            <button
+              className={`toggle${s.autoBackupEnabled ? ' toggle--on' : ''}`}
+              role="switch"
+              aria-checked={!!s.autoBackupEnabled}
+              onClick={() => actions.setSettings({ autoBackupEnabled: !s.autoBackupEnabled, autoBackupPromptSeen: true })}
+            >
+              <span className="toggle-knob" />
+            </button>
+          </div>
+        )}
         <div className="stack-btns">
           <button className="btn btn-ghost full" onClick={exportData}>
             Export backup (.json)

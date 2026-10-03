@@ -78,6 +78,15 @@ export function initIAP(getToken, onVerified) {
 
 export async function purchasePro() {
   if (!isNative) throw new Error('In-app purchase is only available in the app.');
+  // loadPurchasePlugin() only awaits the dynamic import resolving — it says
+  // nothing about whether store.initialize() (kicked off separately by
+  // initIAP, and genuinely slow: it's the network round-trip to Play
+  // Billing / StoreKit for product + offer details) has actually finished.
+  // Tapping "Unlock Pro" before that completes landed here with a product
+  // that exists but has no offers yet, which read as "Pro isn't available"
+  // even when it's really just "still loading" — wait for the same
+  // in-flight init promise initIAP already started before checking.
+  if (initPromise) await initPromise;
   const { store, Platform } = await loadPurchasePlugin();
   const nativePlatform = Capacitor.getPlatform() === 'ios' ? Platform.APPLE_APPSTORE : Platform.GOOGLE_PLAY;
   const product = store.get(PRO_PRODUCT_ID, nativePlatform);

@@ -7,6 +7,8 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import TabBar from './components/TabBar.jsx';
 import Tutorial from './components/Tutorial.jsx';
 import AssistantBubble from './components/AssistantBubble.jsx';
+import Modal from './components/Modal.jsx';
+import { maybeAutoBackup } from './data/backup.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
@@ -389,6 +391,45 @@ function ArrivalWatch() {
   return null;
 }
 
+// Asked once, the first time the app runs natively — not shown at all on
+// web, where there's no device filesystem to back up to in the first
+// place. "Not now" dismisses it for good; the choice can still be changed
+// any time from Settings -> Your data.
+function BackupOptInPrompt() {
+  const { state } = useStore();
+  const actions = useActions();
+  const show = Capacitor.isNativePlatform() && state.settings?.autoBackupPromptSeen !== true;
+
+  const decide = (enabled) => {
+    actions.setSettings({ autoBackupEnabled: enabled, autoBackupPromptSeen: true });
+  };
+
+  return (
+    <Modal
+      open={show}
+      title="Back up your data on this device?"
+      onClose={() => decide(false)}
+      footer={
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={() => decide(false)}>
+            Not now
+          </button>
+          <button className="btn btn-primary" onClick={() => decide(true)}>
+            Turn on backups
+          </button>
+        </div>
+      }
+    >
+      <p>
+        Keystone can save a backup file to this device once a day, on top of anything you've
+        already got. It's separate from Cloud Sync — it won't survive uninstalling the app, but it
+        protects against things like a bad update or corrupted app storage.
+      </p>
+      <p className="muted small">You can turn this on or off anytime from Settings → Your data.</p>
+    </Modal>
+  );
+}
+
 export default function App() {
   const { state } = useStore();
   const actions = useActions();
@@ -419,6 +460,14 @@ export default function App() {
       clearInterval(id);
       document.removeEventListener('visibilitychange', onVisible);
     };
+  }, []);
+
+  // Opt-in on-device JSON backup (see BackupOptInPrompt below and
+  // data/backup.js) — a no-op until the person has said yes, and even then
+  // only ever runs once a day.
+  useEffect(() => {
+    maybeAutoBackup(stateRef.current, actions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Android's hardware/gesture back button, wired up explicitly rather than
@@ -684,6 +733,7 @@ export default function App() {
       {CLERK_ENABLED && <AccountabilitySync />}
       {CLERK_ENABLED && <GoogleCalendarSync />}
       <ArrivalWatch />
+      <BackupOptInPrompt />
       <main className="app-main" key={location.pathname}>
         {/* Fallback is deliberately blank rather than a spinner: lazy chunks
             for pages already visited this session are browser-cached and
