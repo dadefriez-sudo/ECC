@@ -4,7 +4,7 @@ import { useAuth, useClerk } from '@clerk/clerk-react';
 import { useStore, useActions } from '../data/store.jsx';
 import { Brand } from '../components/Logo.jsx';
 import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
-import { startCheckout, openBillingPortal, backendConfigured, fetchMe } from '../data/api.js';
+import { fetchMe } from '../data/api.js';
 import { iapAvailable, initIAP, purchasePro, restorePurchases } from '../data/iap.js';
 import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
@@ -84,7 +84,7 @@ export default function PricingPage() {
         iapAvailable() ? (
           <NativePricingCTA isPro={isPro} />
         ) : (
-          <RealPricingCTA isPro={isPro} settings={state.settings} />
+          <RealPricingCTA isPro={isPro} />
         )
       ) : (
         <DemoPricingCTA isPro={isPro} />
@@ -93,68 +93,28 @@ export default function PricingPage() {
   );
 }
 
-// Real Stripe Checkout flow — used once Clerk is configured.
-function RealPricingCTA({ isPro, settings }) {
-  const { isSignedIn, getToken } = useAuth();
-  const clerk = useClerk();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  // Only someone who subscribed before Pro became a one-time purchase has a
-  // subscription to manage. Everyone else has nothing recurring, so offering
-  // them a billing portal would just be confusing.
-  const hasLegacySubscription =
-    !!settings?.subscriptionStatus && !settings?.isLifetime;
-
-  const handleUpgrade = async () => {
-    if (!isSignedIn) return openSignInWithRecovery(clerk);
-    if (!backendConfigured()) return setError('Billing isn’t connected yet.');
-    setError('');
-    setBusy(true);
-    try {
-      const { url } = await startCheckout(getToken);
-      window.location.href = url;
-    } catch (err) {
-      setError(err.message);
-      setBusy(false);
-    }
-  };
-
-  const handleManage = async () => {
-    setError('');
-    setBusy(true);
-    try {
-      const { url } = await openBillingPortal(getToken);
-      window.location.href = url;
-    } catch (err) {
-      setError(err.message);
-      setBusy(false);
-    }
-  };
-
+// Web (browser) view. Pro is sold exclusively through native in-app
+// purchase (Play Billing / StoreKit) — required by store policy for the
+// native app, and deliberately not duplicated here with a Stripe checkout:
+// there's no recurring plan to manage either, since Pro has only ever been
+// a one-time purchase. Someone already Pro (bought in the app, same
+// account) still sees that reflected here; someone who isn't just gets
+// pointed at the app instead of a purchase flow that doesn't exist on web.
+function RealPricingCTA({ isPro }) {
   return (
     <>
       {isPro ? (
         <div className="detail-section pricing-active">
           <span><Icon name="check" size={16} /> You own Keystone Pro</span>
-          {hasLegacySubscription && (
-            <>
-              <p className="muted small">
-                You're on the old monthly/annual plan. Pro is a one-time purchase now. Cancel here
-                and your access stays until the period you've already paid for ends.
-              </p>
-              <button className="btn btn-ghost full" onClick={handleManage} disabled={busy}>
-                Manage billing
-              </button>
-            </>
-          )}
         </div>
       ) : (
-        <button className="btn btn-primary full pricing-cta" onClick={handleUpgrade} disabled={busy}>
-          {isSignedIn ? `Unlock Pro for ${PRO_PRICE} once` : 'Sign in to unlock Pro'}
-        </button>
+        <div className="detail-section">
+          <p className="muted small center-pad">
+            Pro is available in the Keystone app on iOS and Android — download Keystone and
+            unlock it from there.
+          </p>
+        </div>
       )}
-      {error && <p className="muted small center-pad pricing-disclaimer">{error}</p>}
     </>
   );
 }
