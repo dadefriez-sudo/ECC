@@ -7,7 +7,7 @@ import LegalPage from '../components/LegalPage.jsx';
 // accurate to the current codebase as of the date below.
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="August 30, 2026">
+    <LegalPage title="Privacy Policy" updated="October 5, 2026">
       <p>
         Keystone is made by KeyStone Software and built around one idea: your calendar, your
         goals, and your people are your data, kept on your device by default. This page explains
@@ -20,6 +20,13 @@ export default function PrivacyPage() {
         Everything you enter (events, goals, tasks, notes, contacts, map pins, and app settings)
         is stored locally on your device. Keystone works fully offline, and none of this is
         sent anywhere unless you turn on one of the optional features below.
+      </p>
+      <p>
+        If you turn on automatic backups, or export one manually, from Settings → Your data,
+        Keystone also saves a copy of your data as a file in your device's Documents folder,
+        outside the app's own private storage. Unlike everything else on this page, that file is
+        visible to other apps on your device with file access, though it still never leaves your
+        device unless you move it yourself.
       </p>
 
       <h2>What can leave your device, and why</h2>
@@ -70,23 +77,22 @@ export default function PrivacyPage() {
           anyone other than you.
         </li>
         <li>
-          <b>Payment (Pro purchase).</b> Payment is handled entirely by Stripe, the App Store, or
-          Google Play, depending on how you bought Pro. Keystone never sees or stores your card
-          details, only whether the purchase succeeded.
+          <b>Payment (Pro purchase).</b> Payment is handled entirely by the App Store or Google
+          Play, depending on how you bought Pro. Keystone never sees or stores your card details,
+          only whether the purchase succeeded.
         </li>
       </ul>
 
       <h2>Who else sees it</h2>
       <p>
         Keystone uses a small number of service providers to run: Clerk for authentication,
-        Stripe for payment processing, Google (only if you choose to connect it, for the one-time
-        import above), OpenStreetMap/Nominatim for map tiles and address search, and a hosting
-        provider for the optional sync server. Each only sees the specific data their job requires
-        (Clerk sees your email; Stripe sees your payment; Google sees only the read-only access
-        you granted; OpenStreetMap sees the map area or address text you search; the sync server
-        sees your data blob only if cloud sync is on). None of them are permitted to use your data
-        for their own purposes. We don't sell data, and we don't run ads or third-party trackers
-        in the app.
+        Google (only if you choose to connect it, for the one-time import above),
+        OpenStreetMap/Nominatim for map tiles and address search, and a hosting provider for the
+        optional sync server. Each only sees the specific data their job requires (Clerk sees your
+        email; Google sees only the read-only access you granted; OpenStreetMap sees the map area
+        or address text you search; the sync server sees your data blob only if cloud sync is on).
+        None of them are permitted to use your data for their own purposes. We don't sell data,
+        and we don't run ads or third-party trackers in the app.
       </p>
 
       <h2>Your data, your control</h2>

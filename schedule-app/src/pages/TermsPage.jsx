@@ -6,7 +6,7 @@ import LegalPage from '../components/LegalPage.jsx';
 // lawyer's pass before publishing, same as the privacy policy.
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="August 12, 2026">
+    <LegalPage title="Terms of Service" updated="October 5, 2026">
       <p>
         Keystone is made by KeyStone Software. These terms cover your use of Keystone. By using
         the app, you agree to them. If you don't agree, please don't use Keystone.
@@ -28,10 +28,9 @@ export default function TermsPage() {
 
       <h2>Purchases</h2>
       <p>
-        Pro is billed once, through Stripe, the App Store, or Google Play depending on where you
-        bought it. Refunds are handled according to that platform's own refund policy: Apple's
-        or Google's store policies for purchases made there, or by contacting us directly for
-        purchases made through Stripe.
+        Pro is billed once, through the App Store or Google Play depending on where you bought
+        it. Refunds are handled according to that platform's own refund policy: Apple's or
+        Google's store policies, depending on where you purchased.
       </p>
 
       <h2>Your content</h2>
