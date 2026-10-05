@@ -9,6 +9,7 @@ import Tutorial from './components/Tutorial.jsx';
 import AssistantBubble from './components/AssistantBubble.jsx';
 import Modal from './components/Modal.jsx';
 import { maybeAutoBackup } from './data/backup.js';
+import { checkForUpdate, completeUpdate } from './data/appUpdate.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
@@ -388,6 +389,28 @@ function ArrivalWatch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, hasArmedPins]);
 
+  return null;
+}
+
+// Checks the Play Store for an update once per launch and, if one's
+// available, downloads it in the background (a "flexible" update — the app
+// stays fully usable while that happens) via Play's own in-app update API.
+// A no-op everywhere but native Android; see data/appUpdate.js. The toast's
+// own 5s timeout isn't the only chance to restart — if it's missed, Play
+// itself eventually shows a system notification for a download that's sat
+// finished a while, and the next launch's check also re-offers it instead
+// of losing track of it.
+function AppUpdateCheck() {
+  const { state } = useStore();
+  const showToast = useToast();
+  const legalAccepted = state.settings?.legalAccepted === true;
+  useEffect(() => {
+    if (!legalAccepted) return;
+    checkForUpdate(() => {
+      showToast('Update ready to install.', 'Restart', completeUpdate);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legalAccepted]);
   return null;
 }
 
@@ -800,6 +823,7 @@ export default function App() {
       <ArrivalWatch />
       <LegalAcceptPrompt />
       <BackupOptInPrompt />
+      <AppUpdateCheck />
       <main className="app-main" key={location.pathname}>
         {/* Fallback is deliberately blank rather than a spinner: lazy chunks
             for pages already visited this session are browser-cached and

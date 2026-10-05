@@ -45,6 +45,7 @@ import {
 import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disconnectGoogle } from '../data/api.js';
 import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
 import { backupSupported, writeBackupNow } from '../data/backup.js';
+import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js';
 import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
 
@@ -183,7 +184,7 @@ const SETTINGS_INDEX = [
       ...(AI_ENABLED
         ? [{ id: 'gai', title: 'Assistant', keywords: 'claude ai chat bubble ask assistant helper' }]
         : []),
-      { id: 'g16', title: 'Feedback', keywords: 'bug idea suggest contact support tour tutorial replay' },
+      { id: 'g16', title: 'Feedback', keywords: 'bug idea suggest contact support tour tutorial replay update version play store' },
       { id: 'g17', title: 'Your data', keywords: 'backup export import json reset clear cache delete storage' },
       { id: 'g18', title: 'Legal', keywords: 'privacy policy terms of service data collection legal' },
     ],
@@ -1273,6 +1274,11 @@ export default function MorePage() {
           >
             <Icon name="play" /> Replay the tour
           </button>
+          {updateCheckSupported() && (
+            <button className="btn btn-ghost full" onClick={openPlayStoreListing}>
+              <Icon name="repeat" /> Check for updates
+            </button>
+          )}
         </div>
       </SettingsGroup>
       <SettingsGroup {...grp('g17')}>
