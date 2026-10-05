@@ -862,6 +862,7 @@ export default function PlannerPage() {
           opacity={state.settings?.isPro ? state.settings?.eventBlockOpacity ?? 100 : 100}
           tasks={state.settings?.showTasksOnTimeline !== false ? state.tasks : null}
           onToggleTask={(t) => actions.updateTask({ ...t, done: !t.done })}
+          taskCompleteAnim={state.settings?.taskCompleteAnim ?? true}
           birthdaysEnabled={state.settings?.contactBirthdaysEnabled !== false}
           onOpenContact={openContact}
         />
@@ -1185,6 +1186,7 @@ function DayView({
   opacity = 100,
   tasks,
   onToggleTask,
+  taskCompleteAnim = true,
   birthdaysEnabled = true,
   onOpenContact,
 }) {
@@ -1263,21 +1265,73 @@ function DayView({
   const hours = [];
   for (let h = dayStart; h <= dayEnd; h++) hours.push(h);
 
+  // Same two-phase completion flash as Tasks/Home's lists (ticked, then
+  // filed a beat later) — see TasksPage's own comment for why it's two
+  // beats rather than one instant removal. Kept in step with those
+  // deliberately; if this ever needs to change, change it there too.
+  const TASK_POP_MS = 500;
+  const TASK_FILE_MS = 260;
+  const [justCompletedTaskIds, setJustCompletedTaskIds] = useState(new Set());
+  const [filingTaskIds, setFilingTaskIds] = useState(new Set());
+  const taskCompletionTimers = useRef(new Map());
+  const withoutTaskId = (id) => (prev) => {
+    if (!prev.has(id)) return prev;
+    const next = new Set(prev);
+    next.delete(id);
+    return next;
+  };
+  const cancelTaskCompletion = (id) => {
+    for (const t of taskCompletionTimers.current.get(id) || []) clearTimeout(t);
+    taskCompletionTimers.current.delete(id);
+    setJustCompletedTaskIds(withoutTaskId(id));
+    setFilingTaskIds(withoutTaskId(id));
+  };
+  const flashTaskCompleted = (id) => {
+    cancelTaskCompletion(id);
+    setJustCompletedTaskIds((prev) => new Set(prev).add(id));
+    taskCompletionTimers.current.set(id, [
+      setTimeout(() => {
+        setJustCompletedTaskIds(withoutTaskId(id));
+        setFilingTaskIds((prev) => new Set(prev).add(id));
+      }, TASK_POP_MS),
+      setTimeout(() => {
+        setFilingTaskIds(withoutTaskId(id));
+        taskCompletionTimers.current.delete(id);
+      }, TASK_POP_MS + TASK_FILE_MS),
+    ]);
+  };
+  useEffect(
+    () => () => {
+      for (const timers of taskCompletionTimers.current.values()) timers.forEach(clearTimeout);
+      taskCompletionTimers.current.clear();
+    },
+    []
+  );
+  const handleToggleTask = (t) => {
+    if (t.done) {
+      cancelTaskCompletion(t.id);
+    } else {
+      flashTaskCompleted(t.id);
+    }
+    onToggleTask?.(t);
+  };
+  const taskSettling = (t) => justCompletedTaskIds.has(t.id) || filingTaskIds.has(t.id);
+
   // Tasks with a specific due time render as positioned blocks on the day
   // they're due (below); everything else (no due time, or done) stays in
   // the flat undated chip row above the timeline, same on every day.
   const pendingTasks = useMemo(
-    () => (tasks ? tasks.filter((t) => !t.done && !t.dueTime) : null),
-    [tasks]
+    () => (tasks ? tasks.filter((t) => (!t.done || taskSettling(t)) && !t.dueTime) : null),
+    [tasks, justCompletedTaskIds, filingTaskIds]
   );
   const timedTasksForDay = useMemo(
     () =>
       tasks
         ? tasks
-            .filter((t) => !t.done && t.dueTime && t.dueDate === date)
+            .filter((t) => (!t.done || taskSettling(t)) && t.dueTime && t.dueDate === date)
             .sort((a, b) => a.dueTime.localeCompare(b.dueTime))
         : [],
-    [tasks, date]
+    [tasks, date, justCompletedTaskIds, filingTaskIds]
   );
 
   // Birthdays/anniversaries for the day on screen — computed on the fly from
@@ -1848,12 +1902,24 @@ function DayView({
       )}
       {pendingTasks && pendingTasks.length > 0 && (
         <div className="timeline-tasks">
-          {pendingTasks.map((t) => (
-            <button key={t.id} className="timeline-task-chip" onClick={() => onToggleTask?.(t)}>
-              <span className="timeline-task-dot" />
-              {t.title}
-            </button>
-          ))}
+          {pendingTasks.map((t) => {
+            const on = t.done || justCompletedTaskIds.has(t.id);
+            const popping = justCompletedTaskIds.has(t.id) && taskCompleteAnim;
+            return (
+              <button
+                key={t.id}
+                className={`timeline-task-chip${filingTaskIds.has(t.id) ? ' task-filing' : ''}`}
+                onClick={() => handleToggleTask(t)}
+              >
+                <span className={`timeline-task-dot${on ? ' timeline-task-dot--on' : ''}${popping ? ' task-check--pop' : ''}`}>
+                  <span className="task-check-sparkles" aria-hidden="true">
+                    <i /><i /><i /><i /><i /><i />
+                  </span>
+                </span>
+                {t.title}
+              </button>
+            );
+          })}
         </div>
       )}
       <div
@@ -2008,17 +2074,23 @@ function DayView({
             <div className="task-time-layer">
               {timedTasksForDay.map((t) => {
                 const top = (timeToMinutes(t.dueTime) - dayStart * 60) * pxPerMin;
+                const on = t.done || justCompletedTaskIds.has(t.id);
+                const popping = justCompletedTaskIds.has(t.id) && taskCompleteAnim;
                 return (
                   <button
                     key={t.id}
-                    className="task-time-block"
+                    className={`task-time-block${filingTaskIds.has(t.id) ? ' task-filing' : ''}`}
                     style={{ top }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onToggleTask?.(t);
+                      handleToggleTask(t);
                     }}
                   >
-                    <span className="task-time-check" />
+                    <span className={`task-time-check${on ? ' task-time-check--on' : ''}${popping ? ' task-check--pop' : ''}`}>
+                      <span className="task-check-sparkles" aria-hidden="true">
+                        <i /><i /><i /><i /><i /><i />
+                      </span>
+                    </span>
                     <span className="task-time-label">
                       {formatTime(t.dueTime)} · {t.title}
                     </span>

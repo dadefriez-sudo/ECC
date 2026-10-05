@@ -2450,11 +2450,16 @@ textarea {
   transform: scale(0.96);
 }
 .timeline-task-dot {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   border: 2px solid var(--accent);
   flex: none;
+  transition: background 0.15s ease;
+}
+.timeline-task-dot--on {
+  background: var(--accent);
 }
 .timeline-dates {
   display: flex;
@@ -2624,11 +2629,16 @@ textarea {
   transform: scale(0.97);
 }
 .task-time-check {
+  position: relative;
   width: 13px;
   height: 13px;
   border-radius: 50%;
   border: 2px solid var(--good);
   flex: none;
+  transition: background 0.15s ease;
+}
+.task-time-check--on {
+  background: var(--good);
 }
 .day-content--in-right,
 .day-content--in-left {
@@ -4045,6 +4055,49 @@ textarea {
 .pin-bubble--pick::after {
   border-top-color: var(--accent);
 }
+
+/* The live "you are here" marker — a solid dot with a ring that pulses
+   outward and fades, the same shorthand every map app uses for "this is
+   updating in real time," not a fixed pin. Deliberately plain blue rather
+   than --accent: this is a widely recognized convention independent of the
+   app's own theme, and a gold dot would read as just another pin. */
+.my-location-icon {
+  position: relative;
+  width: 18px;
+  height: 18px;
+}
+.my-location-dot {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #4285f4;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.my-location-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, #4285f4 35%, transparent);
+  animation: my-location-ping 2s ease-out infinite;
+}
+@keyframes my-location-ping {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .my-location-pulse {
+    animation: none;
+    opacity: 0.35;
+  }
+}
+
 @keyframes temp-pulse {
   0%,
   100% {

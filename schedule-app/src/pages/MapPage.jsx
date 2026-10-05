@@ -14,7 +14,7 @@ import { directionsTarget, openMaps } from '../data/maps.js';
 import { resolveMapStyle, MAP_STYLE_OPTIONS } from '../data/mapStyles.js';
 import { eventPinIdentity } from '../data/pinLabel.js';
 import { ROUTE_PLANNER_ENABLED } from '../data/routePlannerConfig.js';
-import { geoAvailable, getCurrentPosition, isLocationGranted } from '../data/geo.js';
+import { geoAvailable, getCurrentPosition, isLocationGranted, watchPosition } from '../data/geo.js';
 import { useTodayResync } from '../data/useTodayResync.js';
 import Icon from '../components/Icon.jsx';
 import AddressField from '../components/AddressField.jsx';
@@ -115,9 +115,17 @@ export default function MapPage() {
   const layerRef = useRef(null);
   const tempLayerRef = useRef(null);
   const pickLayerRef = useRef(null);
+  const myLocationLayerRef = useRef(null);
   const baseLayerRef = useRef(null);
   const pinsRef = useRef(pins);
   const handlersRef = useRef({});
+  // A live "you are here" marker, Google-Maps style — null until a position
+  // actually comes in, either silently (already-granted permission, see the
+  // effect below) or from tapping Locate. locateWatchRef is the geo.js
+  // watch handle so locateMe() can tell whether one is already running
+  // instead of starting a second, redundant watch on every tap.
+  const [myPosition, setMyPosition] = useState(null);
+  const locateWatchRef = useRef(null);
   const pressRef = useRef(null); // { timer, startPoint, latlng, fired }
   const suppressClickRef = useRef(false); // true right after a long-press fires
 
@@ -321,6 +329,7 @@ export default function MapPage() {
     layerRef.current = L.layerGroup().addTo(map);
     tempLayerRef.current = L.layerGroup().addTo(map);
     pickLayerRef.current = L.layerGroup().addTo(map);
+    myLocationLayerRef.current = L.layerGroup().addTo(map);
     map.on('click', (e) => handlersRef.current.onMapClick?.(e));
     // Leaflet's own drag/zoom gestures starting is a reliable extra signal
     // that this was a pan, not a hold — cancel our timer either way.
@@ -458,10 +467,59 @@ export default function MapPage() {
     }
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Live "you are here" dot, same silent-adopt rule as the initial-view
+  // effect above: only starts watching if permission was already granted in
+  // a past session, never prompting just for opening the tab. locateMe()
+  // below is the other way one gets started, for someone who hasn't
+  // granted it yet.
+  useEffect(() => {
+    let cancelled = false;
+    isLocationGranted().then((granted) => {
+      if (!granted || cancelled || locateWatchRef.current) return;
+      locateWatchRef.current = watchPosition({ enableHighAccuracy: true }, (pos) => {
+        setMyPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      });
+    });
+    return () => {
+      cancelled = true;
+      locateWatchRef.current?.clear();
+      locateWatchRef.current = null;
+    };
+  }, []);
+
+  // Render / move the live location marker as positions come in.
+  useEffect(() => {
+    const layer = myLocationLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!myPosition) return;
+    const icon = L.divIcon({
+      className: 'my-location-icon',
+      html: '<div class="my-location-pulse"></div><div class="my-location-dot"></div>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+    L.marker([myPosition.lat, myPosition.lng], { icon, keyboard: false, interactive: false, zIndexOffset: 1000 }).addTo(
+      layer
+    );
+  }, [myPosition]);
+
   const locateMe = () => {
     if (!geoAvailable()) return alert('Location is not available in this browser.');
     getCurrentPosition()
-      .then((pos) => mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15))
+      .then((pos) => {
+        mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15);
+        setMyPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        // getCurrentPosition succeeding means permission is granted now even
+        // if it wasn't when the silent-adopt effect above last checked — start
+        // the live watch here too, so tapping Locate is also how someone who
+        // said no the first time can turn the dot on.
+        if (!locateWatchRef.current) {
+          locateWatchRef.current = watchPosition({ enableHighAccuracy: true }, (p) => {
+            setMyPosition({ lat: p.coords.latitude, lng: p.coords.longitude });
+          });
+        }
+      })
       .catch((err) => {
         // The plugin's own message distinguishes denied vs. disabled vs.
         // timed out (see @capacitor/geolocation's GeolocationErrors) — a

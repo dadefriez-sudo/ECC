@@ -491,6 +491,11 @@ export default function App() {
   // while the app is open, plus whenever it returns to the foreground.
   const stateRef = useRef(state);
   stateRef.current = state;
+  // Read by the backButton listener below, which is set up once (empty
+  // deps) and would otherwise see a stale location from whenever it first
+  // mounted.
+  const locationRef = useRef(location);
+  locationRef.current = location;
   useEffect(() => {
     // Refreshes the day's native-scheduled reminders (see notifications.js)
     // on the same cadence as the foreground scan below — a no-op on the web
@@ -533,16 +538,26 @@ export default function App() {
   // already handles correctly — the same mechanism already verified for
   // overlays. Only armed on native; the web build has no hardware back
   // button, and browsers already fire their own back gesture correctly.
+  //
+  // hasActiveBackHandler() only covers overlays and the handful of pages
+  // that register their own whole-lifetime handler — most drill-down pages
+  // (a contact's detail page, Goal history, Shared calendar detail, and so
+  // on) register nothing at all. Treating "nothing registered" as "we must
+  // be at a top-level tab" was wrong: it exited the app from any of those
+  // pages instead of returning to whatever was navigated from. location.key
+  // is 'default' only for the very first entry in the session (nothing to
+  // go back to yet); anything else means there's real in-app navigation
+  // history to pop, same as the overlay case.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return undefined;
     let handle;
     CapacitorApp.addListener('backButton', () => {
-      if (hasActiveBackHandler()) {
+      if (hasActiveBackHandler() || locationRef.current.key !== 'default') {
         window.history.back();
       } else {
-        // Nothing registered to intercept this — we're at a top-level tab
-        // with no overlay open, which is where Android's own back-button
-        // convention says to exit rather than get stuck unresponsive.
+        // Truly nothing to go back to and nothing open — the first screen
+        // after launch, which is where Android's own back-button convention
+        // says to exit rather than get stuck unresponsive.
         CapacitorApp.exitApp();
       }
     }).then((h) => {

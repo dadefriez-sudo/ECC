@@ -75,9 +75,10 @@ const DESTRUCTIVE_ACTIONS = {
 };
 
 // Swatches are each scheme's own light-mode accent, so the dot is literally
-// the colour you get. Split into two rows because fifteen unlabelled dots in
-// one grid gives no clue which are the soft ones (see styles.css for why the
-// pastels are muted rather than pale).
+// the colour you get. The last six (Lavender through Seafoam) used to be a
+// separate "Pastel" row; folded in here since the distinction wasn't worth
+// a whole extra labelled section (see styles.css for why they're muted
+// rather than pale, same as every other scheme).
 const COLOR_SCHEMES = [
   { value: 'default', label: 'Gold', swatch: '#a9822a' },
   { value: 'emerald', label: 'Emerald', swatch: '#0f8f72' },
@@ -96,9 +97,6 @@ const COLOR_SCHEMES = [
   { value: 'indigo', label: 'Indigo', swatch: '#4b56c9' },
   { value: 'plum', label: 'Plum', swatch: '#6b3b7a' },
   { value: 'charcoal', label: 'Charcoal', swatch: '#3d4348' },
-];
-
-const PASTEL_SCHEMES = [
   { value: 'lavender', label: 'Lavender', swatch: '#7a68b8' },
   { value: 'blush', label: 'Blush', swatch: '#c06b83' },
   { value: 'sage', label: 'Sage', swatch: '#5f8a63' },
@@ -641,30 +639,6 @@ export default function MorePage() {
         </button>
       </SettingsGroup>
 
-      {/* Temporary: sign-in is broken on the beta build (Clerk's WebView
-          handshake redirect), so there's no way to reach isPro through a
-          real account yet. Remove once that's fixed and back to relying on
-          RealPricingCTA/NativePricingCTA's normal purchase-or-signin flow. */}
-      {CLERK_ENABLED && (
-        <SettingsGroup {...grp('gProDemo')}>
-          <div className="section-head">
-            <span className="detail-label">Pro demo (testing only)</span>
-            <button
-              className={`toggle${isPro ? ' toggle--on' : ''}`}
-              role="switch"
-              aria-checked={isPro}
-              onClick={() => actions.setSettings({ isPro: !isPro })}
-            >
-              <span className="toggle-knob" />
-            </button>
-          </div>
-          <p className="muted small">
-            Previews Pro features without signing in. Local only, so it doesn't touch your account, and it gets
-            overwritten the moment a real sign-in syncs.
-          </p>
-        </SettingsGroup>
-      )}
-
       <SettingsSection label="Appearance" hidden={!sectionShown('Appearance')} />
       <SettingsGroup {...grp('g4')}>
         <span className="detail-label">Theme &amp; colors</span>
@@ -682,13 +656,6 @@ export default function MorePage() {
         <p className="muted small color-scheme-label">Color theme {!isPro && '· Pro'}</p>
         <SchemeRow
           schemes={COLOR_SCHEMES}
-          isPro={isPro}
-          current={state.settings?.colorScheme || 'default'}
-          onPick={(v) => requirePro(() => actions.setSettings({ colorScheme: v }))}
-        />
-        <p className="muted small color-scheme-label">Pastel</p>
-        <SchemeRow
-          schemes={PASTEL_SCHEMES}
           isPro={isPro}
           current={state.settings?.colorScheme || 'default'}
           onPick={(v) => requirePro(() => actions.setSettings({ colorScheme: v }))}
