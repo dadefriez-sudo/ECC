@@ -6450,3 +6450,13 @@ body[data-assistant='on'] .conflict-list {
   color: var(--accent);
   font-weight: 600;
 }
+.legal-inline-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}

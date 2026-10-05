@@ -391,6 +391,53 @@ function ArrivalWatch() {
   return null;
 }
 
+// A clickwrap gate shown before anything else on first run (and on every
+// launch until accepted) — a reachable Privacy Policy/Terms link alone is
+// weaker than a logged, affirmative "I agree" if either document's terms
+// (liability limits, account rules) ever actually need to be enforced.
+// No decline option: this is take-it-or-leave-it, same as most apps'
+// first-run terms gate. Exempt on /privacy and /terms themselves so tapping
+// either link below to actually read them doesn't immediately re-show this
+// on top of the page it just opened.
+function LegalAcceptPrompt() {
+  const { state } = useStore();
+  const actions = useActions();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const show = !TOUR_EXEMPT_PATHS.has(location.pathname) && state.settings?.legalAccepted !== true;
+
+  const accept = () => {
+    actions.setSettings({ legalAccepted: true, legalAcceptedAt: new Date().toISOString() });
+  };
+
+  return (
+    <Modal
+      open={show}
+      title="Before you start"
+      onClose={() => {}}
+      footer={
+        <div className="modal-actions">
+          <button className="btn btn-primary full" onClick={accept}>
+            Agree and continue
+          </button>
+        </div>
+      }
+    >
+      <p>
+        By using Keystone, you agree to our{' '}
+        <button type="button" className="legal-inline-link" onClick={() => navigate('/terms')}>
+          Terms of Service
+        </button>{' '}
+        and{' '}
+        <button type="button" className="legal-inline-link" onClick={() => navigate('/privacy')}>
+          Privacy Policy
+        </button>
+        .
+      </p>
+    </Modal>
+  );
+}
+
 // Asked once, the first time the app runs natively — not shown at all on
 // web, where there's no device filesystem to back up to in the first
 // place. "Not now" dismisses it for good; the choice can still be changed
@@ -398,7 +445,10 @@ function ArrivalWatch() {
 function BackupOptInPrompt() {
   const { state } = useStore();
   const actions = useActions();
-  const show = Capacitor.isNativePlatform() && state.settings?.autoBackupPromptSeen !== true;
+  const show =
+    Capacitor.isNativePlatform() &&
+    state.settings?.legalAccepted === true &&
+    state.settings?.autoBackupPromptSeen !== true;
 
   const decide = (enabled) => {
     actions.setSettings({ autoBackupEnabled: enabled, autoBackupPromptSeen: true });
@@ -733,6 +783,7 @@ export default function App() {
       {CLERK_ENABLED && <AccountabilitySync />}
       {CLERK_ENABLED && <GoogleCalendarSync />}
       <ArrivalWatch />
+      <LegalAcceptPrompt />
       <BackupOptInPrompt />
       <main className="app-main" key={location.pathname}>
         {/* Fallback is deliberately blank rather than a spinner: lazy chunks
@@ -775,7 +826,7 @@ export default function App() {
           CLERK_ENABLED is still required underneath it: AssistantBubble calls
           useAuth(), which needs a ClerkProvider above it. */}
       {AI_ENABLED && CLERK_ENABLED && <AssistantBubble />}
-      {showTour && !TOUR_EXEMPT_PATHS.has(location.pathname) && (
+      {showTour && !TOUR_EXEMPT_PATHS.has(location.pathname) && state.settings?.legalAccepted === true && (
         <Tutorial
           onDone={() => {
             setReplayTour(false);
