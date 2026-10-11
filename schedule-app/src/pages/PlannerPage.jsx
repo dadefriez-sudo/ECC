@@ -202,6 +202,26 @@ export default function PlannerPage() {
     );
 
   const openView = (occ) => setViewing(occ);
+
+  // The viewed event's neighbours on the same day, in time order — what
+  // swiping the read-only event view steps through. Derived fresh from
+  // state.events rather than captured when the view opened, so an event
+  // added or deleted meanwhile doesn't leave a stale list.
+  const viewingDay = viewing ? viewing.occDate || viewing.date : null;
+  const viewingDayOccs = useMemo(
+    () =>
+      viewingDay
+        ? occurrencesFor(state.events, viewingDay).sort((a, b) => a.s - b.s || a.e2 - b.e2)
+        : [],
+    [state.events, viewingDay]
+  );
+  const viewingIndex = viewing
+    ? viewingDayOccs.findIndex((o) => o.id === viewing.id && o.recDate === viewing.recDate)
+    : -1;
+  const stepViewing = (dir) => {
+    const next = viewingDayOccs[viewingIndex + dir];
+    if (next) setViewing(next);
+  };
   const openContact = (id) => navigate(`/contacts/${id}`);
 
   // "Today" means today *and now*. Landing on the right date but scrolled to
@@ -1049,6 +1069,8 @@ export default function PlannerPage() {
           onClose={() => setViewing(null)}
           onEdit={openEditFromView}
           onToggleDone={() => toggleDoneQuick(viewing)}
+          position={viewingIndex >= 0 ? { index: viewingIndex, count: viewingDayOccs.length } : null}
+          onStep={stepViewing}
         />
       )}
 
@@ -2602,9 +2624,35 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
 
 const DETAIL_DISMISS_THRESHOLD = 110;
 
-function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindLabels, onClose, onEdit, onToggleDone }) {
+const DETAIL_SWIPE_PX = 60;
+
+function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindLabels, onClose, onEdit, onToggleDone, position, onStep }) {
   const navigate = useNavigate();
   useBackDismiss(true, onClose);
+
+  // Horizontal swipe steps through the day's events: swipe left for the next
+  // one, right for the previous. The body is touch-action: pan-y so the
+  // browser keeps vertical scrolling for itself and hands us horizontal
+  // moves instead of cancelling the pointer. A mostly-vertical drag (someone
+  // scrolling) never counts, and a swipe off either end just does nothing.
+  const swipeStart = useRef(null);
+  const [slideDir, setSlideDir] = useState('');
+  const onBodyPointerDown = (e) => {
+    swipeStart.current = { x: e.clientX, y: e.clientY };
+  };
+  const onBodyPointerUp = (e) => {
+    const s = swipeStart.current;
+    swipeStart.current = null;
+    if (!s || !position || position.count < 2) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (Math.abs(dx) < DETAIL_SWIPE_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const dir = dx < 0 ? 1 : -1;
+    const target = position.index + dir;
+    if (target < 0 || target >= position.count) return;
+    setSlideDir(dir === 1 ? 'right' : 'left');
+    onStep?.(dir);
+  };
   const linkedContacts = eventContactIds(occ)
     .map((id) => contacts.find((c) => c.id === id))
     .filter(Boolean);
@@ -2665,14 +2713,28 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindL
               <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
-          <h2>Event</h2>
+          <h2>
+            Event
+            {position && position.count > 1 && (
+              <span className="detail-position muted small">
+                {' '}
+                {position.index + 1} of {position.count}
+              </span>
+            )}
+          </h2>
           <button className="editor-sheet-save" onClick={onEdit} aria-label="Edit">
             <PencilIcon />
           </button>
         </div>
       </div>
 
-      <div className="editor-sheet-body">
+      <div
+        className={`editor-sheet-body detail-swipe${slideDir ? ` day-content--in-${slideDir}` : ''}`}
+        key={`${occ.id}:${occ.recDate}`}
+        onPointerDown={onBodyPointerDown}
+        onPointerUp={onBodyPointerUp}
+        onPointerCancel={() => (swipeStart.current = null)}
+      >
         <div className="detail-title-row">
           {color && <span className="detail-dot" style={{ background: color }} />}
           <h1 className="detail-big-title">{occ.title || 'Untitled'}</h1>

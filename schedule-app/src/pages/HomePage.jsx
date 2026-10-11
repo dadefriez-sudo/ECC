@@ -222,6 +222,26 @@ export default function HomePage() {
   // number to lead with on the page people actually open every day.
   const bestStreak = state.goals.reduce((max, g) => Math.max(max, computeGoalStreak(g)), 0);
 
+  // The compact alternative to the rings (Settings -> Home screen, or the
+  // pencil on Home): the two goals most worth a glance right now. Only goals
+  // actually in play (a daily goal not scheduled today is skipped, same as
+  // the rings), unfinished ones first so the block reads as "what's left"
+  // rather than a wall of ticks, otherwise in the person's own goal order.
+  const compactGoals = (() => {
+    const inPlay = new Set([...dailyGoals, ...weeklyGoals]);
+    const weekStartKey = weekKey(new Date());
+    return state.goals
+      .filter((g) => inPlay.has(g) && (g.target || 0) > 0)
+      .map((g) => {
+        const key = (g.period || 'weekly') === 'daily' ? dailyKey : weekStartKey;
+        const value = g.progress?.[key] || 0;
+        return { goal: g, value, pct: Math.min(100, Math.round((value / g.target) * 100)), done: value >= g.target };
+      })
+      .sort((a, b) => Number(a.done) - Number(b.done))
+      .slice(0, 2);
+  })();
+  const goalsCompact = state.settings?.homeGoalsStyle === 'compact';
+
   // "Important reminders": anything with a reminder firing today that isn't
   // done yet — goals, tasks, and today's events (including recurring ones,
   // and regardless of whether a reminder lead time is set — any event
@@ -573,6 +593,21 @@ export default function HomePage() {
         <section className="detail-section">
           <span className="detail-label">Customize home screen</span>
           <p className="muted small">Drag to reorder, toggle off to hide. Tap Done above when finished.</p>
+          <p className="muted small">Goals block style</p>
+          <div className="seg seg--full">
+            {[
+              { value: 'rings', label: 'Rings' },
+              { value: 'compact', label: 'Top goals' },
+            ].map((o) => (
+              <button
+                key={o.value}
+                className={`seg-btn${(goalsCompact ? 'compact' : 'rings') === o.value ? ' seg-btn--on' : ''}`}
+                onClick={() => actions.setSettings({ homeGoalsStyle: o.value })}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
           <ReorderToggleList
             items={homeBlocks}
             types={HOME_BLOCK_TYPES}
@@ -608,6 +643,46 @@ export default function HomePage() {
                   </>
                 )}
               </section>
+            );
+          }
+          if (b.id === 'goals' && goalsCompact) {
+            return (
+              <button
+                key="goals"
+                className="detail-section home-block-goals home-block-goals--compact"
+                onClick={() => navigate('/goals')}
+              >
+                <div className="goals-block-head">
+                  <span className="detail-label"><Icon name="target" /> Goals</span>
+                  {bestStreak >= 1 && (
+                    <span className="streak-badge">
+                      <Icon name="flame" size={16} /> <AnimatedNumber value={bestStreak} />
+                    </span>
+                  )}
+                </div>
+                {compactGoals.length === 0 ? (
+                  <p className="muted small goal-mini-empty">No goals in play today. Tap to add one.</p>
+                ) : (
+                  <ul className="goal-mini-list">
+                    {compactGoals.map(({ goal, value, pct, done }) => (
+                      <li key={goal.id} className="goal-mini-row">
+                        <div className="goal-mini-top">
+                          <span className="goal-mini-title">{goal.title}</span>
+                          <span className="goal-mini-count">
+                            {done ? <Icon name="check" size={14} /> : null} {value} / {goal.target} {goal.unit}
+                          </span>
+                        </div>
+                        <div className="goal-mini-bar" aria-hidden="true">
+                          <div
+                            className={`goal-mini-fill${done ? ' goal-mini-fill--done' : ''}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </button>
             );
           }
           if (b.id === 'goals') {

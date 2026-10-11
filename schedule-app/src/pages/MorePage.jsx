@@ -141,7 +141,7 @@ const SETTINGS_INDEX = [
     label: 'Appearance',
     groups: [
       { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
-      { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout' },
+      { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style' },
       { id: 'g6', title: 'Quick-add menu', keywords: 'customize fab plus button actions reorder' },
       { id: 'g7', title: 'Navigation tabs', keywords: 'customize tab bar bottom reorder hide' },
     ],
@@ -184,7 +184,7 @@ const SETTINGS_INDEX = [
       ...(AI_ENABLED
         ? [{ id: 'gai', title: 'Assistant', keywords: 'claude ai chat bubble ask assistant helper' }]
         : []),
-      { id: 'g16', title: 'Feedback', keywords: 'bug idea suggest contact support tour tutorial replay update version play store' },
+      { id: 'g16', title: 'Feedback', keywords: 'bug idea suggest contact support tour tutorial replay update version play store rate review rating star' },
       { id: 'g17', title: 'Your data', keywords: 'backup export import json reset clear cache delete storage' },
       { id: 'g18', title: 'Legal', keywords: 'privacy policy terms of service data collection legal' },
     ],
@@ -723,6 +723,21 @@ export default function MorePage() {
           Choose which blocks show on Home, and drag to reorder them. Or edit this right from the Home page itself
           via the pencil icon in its header.
         </p>
+        <p className="muted small">Goals block style</p>
+        <div className="seg seg--full">
+          {[
+            { value: 'rings', label: 'Rings' },
+            { value: 'compact', label: 'Top goals' },
+          ].map((o) => (
+            <button
+              key={o.value}
+              className={`seg-btn${(s.homeGoalsStyle === 'compact' ? 'compact' : 'rings') === o.value ? ' seg-btn--on' : ''}`}
+              onClick={() => actions.setSettings({ homeGoalsStyle: o.value })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
         {isPro ? (
           <ReorderToggleList
             items={normalizeHomeBlocks(s.homeBlocks)}
@@ -1265,6 +1280,11 @@ export default function MorePage() {
           <button className="btn btn-ghost full" onClick={() => setFeedback('')}>
             <Icon name="lightbulb" /> Send feedback / suggest a feature
           </button>
+          {updateCheckSupported() && (
+            <button className="btn btn-ghost full" onClick={openPlayStoreListing}>
+              <Icon name="star" /> Rate Keystone on Google Play
+            </button>
+          )}
           {/* The tour narrates the Home screen, so it goes there rather
               than playing on top of Settings. App.jsx owns the Tutorial for
               both the first run and this replay, so there's one code path. */}

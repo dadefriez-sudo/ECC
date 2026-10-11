@@ -2640,6 +2640,14 @@ textarea {
 .task-time-check--on {
   background: var(--good);
 }
+/* Event detail view: vertical scroll stays with the browser, horizontal moves
+   come to our pointer handlers (see EventDetailView's swipe). */
+.detail-swipe {
+  touch-action: pan-y;
+}
+.detail-position {
+  font-weight: 600;
+}
 .day-content--in-right,
 .day-content--in-left {
   animation-duration: 0.19s;
@@ -4220,6 +4228,64 @@ textarea {
   cursor: pointer;
 }
 .home-block-goals .detail-label {
+  margin: 0;
+}
+/* The compact alternative: a heading row over up to two goals, each with its
+   count and a thin progress bar, instead of the two rings. */
+.home-block-goals--compact {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+}
+.goal-mini-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.goal-mini-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.goal-mini-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 15px;
+}
+.goal-mini-count {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.goal-mini-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+.goal-mini-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.goal-mini-fill--done {
+  background: var(--good);
+}
+.goal-mini-empty {
   margin: 0;
 }
 .goals-block-head {
