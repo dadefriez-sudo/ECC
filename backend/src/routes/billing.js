@@ -150,6 +150,10 @@ router.post('/verify-purchase', requireUser, async (req, res, next) => {
           ? await verifyAppleTransaction({ productId, transactionId, receipt })
           : await verifyGoogleTransaction({ productId, receipt });
     } catch (err) {
+      // Logged (never the receipt itself) so a purchase that went through on
+      // the store but didn't register has a reason on record in the server
+      // logs, not just in a 400 the app used to swallow.
+      console.warn(`[verify-purchase] ${platform} verification failed for user ${req.dbUser.id}: ${err.message}`);
       return res.status(400).json({ error: err.message });
     }
 
@@ -166,6 +170,7 @@ router.post('/verify-purchase', requireUser, async (req, res, next) => {
       if (err.code === 'P2002') {
         const existing = await prisma.user.findUnique({ where: { iapTransactionId: resolvedId } });
         if (existing?.id === req.dbUser.id) return res.json({ verified: true });
+        console.warn(`[verify-purchase] purchase ${resolvedId} already linked to another account (requested by user ${req.dbUser.id})`);
         return res.status(409).json({ error: 'This purchase is already linked to a different account.' });
       }
       throw err;

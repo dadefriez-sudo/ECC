@@ -37,7 +37,18 @@ let initPromise = null;
 // onVerified() fires after the backend confirms a purchase — callers use it
 // to re-pull /api/me and pick up the new isPro flag, the same one Stripe
 // purchases already flow through.
-export function initIAP(getToken, onVerified) {
+// Verifications currently running, so restorePurchases() can wait for the
+// restored transaction to actually finish verifying before anyone checks
+// whether Pro came back (the store hands those over asynchronously, after
+// restorePurchases() itself has already resolved).
+const inflight = new Set();
+let lastVerifyError = null;
+
+// onError(err) fires when the backend refuses or can't be reached for a
+// purchase — previously this was only a console.warn, which on a phone is
+// invisible: a purchase that went through on Google Play but failed
+// verification just looked like "nothing happened", with no way to tell why.
+export function initIAP(getToken, onVerified, onError) {
   if (!isNative) return Promise.resolve();
   if (initPromise) return initPromise;
 
@@ -46,29 +57,37 @@ export function initIAP(getToken, onVerified) {
 
     store.register([{ id: PRO_PRODUCT_ID, type: ProductType.NON_CONSUMABLE, platform: nativePlatform }]);
 
-    store.when().approved(async (transaction) => {
-      try {
-        const receipt =
-          transaction.platform === Platform.APPLE_APPSTORE
-            ? transaction.jwsRepresentation
-            : transaction.nativePurchase?.purchaseToken;
-        if (!receipt) throw new Error('No receipt data on this transaction.');
-        await verifyPurchase(getToken, {
-          platform: transaction.platform === Platform.APPLE_APPSTORE ? 'ios' : 'android',
-          productId: transaction.products?.[0]?.id || PRO_PRODUCT_ID,
-          transactionId: transaction.transactionId,
-          receipt,
-        });
-        // Only finish (acknowledge/consume) once the backend has actually
-        // recorded the purchase — if verification failed, leaving the
-        // transaction unfinished means the store re-delivers it (next
-        // launch, or via restorePurchases()) instead of losing it to a
-        // transient network error.
-        await transaction.finish();
-        onVerified?.();
-      } catch (err) {
-        console.warn('Purchase verification failed:', err.message);
-      }
+    store.when().approved((transaction) => {
+      const job = (async () => {
+        try {
+          const receipt =
+            transaction.platform === Platform.APPLE_APPSTORE
+              ? transaction.jwsRepresentation
+              : transaction.nativePurchase?.purchaseToken;
+          if (!receipt) throw new Error('No receipt data on this transaction.');
+          await verifyPurchase(getToken, {
+            platform: transaction.platform === Platform.APPLE_APPSTORE ? 'ios' : 'android',
+            productId: transaction.products?.[0]?.id || PRO_PRODUCT_ID,
+            transactionId: transaction.transactionId,
+            receipt,
+          });
+          // Only finish (acknowledge/consume) once the backend has actually
+          // recorded the purchase — if verification failed, leaving the
+          // transaction unfinished means the store re-delivers it (next
+          // launch, or via restorePurchases()) instead of losing it to a
+          // transient network error.
+          await transaction.finish();
+          lastVerifyError = null;
+          onVerified?.();
+        } catch (err) {
+          lastVerifyError = err;
+          console.warn('Purchase verification failed:', err.message);
+          onError?.(err);
+        }
+      })();
+      inflight.add(job);
+      job.finally(() => inflight.delete(job));
+      return job;
     });
 
     return store.initialize([nativePlatform]);
@@ -101,9 +120,22 @@ export async function purchasePro() {
 // or bought on another device signed into the same App Store account, has
 // no other way to get their purchase re-recognized here. Restored
 // transactions flow through the same `approved` handler above.
+//
+// Resolves with the verification error, if one of the restored purchases was
+// refused by the backend (null otherwise) — and only once any restored
+// transaction has finished verifying, so the caller's "did Pro come back?"
+// check isn't racing the very request that would make it true.
 export async function restorePurchases() {
   if (!isNative) throw new Error('Restoring purchases is only available in the app.');
+  if (initPromise) await initPromise;
   const { store } = await loadPurchasePlugin();
+  lastVerifyError = null;
   const err = await store.restorePurchases();
   if (err) throw new Error(err.message || 'Restore failed.');
+  // The store delivers restored transactions on a later tick, after the call
+  // above has resolved; give them a moment to show up, then wait out any
+  // verification they kicked off.
+  await new Promise((r) => setTimeout(r, 1500));
+  await Promise.allSettled([...inflight]);
+  return lastVerifyError;
 }

@@ -187,13 +187,19 @@ function NativePricingCTA({ isPro }) {
   const handleRestore = async () => {
     setBusy(true);
     try {
-      await restorePurchases();
+      // Resolves with the verification error if the store found a purchase
+      // but our server refused it, once any restored purchase has finished
+      // verifying (it used to return straight away, so the check below ran
+      // before the server had heard about the purchase and reported "none").
+      const verifyError = await restorePurchases();
       // restorePurchases() itself resolves the same way whether or not the
       // store account had anything to restore — the only way to tell the
       // two apart, and the only feedback worth giving here, is whether the
       // backend now reports Pro.
       const found = await refreshMe();
-      showToast(found ? 'Purchase restored. You have Pro.' : 'No previous purchase found on this account.');
+      if (found) showToast('Purchase restored. You have Pro.');
+      else if (verifyError) showToast(`Found your purchase, but couldn't verify it: ${verifyError.message}`);
+      else showToast('No previous purchase found on this account.');
     } catch (err) {
       showToast(err.message);
     } finally {

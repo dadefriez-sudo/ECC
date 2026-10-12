@@ -10,6 +10,7 @@ import AssistantBubble from './components/AssistantBubble.jsx';
 import Modal from './components/Modal.jsx';
 import { maybeAutoBackup } from './data/backup.js';
 import { checkForUpdate, completeUpdate } from './data/appUpdate.js';
+import { initIAP } from './data/iap.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
@@ -67,6 +68,39 @@ const TOUR_EXEMPT_PATHS = new Set(['/privacy', '/terms', '/delete-account']);
 function SubscriptionSync() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const actions = useActions();
+  const showToast = useToast();
+  // initIAP below is idempotent and keeps the callbacks of whoever calls it
+  // first for the life of the app, so they can't close over this render's
+  // getToken — a ref keeps them pointing at the current one.
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+
+  // Start listening for purchases as soon as someone's signed in, not only
+  // once they open the Pricing screen. A purchase that went through on Google
+  // Play but hadn't been verified with our server yet (slow connection, the
+  // server waking up, app closed mid-way) is handed back by the store on
+  // init — and when that init only ever ran from the Pricing screen, closing
+  // and reopening the app did nothing until you happened to visit it.
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !backendConfigured()) return;
+    initIAP(
+      () => getTokenRef.current?.(),
+      () =>
+        fetchMe(() => getTokenRef.current?.())
+          .then((me) =>
+            actions.setSettings({
+              isPro: me.isPro,
+              isLifetime: !!me.isLifetime,
+              isBetaTester: !!me.isBetaTester,
+              subscriptionStatus: me.subscriptionStatus,
+            })
+          )
+          .catch(() => {}),
+      (err) => showToast(`Couldn't verify your purchase: ${err?.message || 'unknown error'}`)
+    ).catch((err) => console.warn('IAP init failed:', err?.message || err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn]);
+
   useEffect(() => {
     // isSignedIn is undefined (not yet false) while Clerk is still resolving
     // the existing session on load — wait for isLoaded so a legitimate Pro
