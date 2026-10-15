@@ -43,6 +43,10 @@ let initPromise = null;
 // restorePurchases() itself has already resolved).
 const inflight = new Set();
 let lastVerifyError = null;
+// Kept from initIAP so restorePurchases() can verify an already-owned purchase
+// on its own — see the comment there.
+let savedGetToken = null;
+let savedOnVerified = null;
 
 // onError(err) fires when the backend refuses or can't be reached for a
 // purchase — previously this was only a console.warn, which on a phone is
@@ -51,6 +55,8 @@ let lastVerifyError = null;
 export function initIAP(getToken, onVerified, onError) {
   if (!isNative) return Promise.resolve();
   if (initPromise) return initPromise;
+  savedGetToken = getToken;
+  savedOnVerified = onVerified;
 
   initPromise = loadPurchasePlugin().then(({ store, ProductType, Platform }) => {
     const nativePlatform = Capacitor.getPlatform() === 'ios' ? Platform.APPLE_APPSTORE : Platform.GOOGLE_PLAY;
@@ -137,5 +143,38 @@ export async function restorePurchases() {
   // verification they kicked off.
   await new Promise((r) => setTimeout(r, 1500));
   await Promise.allSettled([...inflight]);
+
+  // A purchase that was already finished (acknowledged) on the device is NOT
+  // re-announced through `approved`, so the loop above finds nothing for it —
+  // which is exactly the "bought it, restore says nothing" case (a purchase the
+  // server never recorded, or recorded against another sign-in). If the store
+  // says it's owned, send its token to the server directly.
+  if (!lastVerifyError && inflight.size === 0 && savedGetToken) {
+    const { store, Platform } = await loadPurchasePlugin();
+    const nativePlatform = Capacitor.getPlatform() === 'ios' ? Platform.APPLE_APPSTORE : Platform.GOOGLE_PLAY;
+    const owned = store.owned(PRO_PRODUCT_ID);
+    if (owned) {
+      const tx = (store.localTransactions || []).find(
+        (t) => t.platform === nativePlatform && (t.products || []).some((p) => p.id === PRO_PRODUCT_ID)
+      );
+      const receipt =
+        nativePlatform === Platform.APPLE_APPSTORE ? tx?.jwsRepresentation : tx?.nativePurchase?.purchaseToken;
+      if (tx && receipt) {
+        try {
+          await verifyPurchase(savedGetToken, {
+            platform: nativePlatform === Platform.APPLE_APPSTORE ? 'ios' : 'android',
+            productId: PRO_PRODUCT_ID,
+            transactionId: tx.transactionId,
+            receipt,
+          });
+          savedOnVerified?.();
+        } catch (err) {
+          lastVerifyError = err;
+        }
+      } else {
+        lastVerifyError = new Error('Google Play says you own Pro, but the purchase details could not be read on this device.');
+      }
+    }
+  }
   return lastVerifyError;
 }
