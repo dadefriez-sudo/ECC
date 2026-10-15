@@ -178,6 +178,14 @@ function NativePricingCTA({ isPro }) {
       // verify + refresh once the purchase clears — this just clears the
       // spinner once the order has been placed, not once it's finished.
     } catch (err) {
+      // Google Play already has this purchase on file (bought earlier, but the
+      // app never got it recorded on the account) — that's what Restore is for,
+      // so run it instead of just showing the raw store error.
+      if (/ITEM_ALREADY_OWNED|already owned/i.test(err?.message || '')) {
+        showToast('Google Play shows you already own Pro. Checking your purchase…');
+        await handleRestore();
+        return;
+      }
       showToast(err.message);
     } finally {
       setBusy(false);
