@@ -171,7 +171,12 @@ router.post('/verify-purchase', requireUser, async (req, res, next) => {
         const existing = await prisma.user.findUnique({ where: { iapTransactionId: resolvedId } });
         if (existing?.id === req.dbUser.id) return res.json({ verified: true });
         console.warn(`[verify-purchase] purchase ${resolvedId} already linked to another account (requested by user ${req.dbUser.id})`);
-        return res.status(409).json({ error: 'This purchase is already linked to a different account.' });
+        // The caller just proved they hold this Play purchase, so a masked hint of
+        // which sign-in it's on ("d***@gmail.com") is safe and saves a lot of guessing.
+        const hint = existing?.email
+          ? ` Try signing in as ${existing.email.replace(/^(.).*(@.*)$/, '$1***$2')}.`
+          : '';
+        return res.status(409).json({ error: `This purchase is already linked to a different account.${hint}` });
       }
       throw err;
     }
