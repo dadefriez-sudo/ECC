@@ -26,11 +26,34 @@ function normalizeGoalReminder(reminder) {
 
 // --- Persistence -----------------------------------------------------------
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return makeSeed();
-    const parsed = JSON.parse(raw);
+// True only for something that actually looks like a Keystone data object: a
+// plain object whose lists, where present, really are lists. Anything else
+// (a different app's JSON, `{}`, an array, a half-downloaded sync blob) must
+// never be allowed to replace the person's data — importing `{}` used to
+// silently swap everything for the demo sample data.
+export function isBackupShape(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  const lists = ['goals', 'events', 'contacts', 'tasks', 'notes'];
+  if (!lists.every((k) => data[k] === undefined || Array.isArray(data[k]))) return false;
+  return lists.some((k) => Array.isArray(data[k]));
+}
+
+// Fills in anything missing and migrates older shapes forward. Shared by
+// loading from storage and by IMPORT_DATA (backup files and cloud sync), so
+// data that arrives from outside gets the same cleanup as data already here.
+const ENTITLEMENT_SETTINGS = ['isPro', 'isLifetime', 'isBetaTester', 'googleConnected'];
+const DEVICE_SETTINGS = [
+  'legalAccepted',
+  'legalAcceptedAt',
+  'tutorialSeen',
+  'isPro',
+  'isLifetime',
+  'isBetaTester',
+  'subscriptionStatus',
+  'googleConnected',
+];
+
+function hydrate(parsed) {
     const seed = makeSeed();
     // Merge with a fresh seed shape so missing keys never crash the UI, and
     // migrate older records forward (weeklyProgress → progress, period, etc.).
@@ -178,8 +201,25 @@ function loadState() {
         eventKindColors: { ...DEFAULT_KIND_COLORS, ...(parsed.settings?.eventKindColors || {}) },
       },
     };
+}
+
+function loadState() {
+  let raw = null;
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return makeSeed();
+    return hydrate(JSON.parse(raw));
   } catch {
-    return makeSeed();
+    // The saved data couldn't be read. Falling back to the sample data is the
+    // only way to keep the app running, but the very next save would then
+    // overwrite the unreadable copy for good — so set it aside first, where it
+    // can still be recovered by hand.
+    try {
+      if (raw) localStorage.setItem(`${STORAGE_KEY}.unreadable`, raw);
+    } catch {
+      /* storage full: nothing more we can do */
+    }
+    return hydrate(makeSeed());
   }
 }
 
@@ -435,7 +475,26 @@ function reducer(state, action) {
     case 'SET_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.settings } };
     case 'IMPORT_DATA':
-      return { ...makeSeed(), ...action.data };
+      // Ignore anything that isn't shaped like Keystone data rather than
+      // replacing the person's data with whatever arrived.
+      if (!isBackupShape(action.data)) return state;
+      {
+        const next = hydrate(action.data);
+        // Some settings describe *this device or account*, not the planner, and
+        // must not be overwritten by whatever a file or the cloud holds:
+        //  - legal acceptance and "tour seen": restoring an older backup used to
+        //    bring the legal prompt (or the first-run setup, whose "Start fresh"
+        //    would erase the restored data) straight back;
+        //  - Pro status: it comes from the server (or the store purchase), and a
+        //    backup file can be edited by hand, so a file must never grant it.
+        const keep = {};
+        for (const k of DEVICE_SETTINGS) {
+          if (state.settings?.[k] !== undefined) keep[k] = state.settings[k];
+          // Entitlements default to "no", never to whatever the file says.
+          else if (ENTITLEMENT_SETTINGS.includes(k)) keep[k] = false;
+        }
+        return { ...next, settings: { ...next.settings, ...keep } };
+      }
     case 'RESET_DATA':
       return makeSeed();
     case 'CLEAR_DATA':

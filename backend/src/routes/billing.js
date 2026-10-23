@@ -3,6 +3,7 @@ import { google } from 'googleapis';
 import { SignedDataVerifier, Environment } from '@apple/app-store-server-library';
 import { requireUser } from '../middleware/requireUser.js';
 import { prisma } from '../db.js';
+import { perUserLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 
@@ -72,7 +73,8 @@ async function verifyAppleTransaction({ productId, transactionId, receipt }) {
   }
   if (!decoded) throw new Error(`Apple transaction verification failed: ${lastErr?.message || 'unknown error'}`);
   if (decoded.bundleId !== process.env.APPLE_BUNDLE_ID) throw new Error('Bundle id mismatch.');
-  if (decoded.productId !== (productId || PRO_PRODUCT_ID_IOS)) throw new Error('Unexpected product id.');
+  // Compare against the server's own product id, never the one the client claims.
+  if (decoded.productId !== PRO_PRODUCT_ID_IOS) throw new Error('Unexpected product id.');
   if (decoded.revocationDate) throw new Error('This purchase was refunded.');
   const resolvedId = decoded.originalTransactionId || decoded.transactionId || transactionId;
   if (!resolvedId) throw new Error('No transaction id in the verified receipt.');
@@ -101,7 +103,9 @@ async function verifyGoogleTransaction({ productId, receipt }) {
   if (!publisher || !packageName) {
     throw new Error('Google Play purchase verification is not configured on the server.');
   }
-  const resolvedProductId = productId || PRO_PRODUCT_ID_ANDROID;
+  // Always ask Google about the Pro product. A client-supplied id would let a
+  // purchase of any other (cheaper) product on this app be passed off as Pro.
+  const resolvedProductId = PRO_PRODUCT_ID_ANDROID;
   const { data } = await publisher.purchases.products.get({
     packageName,
     productId: resolvedProductId,
@@ -122,7 +126,11 @@ async function verifyGoogleTransaction({ productId, receipt }) {
   return data.orderId || receipt;
 }
 
-router.post('/verify-purchase', requireUser, async (req, res, next) => {
+// Each call asks Apple or Google to vouch for a receipt, so bound how often one
+// account can trigger that.
+const verifyLimiter = perUserLimiter({ windowMs: 60 * 60 * 1000, limit: 30 });
+
+router.post('/verify-purchase', requireUser, verifyLimiter, async (req, res, next) => {
   try {
     const { platform, productId, transactionId, receipt } = req.body || {};
     if (!platform || !receipt) {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireUser } from '../middleware/requireUser.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 import { prisma } from '../db.js';
+import { LIMITS, isColor, isDate, isTime, isEmail, withinLimit, newInviteToken } from '../lib/validate.js';
 
 const router = Router();
 
@@ -107,7 +108,8 @@ router.get('/', requireUser, async (req, res, next) => {
 router.post('/', requireUser, createCalendarLimiter, async (req, res, next) => {
   const name = (req.body?.name || '').trim();
   if (!name) return res.status(400).json({ error: 'name is required' });
-  const color = typeof req.body?.color === 'string' ? req.body.color : undefined;
+  if (!withinLimit(name, LIMITS.name)) return res.status(400).json({ error: 'name is too long' });
+  const color = isColor(req.body?.color) ? req.body.color : undefined;
   try {
     if (!isPro(req.dbUser)) {
       const owned = await prisma.sharedCalendar.count({ where: { ownerId: req.dbUser.id } });
@@ -158,8 +160,11 @@ router.get('/:id', requireUser, requireMember, async (req, res, next) => {
 
 router.patch('/:id', requireUser, requireMember, requireOwner, async (req, res, next) => {
   const data = {};
-  if (typeof req.body?.name === 'string' && req.body.name.trim()) data.name = req.body.name.trim();
-  if (typeof req.body?.color === 'string') data.color = req.body.color;
+  if (typeof req.body?.name === 'string' && req.body.name.trim()) {
+    if (!withinLimit(req.body.name.trim(), LIMITS.name)) return res.status(400).json({ error: 'name is too long' });
+    data.name = req.body.name.trim();
+  }
+  if (isColor(req.body?.color)) data.color = req.body.color;
   try {
     const calendar = await prisma.sharedCalendar.update({ where: { id: req.calendar.id }, data });
     res.json({ calendar });
@@ -219,6 +224,7 @@ router.get('/:id/invites', requireUser, requireMember, requireOwner, async (req,
 router.post('/:id/invites', requireUser, requireMember, requireEditRole, inviteLimiter, async (req, res, next) => {
   const email = (req.body?.email || '').trim().toLowerCase();
   if (!email) return res.status(400).json({ error: 'email is required' });
+  if (!isEmail(email)) return res.status(400).json({ error: 'That does not look like an email address' });
   const role = req.body?.role === 'viewer' ? 'viewer' : 'editor';
   try {
     const invite = await prisma.sharedCalendarInvite.create({
@@ -226,6 +232,7 @@ router.post('/:id/invites', requireUser, requireMember, requireEditRole, inviteL
         calendarId: req.calendar.id,
         email,
         role,
+        token: newInviteToken(),
         invitedBy: req.dbUser.id,
         expiresAt: new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000),
       },
@@ -278,6 +285,12 @@ router.post('/:id/events', requireUser, requireMember, requireEditRole, createEv
   if (!title?.trim() || !date || !start || !end) {
     return res.status(400).json({ error: 'title, date, start, and end are required' });
   }
+  if (!withinLimit(title.trim(), LIMITS.title) || !isDate(date) || !isTime(start) || !isTime(end)) {
+    return res.status(400).json({ error: 'title, date or time is invalid' });
+  }
+  if (req.body.notes !== undefined && !withinLimit(req.body.notes, LIMITS.notes)) {
+    return res.status(400).json({ error: 'notes are too long' });
+  }
   try {
     const event = await prisma.sharedEvent.create({
       data: {
@@ -300,6 +313,15 @@ router.patch('/:id/events/:eventId', requireUser, requireMember, requireEditRole
   const data = {};
   for (const field of ['title', 'date', 'start', 'end', 'notes']) {
     if (typeof req.body?.[field] === 'string') data[field] = req.body[field];
+  }
+  if (
+    (data.title !== undefined && !withinLimit(data.title, LIMITS.title)) ||
+    (data.notes !== undefined && !withinLimit(data.notes, LIMITS.notes)) ||
+    (data.date !== undefined && !isDate(data.date)) ||
+    (data.start !== undefined && !isTime(data.start)) ||
+    (data.end !== undefined && !isTime(data.end))
+  ) {
+    return res.status(400).json({ error: 'title, date, time or notes is invalid' });
   }
   try {
     const existing = await prisma.sharedEvent.findUnique({ where: { id: req.params.eventId } });

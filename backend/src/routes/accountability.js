@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireUser } from '../middleware/requireUser.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 import { prisma } from '../db.js';
+import { isEmail, newInviteToken } from '../lib/validate.js';
 
 const router = Router();
 
@@ -95,6 +96,11 @@ router.put('/snapshot', requireUser, snapshotLimiter, async (req, res, next) => 
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return res.status(400).json({ error: 'Request body must be { data: <object> }' });
   }
+  // The snapshot is a few goal titles and counts; a partner downloads it on
+  // every refresh, so don't let it be used to park (or serve) megabytes.
+  if (JSON.stringify(data).length > 64 * 1024) {
+    return res.status(413).json({ error: 'Snapshot is too large' });
+  }
   try {
     const row = await prisma.accountabilitySnapshot.upsert({
       where: { userId: req.dbUser.id },
@@ -127,6 +133,7 @@ router.get('/invites', requireUser, async (req, res, next) => {
 router.post('/invites', requireUser, inviteLimiter, async (req, res, next) => {
   const email = (req.body?.email || '').trim().toLowerCase();
   if (!email) return res.status(400).json({ error: 'email is required' });
+  if (!isEmail(email)) return res.status(400).json({ error: 'That does not look like an email address' });
   if (email === req.dbUser.email.toLowerCase()) {
     return res.status(400).json({ error: "You can't invite yourself" });
   }
@@ -144,6 +151,7 @@ router.post('/invites', requireUser, inviteLimiter, async (req, res, next) => {
       data: {
         fromUserId: req.dbUser.id,
         email,
+        token: newInviteToken(),
         expiresAt: new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000),
       },
     });

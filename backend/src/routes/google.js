@@ -7,6 +7,8 @@ import { encryptToken, decryptToken } from '../lib/tokenCrypto.js';
 
 const router = Router();
 
+const MAX_CHANGES_PER_SYNC = 200;
+
 // Calendar needs write access for the two-way sync in /calendar-sync
 // (creating/updating/deleting events on the user's behalf) — Contacts stays
 // read-only since only the one-time import touches it. Both the read-write
@@ -298,7 +300,10 @@ router.post('/calendar-sync', requireUser, async (req, res, next) => {
     const calendar = google.calendar({ version: 'v3', auth });
 
     const results = [];
-    for (const change of Array.isArray(changes) ? changes : []) {
+    // Each change is a separate Google API call made on the user's behalf, so cap
+    // a single request; anything beyond it stays queued on the client and goes
+    // out on the next cycle.
+    for (const change of (Array.isArray(changes) ? changes : []).slice(0, MAX_CHANGES_PER_SYNC)) {
       try {
         if (change.action === 'create') {
           const { data } = await calendar.events.insert({

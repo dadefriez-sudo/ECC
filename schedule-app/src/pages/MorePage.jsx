@@ -49,6 +49,7 @@ import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js
 import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
 import WeekCard from '../components/WeekCard.jsx';
+import { isBackupShape } from '../data/store.jsx';
 
 const formatHour = (h) => formatTime(`${String(h).padStart(2, '0')}:00`);
 const HOURS = Array.from({ length: 24 }, (_, h) => ({ value: h, label: formatHour(h) }));
@@ -432,7 +433,14 @@ export default function MorePage() {
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
+        if (!isBackupShape(data)) {
+          alert('That file is not a Keystone backup, so nothing was changed.');
+          return;
+        }
+        // Importing replaces everything, so keep what's here: Undo puts it back.
+        const previous = state;
         actions.importData(data);
+        showToast('Backup imported.', 'Undo', () => actions.importData(previous));
       } catch {
         alert('That file could not be read as a Keystone backup.');
       }

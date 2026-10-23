@@ -228,6 +228,14 @@ function DataSync() {
         } else if (initial || !seenAtRef.current || updatedAt > seenAtRef.current) {
           seenAtRef.current = updatedAt ?? null;
           skipNextPushRef.current = true;
+          // The cloud copy replaces what's on this device wholesale, so keep the
+          // local copy one step back: if edits made offline were about to be
+          // overwritten, they can still be recovered by hand.
+          try {
+            localStorage.setItem('compass.data.v1.before-sync', JSON.stringify(stateRef.current));
+          } catch {
+            /* storage full: sync still proceeds */
+          }
           actions.importData(data);
         }
         setSyncStatus({ phase: 'idle', at: Date.now(), error: null });
