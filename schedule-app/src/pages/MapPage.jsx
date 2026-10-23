@@ -25,6 +25,29 @@ const LONG_PRESS_TOLERANCE_PX = 18; // generous — real fingers drift more than
 const QUICK_EMOJI = ['📍', '🏠', '💼', '☕', '🍽️', '🏋️', '🛒', '🏥', '🎓', '⛪', '🌳', '❤️', '⭐', '🎉'];
 const DEFAULT_VIEW = [37.7749, -122.4194];
 
+// Straight-line distance between two points, in metres.
+function metresBetween(a, b) {
+  const R = 6371000;
+  const rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+// "0.4 mi · 8 min walk" (miles for US/UK English, kilometres elsewhere). The
+// walking time is dropped past ~90 minutes, where nobody is walking.
+function distanceLabel(m) {
+  const miles = /^en(-(US|GB))?$/i.test(navigator.language || '');
+  const far = miles ? m / 1609.34 : m / 1000;
+  const unit = miles ? 'mi' : 'km';
+  const text = far < 10 ? `${far.toFixed(1)} ${unit}` : `${Math.round(far)} ${unit}`;
+  const walk = Math.round(m / 80);
+  return walk <= 90 ? `${text} · ${walk < 1 ? '1' : walk} min walk` : text;
+}
+
+const CLUSTER_PX = 46; // pins closer than this on screen merge into one bubble
+const NO_CLUSTER_ZOOM = 18; // fully zoomed in: stacked pins stay separate
+
 const escapeHtml = (s = '') =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -51,6 +74,9 @@ export default function MapPage() {
     events: true,
   }));
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [mapZoom, setMapZoom] = useState(13);
+  const [query, setQuery] = useState('');
+  const [searchingAddress, setSearchingAddress] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const toggleFilter = (k) => {
     selectTick();
@@ -287,7 +313,9 @@ export default function MapPage() {
 
   // Initialise the Leaflet map once.
   useEffect(() => {
-    const map = L.map(containerRef.current, { zoomControl: true, attributionControl: true });
+    const map = L.map(containerRef.current, { zoomControl: false, attributionControl: true });
+    // Bottom-left, so the search bar can own the top edge.
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
     // The basemap is swapped in its own effect below rather than created
     // here, so changing the style doesn't tear down and rebuild the map
     // (which would lose the current pan/zoom).
@@ -331,6 +359,9 @@ export default function MapPage() {
     pickLayerRef.current = L.layerGroup().addTo(map);
     myLocationLayerRef.current = L.layerGroup().addTo(map);
     map.on('click', (e) => handlersRef.current.onMapClick?.(e));
+    // Clustering depends on the zoom level, so re-render markers when it changes.
+    setMapZoom(map.getZoom());
+    map.on('zoomend', () => setMapZoom(map.getZoom()));
     // Leaflet's own drag/zoom gestures starting is a reliable extra signal
     // that this was a pan, not a hold — cancel our timer either way.
     map.on('dragstart zoomstart', () => handlersRef.current.onPressEnd?.());
@@ -396,20 +427,67 @@ export default function MapPage() {
   }, [mapStyleSetting, isDarkTheme]);
 
   // Render / re-render pin markers whenever pins or the selection change.
+  // Pins that would overlap on screen at this zoom merge into a numbered
+  // bubble (tap to zoom in), and a pin's name only shows when there is room
+  // for it, so a crowd of pins stays readable.
   useEffect(() => {
     const layer = layerRef.current;
-    if (!layer) return;
+    const map = mapRef.current;
+    if (!layer || !map) return;
     layer.clearLayers();
     const grow = emojiSizePct / 100;
+    const zoom = map.getZoom();
+
+    const groups = [];
     for (const p of pins) {
+      const pt = map.project([p.lat, p.lng], zoom);
+      const alone = p.id === selectedId || zoom >= NO_CLUSTER_ZOOM;
+      const hit = alone ? null : groups.find((g) => g.mergeable && Math.hypot(g.pt.x - pt.x, g.pt.y - pt.y) < CLUSTER_PX);
+      if (hit) hit.pins.push(p);
+      else groups.push({ pins: [p], pt, mergeable: !alone });
+    }
+
+    const labelRects = [];
+    const overlaps = (r) => labelRects.some((o) => r.x1 < o.x2 && r.x2 > o.x1 && r.y1 < o.y2 && r.y2 > o.y1);
+    // The selected pin is placed first so its name always wins.
+    groups.sort((x, y) => Number(y.pins[0].id === selectedId) - Number(x.pins[0].id === selectedId));
+
+    for (const g of groups) {
+      if (g.pins.length > 1) {
+        const icon = L.divIcon({
+          className: 'pin-icon pin-icon--cluster',
+          html: `<div class="pin-cluster"><span>${g.pins.length}</span></div>`,
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+        });
+        const bounds = L.latLngBounds(g.pins.map((q) => [q.lat, q.lng]));
+        L.marker(bounds.getCenter(), { icon, keyboard: false })
+          .addTo(layer)
+          .on('click', () => {
+            if (pickMode) return;
+            map.fitBounds(bounds, { padding: [70, 70], maxZoom: NO_CLUSTER_ZOOM });
+          });
+        continue;
+      }
+      const p = g.pins[0];
       const sel = p.id === selectedId;
       const caption = p.isEvent && p.start ? `${formatTime(p.start)} · ${p.label}` : p.label;
+      let showCaption = false;
+      if (caption) {
+        const cp = map.latLngToContainerPoint([p.lat, p.lng]);
+        const w = Math.min(170, caption.length * 6.5 + 16);
+        const rect = { x1: cp.x - w / 2, x2: cp.x + w / 2, y1: cp.y - 4, y2: cp.y + 22 };
+        if (sel || !overlaps(rect)) {
+          showCaption = true;
+          labelRects.push(rect);
+        }
+      }
       const icon = L.divIcon({
         className: `pin-icon${sel ? ' pin-icon--sel' : ''}${p.isEvent ? ' pin-icon--event' : ''}`,
         html:
           `<div style="--emoji-size:${emojiSizePct}">` +
           `<div class="pin-bubble${p.isEvent ? ' pin-bubble--event' : ''}"><span>${escapeHtml(p.emoji || '📍')}</span></div>` +
-          (caption ? `<div class="pin-caption">${escapeHtml(caption)}</div>` : '') +
+          (showCaption ? `<div class="pin-caption">${escapeHtml(caption)}</div>` : '') +
           `</div>`,
         iconSize: [40 * grow, 46 * grow],
         iconAnchor: [20 * grow, 46 * grow],
@@ -421,7 +499,7 @@ export default function MapPage() {
           setSelectedId(p.id);
         });
     }
-  }, [pins, selectedId, emojiSizePct, pickMode]);
+  }, [pins, selectedId, emojiSizePct, pickMode, mapZoom]);
 
   // Render the temporary long-press marker (a dashed, pulsing pin distinct
   // from saved pins) whenever it changes.
@@ -572,9 +650,93 @@ export default function MapPage() {
     navigate(pickReturnTo, { state: { eventDraftReturn: true, locationPicked: pickLatLng } });
   };
 
+  // Search: your pins (by name, note, or the person they belong to), plus an
+  // address lookup. A match hidden by a filter turns that filter back on.
+  const searchMatches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return [...(state.pins || []), ...eventPins]
+      .filter(
+        (p) =>
+          (p.label || '').toLowerCase().includes(q) ||
+          (p.notes || '').toLowerCase().includes(q) ||
+          (contactName(p.contactId) || '').toLowerCase().includes(q)
+      )
+      .slice(0, 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, state.pins, state.contacts, eventPins]);
+  const goToPin = (p) => {
+    const kind = p.isEvent ? 'events' : p.contactId ? 'contacts' : 'custom';
+    if (!filters[kind]) toggleFilter(kind);
+    setTempPin(null);
+    setSelectedId(p.id);
+    setQuery('');
+  };
+  const searchAddress = async () => {
+    const q = query.trim();
+    if (!q || searchingAddress) return;
+    setSearchingAddress(true);
+    const hit = await geocodeAddress(q);
+    setSearchingAddress(false);
+    if (!hit) return showToast("Couldn't find that address.");
+    setSelectedId(null);
+    mapRef.current?.setView([hit.lat, hit.lng], 16);
+    // setView centres the point, so the long-press style bubble goes there.
+    setTempPin({ lat: hit.lat, lng: hit.lng, x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    setQuery('');
+    selectTick();
+  };
+  const selectedDistance =
+    selected && myPosition ? distanceLabel(metresBetween(myPosition, { lat: selected.lat, lng: selected.lng })) : '';
+  const selectedPhone = selected?.contactId ? state.contacts.find((c) => c.id === selected.contactId)?.phone : '';
+
   return (
     <div className="map-page">
       <div ref={containerRef} className="map-canvas" />
+
+      {!pickMode && !placing && (
+        <div className="map-search">
+          <Icon name="search" size={18} />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              if (searchMatches[0]) goToPin(searchMatches[0]);
+              else searchAddress();
+            }}
+            placeholder="Search pins, people, addresses"
+            aria-label="Search the map"
+          />
+          {query && (
+            <button className="map-search-clear" onClick={() => setQuery('')} aria-label="Clear search">
+              <Icon name="close" size={16} />
+            </button>
+          )}
+        </div>
+      )}
+      {!pickMode && !placing && query.trim() && (
+        <div className="map-search-results" role="listbox">
+          {searchMatches.map((p) => (
+            <button key={p.id} className="map-search-row" onClick={() => goToPin(p)}>
+              <span className="map-search-emoji">{p.emoji || '📍'}</span>
+              <span className="map-search-text">
+                <strong>{p.label || 'Dropped pin'}</strong>
+                <span className="muted small">
+                  {[p.isEvent ? "Today's event" : '', contactName(p.contactId)].filter(Boolean).join(' · ') || 'Place'}
+                </span>
+              </span>
+            </button>
+          ))}
+          <button className="map-search-row" onClick={searchAddress} disabled={searchingAddress}>
+            <span className="map-search-emoji"><Icon name="search" size={18} /></span>
+            <span className="map-search-text">
+              <strong>{searchingAddress ? 'Searching…' : `Search address: ${query.trim()}`}</strong>
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Corner controls (top-right). Map style is first — it used to live in
           its own cluster on the left ("so it doesn't crowd the right-hand
@@ -584,15 +746,6 @@ export default function MapPage() {
           Settings and this never disagree. */}
       {!pickMode && (
         <div className="map-corner">
-          <button
-            className={`map-round${layersOpen ? ' map-round--on' : ''}`}
-            onClick={() => setLayersOpen((v) => !v)}
-            aria-label="Map style"
-            aria-expanded={layersOpen}
-            title="Map style"
-          >
-            <LayersIcon />
-          </button>
           <button
             className={`map-round${filtersOpen ? ' map-round--on' : ''}`}
             onClick={() => setFiltersOpen((v) => !v)}
@@ -606,6 +759,15 @@ export default function MapPage() {
             {(!filters.contacts || !filters.custom || !filters.events) && (
               <span className="map-round-dot" aria-hidden="true" />
             )}
+          </button>
+          <button
+            className={`map-round${layersOpen ? ' map-round--on' : ''}`}
+            onClick={() => setLayersOpen((v) => !v)}
+            aria-label="Map style"
+            aria-expanded={layersOpen}
+            title="Map style"
+          >
+            <LayersIcon />
           </button>
           <button className="map-round" onClick={locateMe} aria-label="My location" title="My location">
             <LocateIcon />
@@ -824,10 +986,16 @@ export default function MapPage() {
           {selected.isEvent && selected.start && (
             <p className="pin-card-notes muted">Today at {formatTime(selected.start)}</p>
           )}
+          {selectedDistance && <p className="pin-card-distance muted small">{selectedDistance}</p>}
           <div className="pin-card-actions">
             <button className="btn btn-primary btn-sm" onClick={() => directionsTo(selected)}>
               <Icon name="send" /> Directions
             </button>
+            {selectedPhone && (
+              <a className="btn btn-ghost btn-sm" href={`tel:${selectedPhone}`}>
+                Call
+              </a>
+            )}
             {/* An event pin isn't a saved pin — it's today's calendar drawn
                 on the map. Editing or deleting it here would have to mean
                 editing the event, which belongs in the Planner. */}
