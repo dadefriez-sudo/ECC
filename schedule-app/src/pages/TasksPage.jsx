@@ -99,6 +99,17 @@ export default function TasksPage() {
     },
     []
   );
+  // Skip a repeating task for now: moves it to its next upcoming date without
+  // logging a completion (so the weekly recap isn't padded), with Undo.
+  const skipRepeatingTask = (id) => {
+    const t = state.tasks.find((x) => x.id === id);
+    if (!t || !t.dueDate) return;
+    const next = nextTaskDueDate(t.dueDate, t.repeat);
+    actions.updateTask({ ...t, dueDate: next });
+    setEditingTask(null);
+    showToast(`Skipped. Next due ${formatShortDate(next)}`, 'Undo', () => actions.updateTask(t));
+  };
+
   const toggleTaskDone = (t) => {
     if (t.done) {
       cancelCompletion(t.id);
@@ -516,6 +527,11 @@ export default function TasksPage() {
                   <p className="muted small">
                     Checking it off moves the due date forward instead of leaving it done for good.
                   </p>
+                )}
+                {editingTask.id && editingTask.repeat && editingTask.repeat !== 'none' && (
+                  <button type="button" className="btn btn-ghost full" onClick={() => skipRepeatingTask(editingTask.id)}>
+                    Skip this time
+                  </button>
                 )}
               </div>
             )}
