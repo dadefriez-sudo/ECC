@@ -208,6 +208,27 @@ function SubscriptionSync() {
 const PULL_INTERVAL_MS = 60000;
 const PUSH_DEBOUNCE_MS = 2500;
 
+// First-run setup, but never for someone who is already signed in. A signed-in
+// person has an existing account, and the setup's "Start fresh" clears this
+// phone's data, which a signed-in Pro phone would then upload over the synced
+// copy. So: wait until sign-in state is known, and skip the setup if there is a
+// session (their data arrives from their account instead).
+function FirstRun({ onboardingProps }) {
+  const actions = useActions();
+  if (!CLERK_ENABLED) return <Onboarding {...onboardingProps} />;
+  return <FirstRunWithAccount onboardingProps={onboardingProps} actions={actions} />;
+}
+
+function FirstRunWithAccount({ onboardingProps, actions }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  useEffect(() => {
+    if (isLoaded && isSignedIn) actions.setSettings({ tutorialSeen: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn]);
+  if (!isLoaded || isSignedIn) return null;
+  return <Onboarding {...onboardingProps} />;
+}
+
 function DataSync() {
   const { state } = useStore();
   const actions = useActions();
@@ -247,6 +268,8 @@ function DataSync() {
             /* storage full: sync still proceeds */
           }
           actions.importData(data);
+          // Data from their account arrived, so this isn't a first run: don't show setup.
+          if (!stateRef.current.settings?.tutorialSeen) actions.setSettings({ tutorialSeen: true });
         }
         setSyncStatus({ phase: 'idle', at: Date.now(), error: null });
       } catch (err) {
@@ -993,14 +1016,15 @@ export default function App() {
             }}
           />
         ) : (
-          <Onboarding
-            onStartFresh={() => actions.clearData()}
-            onAddGoals={(templates) =>
-              withoutActivity(() => templates.forEach((t) => actions.addGoal({ ...t, createdAt: todayISO() })))
-            }
-            onDone={(path) => {
-              actions.setSettings({ tutorialSeen: true });
-              if (path) navigate(path);
+          <FirstRun
+            onboardingProps={{
+              onStartFresh: () => actions.clearData(),
+              onAddGoals: (templates) =>
+                withoutActivity(() => templates.forEach((t) => actions.addGoal({ ...t, createdAt: todayISO() }))),
+              onDone: (path) => {
+                actions.setSettings({ tutorialSeen: true });
+                if (path) navigate(path);
+              },
             }}
           />
         ))}

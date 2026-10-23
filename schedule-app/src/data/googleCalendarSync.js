@@ -45,7 +45,7 @@ export const MAX_AUTO_DELETES = 10;
 export function planDeletes(snapshot, allLocalIds) {
   const gone = Object.entries(snapshot || {}).filter(([id, prev]) => !allLocalIds.has(id) && prev.googleEventId);
   const total = Object.keys(snapshot || {}).length || 1;
-  const tooMany = gone.length > MAX_AUTO_DELETES || (gone.length >= 3 && gone.length / total > 0.5);
+  const tooMany = gone.length > MAX_AUTO_DELETES || (gone.length >= 3 && gone.length / total >= 0.5);
   return {
     deletes: tooMany ? [] : gone.map(([localId, prev]) => ({ localId, action: 'delete', googleEventId: prev.googleEventId })),
     skipped: tooMany ? gone.map(([id]) => id) : [],
