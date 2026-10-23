@@ -13,7 +13,6 @@ import { syncContactAddressPin } from '../data/geocode.js';
 import { parseVCard, generateVCard } from '../data/vcard.js';
 import { useDeleteContactWithUndo } from '../data/useDeleteContact.js';
 import { useToast } from '../data/toast.jsx';
-import { useEdgeFade } from '../data/useEdgeFade.js';
 
 // Overdue logic lives in data/reconnect.js now — it needs the interaction
 // list and a settings flag, not just a day count. Re-exported here so the
@@ -74,6 +73,7 @@ export default function ContactsPage() {
   };
   const [sortMode, setSortMode] = useState('name'); // 'name' | 'added' | 'contacted'
   const [adding, setAdding] = useState(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [bulkTagText, setBulkTagText] = useState('');
@@ -132,7 +132,6 @@ export default function ContactsPage() {
   };
 
   const iconSize = state.settings?.contactIconSize || 'md';
-  const chipsRef = useRef(null);
 
   // Swipe bindings, both configurable (Settings → People swipe actions).
   // The context bag is what lets the action registry stay plain data —
@@ -184,6 +183,33 @@ export default function ContactsPage() {
   }, [state.contacts, query, filter, groupFilters, isOverdue, sortMode]);
 
   const showBanner = !query.trim() && filter === '' && groupFilters.size === 0 && overdue.length > 0;
+
+  // Directory layout: favorites as an avatar row up top, the list grouped
+  // under A-Z letters (only when sorted by name), and a one-line reconnect
+  // banner in place of the old carousel. Filters, sort and Select live
+  // behind the button beside the search box.
+  const noFilters = !query.trim() && filter === '' && groupFilters.size === 0;
+  const favorites = useMemo(
+    () => state.contacts.filter((c) => c.favorite).sort(CONTACT_SORTS.name).slice(0, 12),
+    [state.contacts]
+  );
+  const showFavRow = noFilters && !selectMode && favorites.length > 0;
+  const filtersActive = filter !== '' || groupFilters.size > 0 || sortMode !== 'name';
+  const activeFilterLabel =
+    groupFilters.size > 0
+      ? state.statuses.filter((st) => groupFilters.has(st.id)).map((st) => st.label).join(', ')
+      : filter === '__overdue'
+      ? 'Reconnect'
+      : filter === '__favorites'
+      ? 'Favorites'
+      : '';
+  const byLetter = sortMode === 'name' && filter !== '__overdue';
+  const letterOf = (name) => {
+    const ch = (name || '#').trim().charAt(0).toUpperCase();
+    return /[A-Z]/.test(ch) ? ch : '#';
+  };
+  const letters = useMemo(() => [...new Set(filtered.map((c) => letterOf(c.name)))], [filtered]);
+  const showIndex = filtered.length >= 15 && letters.length >= 4;
 
   const initialAddJsonRef = useRef('');
   const startAdd = () => {
@@ -246,7 +272,6 @@ export default function ContactsPage() {
   };
 
   const isPro = !!state.settings?.isPro;
-  const chipsFade = useEdgeFade(chipsRef, [overdue.length, isPro, state.statuses.length]);
 
   const vcfFileRef = useRef(null);
   const importVCard = (e) => {
@@ -353,17 +378,182 @@ export default function ContactsPage() {
           </div>
           <input ref={vcfFileRef} type="file" accept=".vcf,text/vcard" hidden onChange={importVCard} />
         </div>
-        <input
-          className="search"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search name, tag, or note"
-        />
-        <div
-          ref={chipsRef}
-          className={`chips${chipsFade.left ? ' chips--fade-left' : ''}${chipsFade.right ? ' chips--fade-right' : ''}`}
-        >
+        <div className="people-search-row">
+          <input
+            className="search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, tag, or note"
+          />
+          <button
+            className="icon-btn people-filter-btn"
+            onClick={() => setFilterOpen(true)}
+            aria-label="Filter, sort and select"
+            title="Filter, sort and select"
+          >
+            <FilterIcon />
+            {filtersActive && <i className="people-filter-dot" aria-hidden="true" />}
+          </button>
+        </div>
+        {activeFilterLabel && !selectMode && (
+          <div className="chips">
+            <button className="chip chip--on" onClick={() => setSpecialFilter('')}>
+              {activeFilterLabel} ✕
+            </button>
+          </div>
+        )}
+        {selectMode && (
+          <div className="select-toggle-row">
+            <button className="btn btn-sm btn-primary" onClick={exitSelectMode}>
+              Cancel select
+            </button>
+            <span className="muted small">{selected.size} selected</span>
+          </div>
+        )}
+      </header>
+
+      {showFavRow && (
+        <div className="people-favs">
+          {favorites.map((c) => (
+            <button key={c.id} className="people-fav" onClick={() => navigate(`/contacts/${c.id}`)}>
+              <Avatar name={c.name} photo={c.photo} color={statusById[c.statusId]?.color} size="lg" />
+              <span className="people-fav-name">{c.name.split(' ')[0]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showBanner && (
+        <button className="people-reconnect" onClick={() => setSpecialFilter('__overdue')}>
+          <Icon name="bell" size={16} />
+          <span className="people-reconnect-text">
+            {overdue.length} {overdue.length === 1 ? 'person' : 'people'} to reconnect
+          </span>
+          <span className="people-reconnect-stack">
+            {overdue.slice(0, 3).map((c) => (
+              <Avatar key={c.id} name={c.name} photo={c.photo} color={statusById[c.statusId]?.color} size="sm" />
+            ))}
+          </span>
+          <Chevron />
+        </button>
+      )}
+
+      {state.contacts.length === 0 ? (
+        <div className="empty">
+          <div className="empty-icon"><Icon name="personPlus" size={48} /></div>
+          <h2>Add the people who matter</h2>
+          <p className="muted">
+            Keep track of friends, family, and anyone you want to stay close to. Sort them into groups
+            you create, and get a nudge when it's time to reach out again.
+          </p>
+          <button className="btn btn-primary" onClick={startAdd}>
+            + Add someone
+          </button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <p className="muted center-pad">No one matches that search.</p>
+      ) : (
+        <ul className={`contact-list${byLetter ? ' contact-list--dir' : ''}`}>
+          {filtered.map((c, idx) => {
+            const st = statusById[c.statusId];
+            const over = isOverdue(c);
+            const isSel = selected.has(c.id);
+            const letter = letterOf(c.name);
+            const newLetter = byLetter && (idx === 0 || letterOf(filtered[idx - 1].name) !== letter);
+            return (
+              <li key={c.id}>
+                {newLetter && (
+                  <div className="people-letter" id={`pl-${letter}`}>
+                    {letter}
+                  </div>
+                )}
+                <SwipeRow
+                  disabled={selectMode}
+                  swipeRight={swipeFor(swipeRightKey, c)}
+                  swipeLeft={swipeFor(swipeLeftKey, c)}
+                >
+                  <div className="contact-row-inner">
+                    <button
+                      className="contact-row"
+                      onClick={() => (selectMode ? toggleSelected(c.id) : navigate(`/contacts/${c.id}`))}
+                    >
+                      {selectMode && <span className={`select-dot${isSel ? ' select-dot--on' : ''}`} />}
+                      <span className="avatar-slot">
+                        <Avatar name={c.name} photo={c.photo} color={st?.color} size={iconSize} />
+                        {over && <span className="overdue-dot" aria-hidden="true" />}
+                      </span>
+                      <span className="contact-main">
+                        <span className="contact-name">
+                          {c.name}
+                          {over && filter !== '__overdue' && <span className="overdue-tag">Reconnect</span>}
+                        </span>
+                        <span className="contact-sub muted">
+                          {st && <span className="dot-badge" style={{ color: st.color }}>{st.label}</span>}
+                          {st && ' · '}
+                          Last: {daysAgoLabel(c.lastContacted)}
+                        </span>
+                      </span>
+                      {!selectMode && !(filter === '__overdue') && <Chevron />}
+                    </button>
+                    {!selectMode && filter === '__overdue' && (
+                      <button
+                        className="btn btn-ghost btn-sm reconnect-log"
+                        onClick={() => actions.updateContact({ ...c, lastContacted: todayISO() })}
+                      >
+                        <Icon name="check" size={15} /> Log
+                      </button>
+                    )}
+                    {!selectMode && (
+                      <button
+                        className={`contact-fav-btn${c.favorite ? ' contact-fav-btn--on' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          actions.updateContact({ ...c, favorite: !c.favorite });
+                        }}
+                        aria-label={c.favorite ? `Remove ${c.name} from favorites` : `Add ${c.name} to favorites`}
+                        aria-pressed={!!c.favorite}
+                      >
+                        <Icon name="star" size={18} />
+                      </button>
+                    )}
+                  </div>
+                </SwipeRow>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {byLetter && showIndex && !selectMode && (
+        <nav className="people-index" aria-label="Jump to letter">
+          {letters.map((l) => (
+            <button
+              key={l}
+              onClick={() => document.getElementById(`pl-${l}`)?.scrollIntoView({ block: 'start' })}
+            >
+              {l}
+            </button>
+          ))}
+        </nav>
+      )}
+
+      <Modal
+        open={filterOpen}
+        title="Filter & sort"
+        onClose={() => setFilterOpen(false)}
+        footer={
+          <div className="modal-actions">
+            <button className="btn btn-primary" onClick={() => setFilterOpen(false)}>
+              Done
+            </button>
+          </div>
+        }
+      >
+        <div className="form">
+          <div className="field">
+            <span>Show</span>
+            <div className="chips people-filter-chips">
           <button
             className={`chip${!filter && groupFilters.size === 0 ? ' chip--on' : ''}`}
             onClick={() => setSpecialFilter('')}
@@ -410,132 +600,25 @@ export default function ContactsPage() {
               </button>
             )
           )}
-        </div>
-        {state.contacts.length > 0 && (
-          <div className="select-toggle-row">
+            </div>
+          </div>
+          <div className="field">
+            <span>Sort</span>
+            <Select value={sortMode} onChange={setSortMode} options={SORT_OPTIONS} />
+          </div>
+          {state.contacts.length > 0 && (
             <button
-              className={`btn btn-sm ${selectMode ? 'btn-primary' : 'btn-ghost'}`}
-              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              className="btn btn-ghost full"
+              onClick={() => {
+                setSelectMode(true);
+                setFilterOpen(false);
+              }}
             >
-              {selectMode ? 'Cancel select' : 'Select'}
+              Select several people
             </button>
-            {selectMode && <span className="muted small">{selected.size} selected</span>}
-          </div>
-        )}
-      </header>
-
-      {/* Deliberately outside <header>: that header is position:sticky with
-          its own z-index, which — despite Select's overlay having a much
-          higher z-index of its own — caps the whole overlay to the header's
-          stacking context. Nested there, the last option or two of a tall
-          enough list render visually on top of the fixed tab bar but are
-          actually unclickable, since the tab bar sits in a separate,
-          higher-priority stacking context untouched by the header's. */}
-      {state.contacts.length > 1 && (
-        <div className="contacts-sort-row">
-          <span className="muted small">Sort</span>
-          <Select value={sortMode} onChange={setSortMode} options={SORT_OPTIONS} />
+          )}
         </div>
-      )}
-
-      {showBanner && (
-        <section className="reconnect">
-          <div className="reconnect-head">
-            <span><Icon name="bell" size={15} /> Time to reconnect</span>
-          </div>
-          <div className="reconnect-scroll">
-            {overdue.slice(0, 12).map((c) => {
-              const st = statusById[c.statusId];
-              return (
-                <div key={c.id} className="reconnect-card">
-                  <button className="reconnect-open" onClick={() => navigate(`/contacts/${c.id}`)}>
-                    <Avatar name={c.name} photo={c.photo} color={st?.color} size="sm" />
-                    <span className="reconnect-name">{c.name.split(' ')[0]}</span>
-                    <span className="reconnect-ago">{daysAgoLabel(c.lastContacted)}</span>
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm reconnect-log"
-                    onClick={() => actions.updateContact({ ...c, lastContacted: todayISO() })}
-                  >
-                    <Icon name="check" size={15} /> Log
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {state.contacts.length === 0 ? (
-        <div className="empty">
-          <div className="empty-icon"><Icon name="personPlus" size={48} /></div>
-          <h2>Add the people who matter</h2>
-          <p className="muted">
-            Keep track of friends, family, and anyone you want to stay close to. Sort them into groups
-            you create, and get a nudge when it's time to reach out again.
-          </p>
-          <button className="btn btn-primary" onClick={startAdd}>
-            + Add someone
-          </button>
-        </div>
-      ) : filtered.length === 0 ? (
-        <p className="muted center-pad">No one matches that search.</p>
-      ) : (
-        <ul className="contact-list">
-          {filtered.map((c) => {
-            const st = statusById[c.statusId];
-            const over = isOverdue(c);
-            const isSel = selected.has(c.id);
-            return (
-              <li key={c.id}>
-                <SwipeRow
-                  disabled={selectMode}
-                  swipeRight={swipeFor(swipeRightKey, c)}
-                  swipeLeft={swipeFor(swipeLeftKey, c)}
-                >
-                  <div className="contact-row-inner">
-                    <button
-                      className="contact-row"
-                      onClick={() => (selectMode ? toggleSelected(c.id) : navigate(`/contacts/${c.id}`))}
-                    >
-                      {selectMode && <span className={`select-dot${isSel ? ' select-dot--on' : ''}`} />}
-                      <span className="avatar-slot">
-                        <Avatar name={c.name} photo={c.photo} color={st?.color} size={iconSize} />
-                        {over && <span className="overdue-dot" aria-hidden="true" />}
-                      </span>
-                      <span className="contact-main">
-                        <span className="contact-name">
-                          {c.name}
-                          {over && <span className="overdue-tag">Reconnect</span>}
-                        </span>
-                        <span className="contact-sub muted">
-                          {st && <span className="dot-badge" style={{ color: st.color }}>{st.label}</span>}
-                          {st && ' · '}
-                          Last: {daysAgoLabel(c.lastContacted)}
-                        </span>
-                      </span>
-                      {!selectMode && <Chevron />}
-                    </button>
-                    {!selectMode && (
-                      <button
-                        className={`contact-fav-btn${c.favorite ? ' contact-fav-btn--on' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          actions.updateContact({ ...c, favorite: !c.favorite });
-                        }}
-                        aria-label={c.favorite ? `Remove ${c.name} from favorites` : `Add ${c.name} to favorites`}
-                        aria-pressed={!!c.favorite}
-                      >
-                        <Icon name="star" size={18} />
-                      </button>
-                    )}
-                  </div>
-                </SwipeRow>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      </Modal>
 
       {state.contacts.length > 0 && !selectMode && (
         <button className="fab" onClick={startAdd} aria-label="Add person">
@@ -708,6 +791,21 @@ function Chevron() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" className="row-chevron">
       <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path
+        d="M3 5h18l-7 8v6l-4-2v-4L3 5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

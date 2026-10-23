@@ -143,7 +143,7 @@ const SETTINGS_INDEX = [
     label: 'Appearance',
     groups: [
       { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
-      { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style' },
+      { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style home layout today bento calm classic' },
       { id: 'g20', title: 'Goals layout', keywords: 'goals habits layout calm streak classic day streak style rest day' },
       { id: 'g6', title: 'Quick-add menu', keywords: 'customize fab plus button actions reorder' },
       { id: 'g7', title: 'Navigation tabs', keywords: 'customize tab bar bottom reorder hide' },
@@ -723,6 +723,32 @@ export default function MorePage() {
         <p className="muted small">
           Choose which blocks show on Home, and drag to reorder them. Or edit this right from the Home page itself
           via the pencil icon in its header.
+        </p>
+        <p className="muted small">Home layout</p>
+        <div className="seg seg--full">
+          {[
+            { value: 'today', label: 'Today' },
+            { value: 'bento', label: 'Bento', pro: true },
+            { value: 'calm', label: 'Calm' },
+            { value: 'classic', label: 'Classic' },
+          ].map((o) => (
+            <button
+              key={o.value}
+              className={`seg-btn${(s.homeStyle || 'today') === o.value ? ' seg-btn--on' : ''}`}
+              onClick={() => (o.pro && !isPro ? navigate('/pricing') : actions.setSettings({ homeStyle: o.value }))}
+            >
+              {o.label} {o.pro && !isPro && <Icon name="lock" size={13} />}
+            </button>
+          ))}
+        </div>
+        <p className="muted small">
+          {(s.homeStyle || 'today') === 'classic'
+            ? 'Classic: the original stack of cards.'
+            : (s.homeStyle || 'today') === 'bento' && isPro
+            ? 'Bento: a tile grid with your goals ring, what is next, and the week at a glance.'
+            : (s.homeStyle || 'today') === 'calm'
+            ? 'Calm: a quiet summary and one list for today, with everything else folded away.'
+            : 'Today: your day as a timeline, led by what is next.'}
         </p>
         <p className="muted small">Goals block style</p>
         <div className="seg seg--full">

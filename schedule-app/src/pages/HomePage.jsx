@@ -27,11 +27,11 @@ import { computeWeeklyRecap } from '../data/weeklyRecap.js';
 import { computeNudges } from '../data/nudges.js';
 import { useEdgeFade } from '../data/useEdgeFade.js';
 import { useToast } from '../data/toast.jsx';
-import { useCountUp } from '../data/useCountUp.js';
 import { useSmartAdd } from '../data/useSmartAdd.js';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import Icon from '../components/Icon.jsx';
 import AddressField from '../components/AddressField.jsx';
+import { MiniRing, TodayView, BentoView, CalmView } from '../components/HomeLayouts.jsx';
 
 // Shown when every home block has been toggled off in Customize mode —
 // picked once at random per visit rather than always the same line, since
@@ -64,6 +64,12 @@ const NOTE_COLORS = [
   '#e4f7d4', // sage
   '#f0e9d8', // sand
   '#e6eaf0', // stone
+];
+const HOME_STYLES = [
+  { value: 'today', label: 'Today' },
+  { value: 'bento', label: 'Bento' },
+  { value: 'calm', label: 'Calm' },
+  { value: 'classic', label: 'Classic' },
 ];
 const TASK_REMINDER_OFFSETS = [
   { mins: 15, label: '15 min before' },
@@ -576,6 +582,353 @@ export default function HomePage() {
     selectTick();
   };
 
+  // --- Layouts (Settings -> Home screen layout) ---
+  // Bento is Pro; without Pro it quietly falls back to Today, same as the
+  // Goals Streak layout falls back to Calm.
+  const savedHomeStyle = state.settings?.homeStyle || 'today';
+  const homeStyle = savedHomeStyle === 'bento' && !isPro ? 'today' : savedHomeStyle;
+  const openItem = (r) => {
+    if (r.kind === 'goal') navigate('/goals', { state: { openGoalId: r.goalId } });
+    else if (r.kind === 'event') navigate('/planner', { state: { openEventId: r.occId, openEventDate: r.occDate } });
+    else if (r.kind === 'task') navigate('/tasks', { state: { openTaskId: r.id } });
+  };
+  // Re-read the clock each minute so "Up next" moves on by itself.
+  const [, setClockTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setClockTick((n) => n + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+  // The whole of today in time order, done items included (unlike the
+  // reminders list above, which only shows what is still open).
+  const timeline = useMemo(() => {
+    const out = [];
+    for (const g of state.goals) {
+      if (!g.reminder?.times?.length) continue;
+      const isDaily = (g.period || 'weekly') === 'daily';
+      if (isDaily && g.repeatDays?.length && !g.repeatDays.includes(todayDow)) continue;
+      const key = isDaily ? today : weekKey(new Date());
+      const done = (g.progress?.[key] || 0) >= g.target;
+      for (const time of g.reminder.times) {
+        out.push({ kind: 'goal', id: `${g.id}:${time}`, goalId: g.id, label: g.title, time, done });
+      }
+    }
+    for (const t of state.tasks || []) {
+      if (t.dueDate !== today) continue;
+      out.push({ kind: 'task', id: t.id, task: t, label: t.title, time: t.dueTime || null, done: !!t.done });
+    }
+    for (const e of state.events) {
+      for (const occ of expandEventOnDay(e, today)) {
+        out.push({
+          kind: 'event',
+          id: `${occ.id}:${occ.recDate}`,
+          occId: occ.id,
+          occDate: occ.recDate,
+          label: occ.title,
+          time: occ.start,
+          location: occ.location || '',
+          done: !!occ.done,
+        });
+      }
+    }
+    return out.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  }, [state.goals, state.tasks, state.events, today, todayDow]);
+  const upNext = (() => {
+    const n = new Date();
+    const nowKey = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+    const open = timeline.filter((i) => !i.done);
+    const item = open.find((i) => i.time && i.time >= nowKey) || open.find((i) => !i.time);
+    if (!item) return null;
+    let inMins = null;
+    if (item.time) {
+      const [hh, mm] = item.time.split(':').map(Number);
+      inMins = Math.max(0, hh * 60 + mm - (n.getHours() * 60 + n.getMinutes()));
+    }
+    return { item, inMins };
+  })();
+  const layoutProps = {
+    navigate,
+    order: visibleBlocks.map((b) => b.id),
+    enabled: (id) => visibleBlocks.some((b) => b.id === id),
+    block: (id) => (visibleBlocks.some((b) => b.id === id) ? renderBlock(id) : null),
+    timeline,
+    upNext,
+    openItem,
+    toggleTaskDone,
+    recap,
+    bestStreak,
+    dailyPct,
+    weeklyPct,
+    openTaskCount: openTasks.length,
+    noteCount: notes.length,
+    counts: {
+      events: timeline.filter((i) => i.kind === 'event' && !i.done).length,
+      tasks: timeline.filter((i) => i.kind === 'task' && !i.done).length,
+      goals: dailyGoals.filter((g) => (g.progress?.[dailyKey] || 0) < g.target).length,
+    },
+  };
+
+  // One Home block, exactly as it has always rendered. Every layout reuses this,
+  // so tasks, notes, nudges and the rest behave the same whichever layout is picked.
+  const renderBlock = (id) => {
+    if (id === 'challenge') {
+      if (state.settings?.showDailyChallenge === false) return null;
+      return (
+        <section className="detail-section challenge-block" key="challenge">
+          <span className="detail-label"><Icon name="compass" /> Today's challenge</span>
+          {challengeDone ? (
+            <p className="muted small">
+              {state.settings.challengeStatus.status === 'added'
+                ? "Added. Check back tomorrow for the next one."
+                : "Skipped for today. Check back tomorrow for the next one."}
+            </p>
+          ) : (
+            <>
+              <p className="challenge-text">{challenge.text}</p>
+              <div className="challenge-actions">
+                <button className="btn btn-primary btn-sm" onClick={addChallenge}>
+                  Add as {challenge.type === 'goal' ? 'a goal' : 'a task'}
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={skipChallenge}>
+                  Skip today
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      );
+    }
+    if (id === 'goals' && goalsCompact) {
+      return (
+        <button
+          key="goals"
+          className="detail-section home-block-goals home-block-goals--compact"
+          onClick={() => navigate('/goals')}
+        >
+          <div className="goals-block-head">
+            <span className="detail-label"><Icon name="target" /> Goals</span>
+            {bestStreak >= 1 && (
+              <span className="streak-badge">
+                <Icon name="flame" size={16} /> <AnimatedNumber value={bestStreak} />
+              </span>
+            )}
+          </div>
+          {compactGoals.length === 0 ? (
+            <p className="muted small goal-mini-empty">No goals in play today. Tap to add one.</p>
+          ) : (
+            <ul className="goal-mini-list">
+              {compactGoals.map(({ goal, value, pct, done }) => (
+                <li key={goal.id} className="goal-mini-row">
+                  <div className="goal-mini-top">
+                    <span className="goal-mini-title">{goal.title}</span>
+                    <span className="goal-mini-count">
+                      {done ? <Icon name="check" size={14} /> : null} {value} / {goal.target} {goal.unit}
+                    </span>
+                  </div>
+                  <div className="goal-mini-bar" aria-hidden="true">
+                    <div
+                      className={`goal-mini-fill${done ? ' goal-mini-fill--done' : ''}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </button>
+      );
+    }
+    if (id === 'goals') {
+      return (
+        <button key="goals" className="detail-section home-block-goals" onClick={() => navigate('/goals')}>
+          <div className="goals-block-head">
+            <span className="detail-label"><Icon name="target" /> Goals</span>
+            {bestStreak >= 1 && (
+              <span className="streak-badge">
+                <Icon name="flame" size={16} /> <AnimatedNumber value={bestStreak} />
+              </span>
+            )}
+          </div>
+          <div className="home-bubble-rings">
+            <MiniRing pct={dailyPct} label="Today" />
+            <MiniRing pct={weeklyPct} label="Week" />
+          </div>
+        </button>
+      );
+    }
+    if (id === 'nudges') {
+      if (nudges.length === 0) return null;
+      return (
+        <section className="detail-section" key="nudges">
+          <span className="detail-label"><Icon name="lightbulb" /> Nudges</span>
+          <ul className="nudge-list">
+            {nudges.map((n) => (
+              <li key={n.id}>
+                <button className="nudge-row" onClick={() => navigate(n.to)}>
+                  <span className="nudge-icon" aria-hidden="true"><Icon name={n.icon} size={18} /></span>
+                  <span className="nudge-text">{n.text}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    }
+    if (id === 'recap') {
+      const nothingYet =
+        recap.goalsCompleted === 0 && recap.contactsReconnected === 0 && recap.tasksCompleted === 0;
+      if (nothingYet) return null;
+      return (
+        <section className="detail-section recap-block" key="recap">
+          <span className="detail-label"><Icon name="chart" /> This week</span>
+          <div className="recap-stats">
+            <div className="recap-stat">
+              <strong>
+                <AnimatedNumber value={recap.goalsCompleted} />
+                {recap.goalsPossible > 0 && <span className="recap-of">/{recap.goalsPossible}</span>}
+              </strong>
+              <span className="muted small">Goals hit</span>
+            </div>
+            <div className="recap-stat">
+              <strong>
+                <AnimatedNumber value={recap.tasksCompleted} />
+              </strong>
+              <span className="muted small">Tasks done</span>
+            </div>
+            <div className="recap-stat">
+              <strong>
+                <AnimatedNumber value={recap.contactsReconnected} />
+              </strong>
+              <span className="muted small">People reconnected</span>
+            </div>
+          </div>
+        </section>
+      );
+    }
+    if (id === 'reminders') {
+      if (reminders.length === 0) return null;
+      return (
+        <section className="detail-section" key="reminders">
+          <span className="detail-label"><Icon name="bell" /> Important reminders</span>
+          <ul className="reminder-list">
+            {reminders.map((r) => (
+              <li key={`${r.kind}:${r.id}`}>
+                <button
+                  className="reminder-row"
+                  onClick={() => openItem(r)}
+                >
+                  <span className={`reminder-kind reminder-kind--${r.kind}`}>{r.kind}</span>
+                  <span className="reminder-label">{r.label}</span>
+                  {r.time && <span className="reminder-time">{formatTime(r.time)}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    }
+    if (id === 'tasks') {
+      return (
+        <section className="detail-section" key="tasks">
+          <div className="section-head">
+            <span className="detail-label">Tasks</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/tasks')}>
+              See all
+            </button>
+          </div>
+          <ul className="task-list">
+            {openTasks.map(renderTaskRow)}
+            {openTasks.length === 0 && doneTasks.length === 0 && (
+              <li className="muted small">No tasks yet.</li>
+            )}
+            {openTasks.length === 0 && doneTasks.length > 0 && (
+              <li className="muted small">All done.</li>
+            )}
+            {/* Finished work, folded away. Kept in the same list rather
+                than a separate section so unfolding it reads as the
+                list continuing, and a mis-tick is one tap from being
+                undone. */}
+            {doneTasks.length > 0 && (
+              <li className="task-done-head">
+                <button
+                  className={`task-done-toggle${showDone ? ' task-done-toggle--open' : ''}`}
+                  onClick={() => setShowDone((v) => !v)}
+                  aria-expanded={showDone}
+                >
+                  <Icon name="chevronDown" size={15} />
+                  Done · {doneTasks.length}
+                </button>
+                <button className="task-done-clear" onClick={clearDoneTasks}>
+                  Clear
+                </button>
+              </li>
+            )}
+            {showDone && doneTasks.map(renderTaskRow)}
+          </ul>
+          <div className="task-add-row">
+            <input
+              value={newTaskText}
+              onChange={(e) => setNewTaskText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && openNewTask()}
+              placeholder="Add a task…"
+            />
+            <button className="btn btn-primary btn-sm" onClick={openNewTask}>
+              Add
+            </button>
+          </div>
+        </section>
+      );
+    }
+    if (id === 'notes') {
+      return (
+        <section className="detail-section" key="notes">
+          <div className="section-head">
+            <span className="detail-label"><Icon name="note" /> Notes</span>
+            <div className="section-head-actions">
+              <button className="btn btn-ghost btn-sm" onClick={() => navigate('/notes')}>
+                See all
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={openNewNote}>
+                + Add
+              </button>
+            </div>
+          </div>
+          {notes.length === 0 ? (
+            <p className="muted small">No notes yet.</p>
+          ) : (
+            <div className="notes-grid">
+              {notes.map((n) => (
+                <button
+                  key={n.id}
+                  className={`note-card${n.color ? ' note-card--tinted' : ''}`}
+                  style={n.color ? { background: n.color } : undefined}
+                  onClick={() => openEditNote(n)}
+                >
+                  {n.pinned && <span className="note-pin"><Icon name="bookmark" size={14} /></span>}
+                  {n.title && <strong className="note-title">{n.title}</strong>}
+                  {n.checklist ? (
+                    <ul className="note-checklist">
+                      {n.checklist.slice(0, 5).map((item, i) => (
+                        <li key={i} className={item.done ? 'note-check--done' : ''}>
+                          <span className={`note-check-box${item.done ? ' note-check-box--on' : ''}`}>
+                            {item.done ? <Icon name="check" size={12} /> : null}
+                          </span>
+                          {item.text || 'Item'}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="note-body">{n.body}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="page">
       <header className="page-head">
@@ -606,6 +959,18 @@ export default function HomePage() {
         <section className="detail-section">
           <span className="detail-label">Customize home screen</span>
           <p className="muted small">Drag to reorder, toggle off to hide. Tap Done above when finished.</p>
+          <p className="muted small">Home layout</p>
+          <div className="seg seg--full">
+            {HOME_STYLES.map((o) => (
+              <button
+                key={o.value}
+                className={`seg-btn${homeStyle === o.value ? ' seg-btn--on' : ''}`}
+                onClick={() => actions.setSettings({ homeStyle: o.value })}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
           <p className="muted small">Goals block style</p>
           <div className="seg seg--full">
             {[
@@ -630,270 +995,15 @@ export default function HomePage() {
       ) : isEmptyHome ? (
         <p className="muted center-pad">{emptyHomeMessage}</p>
       ) : (
-        visibleBlocks.map((b) => {
-          if (b.id === 'challenge') {
-            if (state.settings?.showDailyChallenge === false) return null;
-            return (
-              <section className="detail-section challenge-block" key="challenge">
-                <span className="detail-label"><Icon name="compass" /> Today's challenge</span>
-                {challengeDone ? (
-                  <p className="muted small">
-                    {state.settings.challengeStatus.status === 'added'
-                      ? "Added. Check back tomorrow for the next one."
-                      : "Skipped for today. Check back tomorrow for the next one."}
-                  </p>
-                ) : (
-                  <>
-                    <p className="challenge-text">{challenge.text}</p>
-                    <div className="challenge-actions">
-                      <button className="btn btn-primary btn-sm" onClick={addChallenge}>
-                        Add as {challenge.type === 'goal' ? 'a goal' : 'a task'}
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={skipChallenge}>
-                        Skip today
-                      </button>
-                    </div>
-                  </>
-                )}
-              </section>
-            );
-          }
-          if (b.id === 'goals' && goalsCompact) {
-            return (
-              <button
-                key="goals"
-                className="detail-section home-block-goals home-block-goals--compact"
-                onClick={() => navigate('/goals')}
-              >
-                <div className="goals-block-head">
-                  <span className="detail-label"><Icon name="target" /> Goals</span>
-                  {bestStreak >= 1 && (
-                    <span className="streak-badge">
-                      <Icon name="flame" size={16} /> <AnimatedNumber value={bestStreak} />
-                    </span>
-                  )}
-                </div>
-                {compactGoals.length === 0 ? (
-                  <p className="muted small goal-mini-empty">No goals in play today. Tap to add one.</p>
-                ) : (
-                  <ul className="goal-mini-list">
-                    {compactGoals.map(({ goal, value, pct, done }) => (
-                      <li key={goal.id} className="goal-mini-row">
-                        <div className="goal-mini-top">
-                          <span className="goal-mini-title">{goal.title}</span>
-                          <span className="goal-mini-count">
-                            {done ? <Icon name="check" size={14} /> : null} {value} / {goal.target} {goal.unit}
-                          </span>
-                        </div>
-                        <div className="goal-mini-bar" aria-hidden="true">
-                          <div
-                            className={`goal-mini-fill${done ? ' goal-mini-fill--done' : ''}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </button>
-            );
-          }
-          if (b.id === 'goals') {
-            return (
-              <button key="goals" className="detail-section home-block-goals" onClick={() => navigate('/goals')}>
-                <div className="goals-block-head">
-                  <span className="detail-label"><Icon name="target" /> Goals</span>
-                  {bestStreak >= 1 && (
-                    <span className="streak-badge">
-                      <Icon name="flame" size={16} /> <AnimatedNumber value={bestStreak} />
-                    </span>
-                  )}
-                </div>
-                <div className="home-bubble-rings">
-                  <MiniRing pct={dailyPct} label="Today" />
-                  <MiniRing pct={weeklyPct} label="Week" />
-                </div>
-              </button>
-            );
-          }
-          if (b.id === 'nudges') {
-            if (nudges.length === 0) return null;
-            return (
-              <section className="detail-section" key="nudges">
-                <span className="detail-label"><Icon name="lightbulb" /> Nudges</span>
-                <ul className="nudge-list">
-                  {nudges.map((n) => (
-                    <li key={n.id}>
-                      <button className="nudge-row" onClick={() => navigate(n.to)}>
-                        <span className="nudge-icon" aria-hidden="true"><Icon name={n.icon} size={18} /></span>
-                        <span className="nudge-text">{n.text}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          }
-          if (b.id === 'recap') {
-            const nothingYet =
-              recap.goalsCompleted === 0 && recap.contactsReconnected === 0 && recap.tasksCompleted === 0;
-            if (nothingYet) return null;
-            return (
-              <section className="detail-section recap-block" key="recap">
-                <span className="detail-label"><Icon name="chart" /> This week</span>
-                <div className="recap-stats">
-                  <div className="recap-stat">
-                    <strong>
-                      <AnimatedNumber value={recap.goalsCompleted} />
-                      {recap.goalsPossible > 0 && <span className="recap-of">/{recap.goalsPossible}</span>}
-                    </strong>
-                    <span className="muted small">Goals hit</span>
-                  </div>
-                  <div className="recap-stat">
-                    <strong>
-                      <AnimatedNumber value={recap.tasksCompleted} />
-                    </strong>
-                    <span className="muted small">Tasks done</span>
-                  </div>
-                  <div className="recap-stat">
-                    <strong>
-                      <AnimatedNumber value={recap.contactsReconnected} />
-                    </strong>
-                    <span className="muted small">People reconnected</span>
-                  </div>
-                </div>
-              </section>
-            );
-          }
-          if (b.id === 'reminders') {
-            if (reminders.length === 0) return null;
-            return (
-              <section className="detail-section" key="reminders">
-                <span className="detail-label"><Icon name="bell" /> Important reminders</span>
-                <ul className="reminder-list">
-                  {reminders.map((r) => (
-                    <li key={`${r.kind}:${r.id}`}>
-                      <button
-                        className="reminder-row"
-                        onClick={() => {
-                          if (r.kind === 'goal') navigate('/goals', { state: { openGoalId: r.goalId } });
-                          else if (r.kind === 'event')
-                            navigate('/planner', { state: { openEventId: r.occId, openEventDate: r.occDate } });
-                          else if (r.kind === 'task') navigate('/tasks', { state: { openTaskId: r.id } });
-                        }}
-                      >
-                        <span className={`reminder-kind reminder-kind--${r.kind}`}>{r.kind}</span>
-                        <span className="reminder-label">{r.label}</span>
-                        {r.time && <span className="reminder-time">{formatTime(r.time)}</span>}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          }
-          if (b.id === 'tasks') {
-            return (
-              <section className="detail-section" key="tasks">
-                <div className="section-head">
-                  <span className="detail-label">Tasks</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => navigate('/tasks')}>
-                    See all
-                  </button>
-                </div>
-                <ul className="task-list">
-                  {openTasks.map(renderTaskRow)}
-                  {openTasks.length === 0 && doneTasks.length === 0 && (
-                    <li className="muted small">No tasks yet.</li>
-                  )}
-                  {openTasks.length === 0 && doneTasks.length > 0 && (
-                    <li className="muted small">All done.</li>
-                  )}
-                  {/* Finished work, folded away. Kept in the same list rather
-                      than a separate section so unfolding it reads as the
-                      list continuing, and a mis-tick is one tap from being
-                      undone. */}
-                  {doneTasks.length > 0 && (
-                    <li className="task-done-head">
-                      <button
-                        className={`task-done-toggle${showDone ? ' task-done-toggle--open' : ''}`}
-                        onClick={() => setShowDone((v) => !v)}
-                        aria-expanded={showDone}
-                      >
-                        <Icon name="chevronDown" size={15} />
-                        Done · {doneTasks.length}
-                      </button>
-                      <button className="task-done-clear" onClick={clearDoneTasks}>
-                        Clear
-                      </button>
-                    </li>
-                  )}
-                  {showDone && doneTasks.map(renderTaskRow)}
-                </ul>
-                <div className="task-add-row">
-                  <input
-                    value={newTaskText}
-                    onChange={(e) => setNewTaskText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && openNewTask()}
-                    placeholder="Add a task…"
-                  />
-                  <button className="btn btn-primary btn-sm" onClick={openNewTask}>
-                    Add
-                  </button>
-                </div>
-              </section>
-            );
-          }
-          if (b.id === 'notes') {
-            return (
-              <section className="detail-section" key="notes">
-                <div className="section-head">
-                  <span className="detail-label"><Icon name="note" /> Notes</span>
-                  <div className="section-head-actions">
-                    <button className="btn btn-ghost btn-sm" onClick={() => navigate('/notes')}>
-                      See all
-                    </button>
-                    <button className="btn btn-ghost btn-sm" onClick={openNewNote}>
-                      + Add
-                    </button>
-                  </div>
-                </div>
-                {notes.length === 0 ? (
-                  <p className="muted small">No notes yet.</p>
-                ) : (
-                  <div className="notes-grid">
-                    {notes.map((n) => (
-                      <button
-                        key={n.id}
-                        className={`note-card${n.color ? ' note-card--tinted' : ''}`}
-                        style={n.color ? { background: n.color } : undefined}
-                        onClick={() => openEditNote(n)}
-                      >
-                        {n.pinned && <span className="note-pin"><Icon name="bookmark" size={14} /></span>}
-                        {n.title && <strong className="note-title">{n.title}</strong>}
-                        {n.checklist ? (
-                          <ul className="note-checklist">
-                            {n.checklist.slice(0, 5).map((item, i) => (
-                              <li key={i} className={item.done ? 'note-check--done' : ''}>
-                                <span className={`note-check-box${item.done ? ' note-check-box--on' : ''}`}>
-                                  {item.done ? <Icon name="check" size={12} /> : null}
-                                </span>
-                                {item.text || 'Item'}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="note-body">{n.body}</p>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-            );
-          }
-          return null;
-        })
+        homeStyle === 'today' ? (
+          <TodayView h={layoutProps} />
+        ) : homeStyle === 'bento' ? (
+          <BentoView h={layoutProps} />
+        ) : homeStyle === 'calm' ? (
+          <CalmView h={layoutProps} />
+        ) : (
+          visibleBlocks.map((b) => renderBlock(b.id))
+        )
       )}
 
       <ExpandableFab
@@ -1211,27 +1321,6 @@ export default function HomePage() {
 function lastCompleted(t) {
   const dates = t.completedDates || [];
   return dates.length ? dates[dates.length - 1] : '';
-}
-
-function MiniRing({ pct, label }) {
-  const shown = useCountUp(pct);
-  // Same two-stop sweep as the big ring on the Goals page (see ringStyle
-  // there) — this is the smaller version of the identical widget, and a
-  // flat single-color arc here while the other one has depth would read as
-  // an oversight rather than a deliberate smaller variant.
-  return (
-    <div className="mini-ring-wrap">
-      <div
-        className="mini-ring"
-        style={{
-          background: `conic-gradient(from -90deg, var(--ring-hi) 0deg, var(--accent) ${shown * 3.6}deg, var(--track) ${shown * 3.6}deg)`,
-        }}
-      >
-        <span>{shown}%</span>
-      </div>
-      <span className="mini-ring-label">{label}</span>
-    </div>
-  );
 }
 
 function CrownIcon() {

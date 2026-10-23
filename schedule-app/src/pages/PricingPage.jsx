@@ -19,6 +19,7 @@ const FEATURES = [
   { label: 'Goals, Planner, Map, People', free: true, pro: true },
   { label: 'Contact history timeline', free: false, pro: true },
   { label: 'Streak goals layout (day streak, week strip)', free: false, pro: true },
+  { label: 'Bento home layout (tile dashboard)', free: false, pro: true },
   { label: 'Goal history and heatmaps', free: false, pro: true },
   { label: 'People status groups', free: false, pro: true },
   { label: 'Day & week templates', free: false, pro: true },
