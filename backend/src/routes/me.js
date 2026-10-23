@@ -49,6 +49,9 @@ router.get('/', requireUser, (req, res) => {
 router.delete('/', requireUser, async (req, res, next) => {
   const clerkId = req.dbUser.clerkId;
   try {
+    // Pending invites aren't tied to the user by a relation (so no cascade): remove
+    // them, or an old link would still point at an account that no longer exists.
+    await prisma.accountabilityInvite.deleteMany({ where: { fromUserId: req.dbUser.id } }).catch(() => {});
     await prisma.user.delete({ where: { clerkId } }).catch(() => {});
     await clerkClient.users.deleteUser(clerkId);
     res.json({ deleted: true });

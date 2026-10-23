@@ -109,12 +109,18 @@ export const removeAccountabilityPartner = (getToken, userId) =>
   request(`/api/accountability/partners/${userId}`, { getToken, method: 'DELETE' });
 export const pushAccountabilitySnapshot = (getToken, data) =>
   request('/api/accountability/snapshot', { getToken, method: 'PUT', body: { data } });
+export const deleteAccountabilitySnapshot = (getToken) =>
+  request('/api/accountability/snapshot', { getToken, method: 'DELETE' });
 export const fetchAccountabilityInvites = (getToken) => request('/api/accountability/invites', { getToken });
+// The email is optional (see the backend): an invite is accepted by whoever
+// holds the code, so there is nothing to type up front.
 export const inviteAccountabilityPartner = (getToken, email) =>
-  request('/api/accountability/invites', { getToken, method: 'POST', body: { email } });
+  request('/api/accountability/invites', { getToken, method: 'POST', body: email ? { email } : {} });
+export const previewAccountabilityInvite = (getToken, token) =>
+  request(`/api/accountability/invites/${encodeURIComponent(token)}`, { getToken });
 export const revokeAccountabilityInvite = (getToken, inviteId) =>
   request(`/api/accountability/invites/${inviteId}`, { getToken, method: 'DELETE' });
 export const acceptAccountabilityInvite = (getToken, token) =>
-  request(`/api/accountability/invites/${token}/accept`, { getToken, method: 'POST' });
+  request(`/api/accountability/invites/${encodeURIComponent(token)}/accept`, { getToken, method: 'POST' });
 
 export const backendConfigured = () => !!BASE_URL;

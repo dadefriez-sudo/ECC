@@ -7008,3 +7008,86 @@ body[data-assistant='on'] .conflict-list {
   font-size: 12px;
   color: var(--text-muted, var(--muted, #93a0ad));
 }
+
+/* --- Accountability partners ------------------------------------------- */
+.partner-error {
+  color: var(--danger, #d1495b);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  margin: 8px 0;
+}
+.partner-stale {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e0a040;
+  margin: 6px 0 2px;
+}
+.partner-progress--stale {
+  opacity: 0.6;
+}
+.partner-tasks {
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+.partner-invites {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.partner-invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+.partner-invite-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex: none;
+}
+.partner-invite-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  font: inherit;
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+.partner-join-link {
+  margin-top: 14px;
+}
+.join-card .btn {
+  min-width: 200px;
+}
+
+.partner-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.partner-actions .btn {
+  min-width: 220px;
+}
+.partner-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  word-break: break-all;
+}
+.join-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}

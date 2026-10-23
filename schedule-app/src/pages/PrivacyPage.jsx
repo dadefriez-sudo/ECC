@@ -41,6 +41,14 @@ export default function PrivacyPage() {
           server so it can follow you to another device. It's off by default.
         </li>
         <li>
+          <b>Accountability partners (optional).</b> If you invite someone, or accept an invite, to
+          be accountability partners, Keystone shares with that one person, and only them, your goal
+          titles and progress and how many of today's tasks are done (not the tasks themselves).
+          Your email address is visible to them. Nothing is shared until they accept; it is removed
+          from our server when you remove your last partner; and either of you can end it at any
+          time from Settings, Accountability partners.
+        </li>
+        <li>
           <b>Shared calendars (optional, Pro).</b> If you create or join a shared calendar, the
           specific events on that calendar are visible to the specific people on it. Nothing
           else in your data is shared.

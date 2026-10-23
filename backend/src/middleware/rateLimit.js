@@ -11,7 +11,10 @@ import rateLimit from 'express-rate-limit';
 // an order of magnitude of headroom above that.
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 300,
+  // Per address, not per person: a dorm, campus or church building shares one
+  // address, so a dozen people using the app on the same Wi-Fi share this budget.
+  // Each one costs on the order of 5-10 requests a minute, hence the headroom.
+  limit: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },

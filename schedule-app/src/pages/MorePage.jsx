@@ -135,7 +135,6 @@ const SETTINGS_INDEX = [
     groups: [
       { id: 'g0', title: 'Profile', keywords: 'name photo picture avatar you' },
       { id: 'g1', title: 'Account & sync', keywords: 'sign in log out cloud backup device' },
-      { id: 'g2', title: 'Shared calendars', keywords: 'share family invite together members' },
       { id: 'g3', title: 'Accountability partners', keywords: 'accountability partner invite goals check in stay on track' },
     ],
   },
@@ -629,16 +628,6 @@ export default function MorePage() {
             ? "Calendar (single events only, not repeating ones) stays synced both ways while Keystone is open. Contacts is a one-time import. Tap \"Import contacts again\" any time for a fresh copy."
             : 'A personal Keystone login (no Google needed) is free and always available. This is only for connecting your Google Calendar (kept in sync) and Contacts (a one-time import).'}
         </p>
-      </SettingsGroup>
-      <SettingsGroup {...grp('g2')}>
-        <span className="detail-label">Shared calendars</span>
-        <p className="muted small">
-          Invite someone to see or add events with you on a calendar you both share. Free for up to 3
-          calendars, Pro for more.
-        </p>
-        <button className="btn btn-ghost full" onClick={() => navigate('/shared-calendars')}>
-          <Icon name="users" /> Manage shared calendars
-        </button>
       </SettingsGroup>
       <SettingsGroup {...grp('g3')}>
         <span className="detail-label">Accountability partners</span>

@@ -7,6 +7,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import TabBar from './components/TabBar.jsx';
 import Tutorial from './components/Tutorial.jsx';
 import Onboarding from './components/Onboarding.jsx';
+import { SHARED_CALENDARS_ENABLED } from './data/features.js';
 import { recordOpen, withoutActivity } from './data/activityLog.js';
 import AssistantBubble from './components/AssistantBubble.jsx';
 import Modal from './components/Modal.jsx';
@@ -18,7 +19,16 @@ import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
 import { setUse24hFormat, setSundayWeekStart, distanceMeters, todayISO } from './data/helpers.js';
 import { setHapticsEnabled } from './data/haptics.js';
-import { fetchMe, backendConfigured, fetchSyncedData, pushSyncedData, pushAccountabilitySnapshot } from './data/api.js';
+import {
+  fetchMe,
+  backendConfigured,
+  fetchSyncedData,
+  pushSyncedData,
+  pushAccountabilitySnapshot,
+  fetchAccountabilityPartners,
+  deleteAccountabilitySnapshot,
+} from './data/api.js';
+import { onPartnersChanged } from './data/accountabilityState.js';
 import { buildAccountabilitySnapshot } from './data/accountabilitySnapshot.js';
 import { runGoogleCalendarSync } from './data/googleCalendarSync.js';
 import { CLERK_ENABLED } from './data/clerkConfig.js';
@@ -309,20 +319,72 @@ function DataSync() {
 function AccountabilitySync() {
   const { state } = useStore();
   const { isSignedIn, getToken } = useAuth();
-  const active = isSignedIn && backendConfigured();
+  const signedIn = isSignedIn && backendConfigured();
+  // Progress is only uploaded for someone who actually has a partner: there is no
+  // one to show it to otherwise, and it shouldn't sit on the server for nothing.
+  const [hasPartner, setHasPartner] = useState(false);
+  const hadPartnerRef = useRef(false);
   const stateRef = useRef(state);
   stateRef.current = state;
+  // A stable handle on getToken (see AccountabilityPartnersPage for why).
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+  const tok = useCallback(() => getTokenRef.current?.(), []);
+
+  const checkPartners = useCallback(async () => {
+    try {
+      const { partners } = await fetchAccountabilityPartners(tok);
+      setHasPartner(partners.length > 0);
+    } catch {
+      /* offline or signed out: keep whatever we knew */
+    }
+  }, [tok]);
 
   useEffect(() => {
-    if (!active) return undefined;
-    const timer = setTimeout(() => {
-      pushAccountabilitySnapshot(getToken, buildAccountabilitySnapshot(stateRef.current)).catch((err) => {
-        console.warn('Accountability snapshot push failed:', err.message);
-      });
-    }, PUSH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    if (!signedIn) {
+      setHasPartner(false);
+      return undefined;
+    }
+    checkPartners();
+    const off = onPartnersChanged(checkPartners);
+    const onVisible = () => document.visibilityState === 'visible' && checkPartners();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      off();
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [signedIn, checkPartners]);
+
+  // The last partner was removed: take the shared progress off the server.
+  useEffect(() => {
+    if (hadPartnerRef.current && !hasPartner && signedIn) {
+      deleteAccountabilitySnapshot(tok).catch(() => {});
+    }
+    hadPartnerRef.current = hasPartner;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.goals, state.tasks, active]);
+  }, [hasPartner]);
+
+  const active = signedIn && hasPartner;
+  const push = useCallback(
+    () => pushAccountabilitySnapshot(tok, buildAccountabilitySnapshot(stateRef.current)).catch((err) => {
+      console.warn('Accountability snapshot push failed:', err.message);
+    }),
+    [tok]
+  );
+
+  // Whenever goals or tasks change, and again each time the app comes back to the
+  // front, so a partner can tell "they opened Keystone today" from "they haven't".
+  useEffect(() => {
+    if (!active) return undefined;
+    const timer = setTimeout(push, PUSH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [state.goals, state.tasks, active, push]);
+  useEffect(() => {
+    if (!active) return undefined;
+    const onVisible = () => document.visibilityState === 'visible' && push();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [active, push]);
 
   return null;
 }
@@ -896,9 +958,13 @@ export default function App() {
             <Route path="/map" element={<MapPage />} />
             <Route path="/plan-day" element={<RoutePlannerPage />} />
             <Route path="/more" element={<MorePage />} />
-            <Route path="/shared-calendars" element={<SharedCalendarsPage />} />
-            <Route path="/shared-calendars/join/:token" element={<SharedCalendarJoinPage />} />
-            <Route path="/shared-calendars/:id" element={<SharedCalendarDetailPage />} />
+            {SHARED_CALENDARS_ENABLED && (
+              <>
+                <Route path="/shared-calendars" element={<SharedCalendarsPage />} />
+                <Route path="/shared-calendars/join/:token" element={<SharedCalendarJoinPage />} />
+                <Route path="/shared-calendars/:id" element={<SharedCalendarDetailPage />} />
+              </>
+            )}
             <Route path="/accountability" element={<AccountabilityPartnersPage />} />
             <Route path="/accountability/join/:token" element={<AccountabilityJoinPage />} />
             <Route path="/pricing" element={<PricingPage />} />

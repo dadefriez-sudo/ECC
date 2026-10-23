@@ -113,6 +113,17 @@ router.put('/snapshot', requireUser, snapshotLimiter, async (req, res, next) => 
   }
 });
 
+// Erase what this person has shared. Called when their last partner is removed,
+// so progress isn't left sitting on the server with no one it's shared with.
+router.delete('/snapshot', requireUser, async (req, res, next) => {
+  try {
+    await prisma.accountabilitySnapshot.deleteMany({ where: { userId: req.dbUser.id } });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // --- Invites -----------------------------------------------------------
 // Sending the actual email is out of scope here — this just creates the
 // invite row and returns a token the frontend can turn into a shareable
@@ -121,7 +132,7 @@ router.put('/snapshot', requireUser, snapshotLimiter, async (req, res, next) => 
 router.get('/invites', requireUser, async (req, res, next) => {
   try {
     const invites = await prisma.accountabilityInvite.findMany({
-      where: { fromUserId: req.dbUser.id, acceptedAt: null },
+      where: { fromUserId: req.dbUser.id, acceptedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' },
     });
     res.json({ invites });
@@ -131,10 +142,11 @@ router.get('/invites', requireUser, async (req, res, next) => {
 });
 
 router.post('/invites', requireUser, inviteLimiter, async (req, res, next) => {
+  // The email is optional and only a label for the inviter's own list: an invite
+  // is accepted by whoever holds the link, so there is nothing to type up front.
   const email = (req.body?.email || '').trim().toLowerCase();
-  if (!email) return res.status(400).json({ error: 'email is required' });
-  if (!isEmail(email)) return res.status(400).json({ error: 'That does not look like an email address' });
-  if (email === req.dbUser.email.toLowerCase()) {
+  if (email && !isEmail(email)) return res.status(400).json({ error: 'That does not look like an email address' });
+  if (email && email === req.dbUser.email.toLowerCase()) {
     return res.status(400).json({ error: "You can't invite yourself" });
   }
   try {
@@ -172,23 +184,51 @@ router.delete('/invites/:id', requireUser, async (req, res, next) => {
   }
 });
 
+// "Who is inviting me?" — shown on the join screen so accepting is a deliberate
+// tap, not something that happens just because a link was opened. Reveals only
+// the inviter's email (which the invite holder is about to share progress with).
+router.get('/invites/:token', requireUser, async (req, res, next) => {
+  try {
+    const invite = await prisma.accountabilityInvite.findUnique({ where: { token: req.params.token } });
+    const inviter = invite ? await prisma.user.findUnique({ where: { id: invite.fromUserId } }) : null;
+    if (!invite || !inviter) return res.status(404).json({ error: 'This invite is no longer valid.' });
+    const existing = await prisma.accountabilityPartner.findUnique({
+      where: { userId_partnerId: { userId: req.dbUser.id, partnerId: inviter.id } },
+    });
+    let status = 'valid';
+    if (inviter.id === req.dbUser.id) status = 'self';
+    else if (existing) status = 'already_partners';
+    else if (invite.acceptedAt) status = 'used';
+    else if (invite.expiresAt < new Date()) status = 'expired';
+    res.json({ fromEmail: inviter.email, expiresAt: invite.expiresAt, status });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Accepting doesn't require any prior relationship — keyed by the invite
 // token, same as calendars.js's accept route.
 router.post('/invites/:token/accept', requireUser, async (req, res, next) => {
   try {
     const invite = await prisma.accountabilityInvite.findUnique({ where: { token: req.params.token } });
     if (!invite) return res.status(404).json({ error: 'Invite not found' });
-    if (invite.acceptedAt) return res.status(400).json({ error: 'Invite already used' });
-    if (invite.expiresAt < new Date()) return res.status(400).json({ error: 'Invite expired' });
+    const inviter = await prisma.user.findUnique({ where: { id: invite.fromUserId } });
+    if (!inviter) return res.status(404).json({ error: 'This invite is no longer valid.' });
     if (invite.fromUserId === req.dbUser.id) return res.status(400).json({ error: "You can't accept your own invite" });
 
     const existing = await prisma.accountabilityPartner.findUnique({
       where: { userId_partnerId: { userId: req.dbUser.id, partnerId: invite.fromUserId } },
     });
+    // Already partners (a double tap, or the same link opened twice): that's the
+    // outcome they wanted, so say so instead of an error.
     if (existing) {
-      await prisma.accountabilityInvite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
-      return res.json({ partnerId: invite.fromUserId, alreadyPartners: true });
+      if (!invite.acceptedAt) {
+        await prisma.accountabilityInvite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
+      }
+      return res.json({ partnerId: invite.fromUserId, partnerEmail: inviter.email, alreadyPartners: true });
     }
+    if (invite.acceptedAt) return res.status(400).json({ error: 'This invite was already used.' });
+    if (invite.expiresAt < new Date()) return res.status(400).json({ error: 'This invite has expired. Ask them for a new one.' });
 
     if (!isPro(req.dbUser)) {
       const count = await partnerCount(req.dbUser.id);
@@ -199,8 +239,7 @@ router.post('/invites/:token/accept', requireUser, async (req, res, next) => {
         });
       }
     }
-    const inviter = await prisma.user.findUnique({ where: { id: invite.fromUserId } });
-    if (inviter && !isPro(inviter)) {
+    if (!isPro(inviter)) {
       const inviterCount = await partnerCount(inviter.id);
       if (inviterCount >= FREE_PARTNER_LIMIT) {
         return res.status(402).json({
@@ -210,16 +249,20 @@ router.post('/invites/:token/accept', requireUser, async (req, res, next) => {
       }
     }
 
-    await prisma.$transaction([
-      prisma.accountabilityInvite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } }),
-      prisma.accountabilityPartner.create({
-        data: { userId: req.dbUser.id, partnerId: invite.fromUserId },
-      }),
-      prisma.accountabilityPartner.create({
-        data: { userId: invite.fromUserId, partnerId: req.dbUser.id },
-      }),
-    ]);
-    res.json({ partnerId: invite.fromUserId, alreadyPartners: false });
+    try {
+      await prisma.$transaction([
+        prisma.accountabilityInvite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } }),
+        prisma.accountabilityPartner.create({ data: { userId: req.dbUser.id, partnerId: invite.fromUserId } }),
+        prisma.accountabilityPartner.create({ data: { userId: invite.fromUserId, partnerId: req.dbUser.id } }),
+      ]);
+    } catch (err) {
+      // Two accepts raced and the other one won: same outcome, not an error.
+      if (err.code === 'P2002') {
+        return res.json({ partnerId: invite.fromUserId, partnerEmail: inviter.email, alreadyPartners: true });
+      }
+      throw err;
+    }
+    res.json({ partnerId: invite.fromUserId, partnerEmail: inviter.email, alreadyPartners: false });
   } catch (err) {
     next(err);
   }

@@ -29,12 +29,6 @@ const FEATURES = [
   },
   {
     icon: 'users',
-    title: 'Shared calendars',
-    desc: 'Invite someone to see or add events with you',
-    to: '/shared-calendars',
-  },
-  {
-    icon: 'users',
     title: 'People status groups',
     desc: 'Group contacts and see full history timelines',
     to: '/more?q=people groups',
