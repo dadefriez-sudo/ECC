@@ -6657,3 +6657,244 @@ body[data-assistant='on'] .conflict-list {
 .fab-spacer {
   height: 72px;
 }
+
+/* --- Goals layouts: Calm and Streak ------------------------------------- */
+.gcirc {
+  --gc-inner: var(--bg);
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1%), color-mix(in srgb, var(--text) 24%, transparent) 0);
+  transition: transform 0.15s ease;
+}
+.gcirc::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--gc-inner);
+}
+.gcirc:active {
+  transform: scale(0.9);
+}
+.gcirc svg {
+  position: relative;
+}
+.gcirc--on {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.gcirc--on::before {
+  display: none;
+}
+.calm-head {
+  padding: 8px 2px 4px;
+}
+.calm-date {
+  font-size: 26px;
+  font-weight: 800;
+}
+.calm-count {
+  font-weight: 600;
+  margin-top: 2px;
+}
+.calm-sec {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--text-muted, var(--muted, #93a0ad));
+  margin: 22px 2px 2px;
+}
+.calm-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.calm-main {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.calm-title {
+  font-size: 17px;
+  font-weight: 700;
+}
+.calm-sub {
+  font-size: 12.5px;
+  color: var(--text-muted, var(--muted, #93a0ad));
+}
+.calm-foot {
+  text-align: center;
+  margin: 18px 0 0;
+}
+.layout-chips {
+  margin: 0 0 6px 52px;
+}
+.pips {
+  display: inline-flex;
+  gap: 5px;
+  flex: none;
+}
+.pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+}
+.pip--on {
+  background: #7cc04a;
+}
+.pip--na {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent);
+}
+.pip--today {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.wk-count {
+  flex: none;
+  min-width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--accent);
+}
+.wk-count--on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 50%;
+}
+.wk-plus {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+/* Streak layout */
+.streak-layout {
+  padding-top: 6px;
+}
+.sk-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px;
+}
+.sk-flame {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 34px;
+  font-weight: 800;
+  color: #f0a23a;
+}
+.sk-top-label {
+  font-weight: 700;
+}
+.sk-week {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0 14px;
+}
+.sk-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted, var(--muted, #93a0ad));
+}
+.sk-day-c {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text) 22%, transparent);
+  display: grid;
+  place-items: center;
+  color: var(--accent-ink);
+}
+.sk-day--on .sk-day-c {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.sk-day--today .sk-day-c {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.sk-day--today .sk-day-l {
+  color: var(--accent);
+}
+.sk-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.sk-banner--safe {
+  border-color: color-mix(in srgb, #7cc04a 55%, var(--border));
+}
+.sk-banner-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+.sk-card {
+  --gc-inner: var(--surface);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.sk-card--done {
+  border-color: color-mix(in srgb, #7cc04a 55%, var(--border));
+}
+.sk-card-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.sk-card .calm-title {
+  font-size: 18px;
+}
+.sk-bar {
+  margin-top: 10px;
+}
+.sk-card .layout-chips {
+  margin: 10px 0 0;
+}
+.sk-card--week {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

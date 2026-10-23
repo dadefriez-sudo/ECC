@@ -289,7 +289,11 @@ export function goalKey(period, date) {
 // (always true) for weekly goals and for daily goals with no restriction,
 // so their behavior is unchanged — this only changes anything for a
 // restricted daily goal.
-export function computeGoalStreak(goal) {
+// `rest: true` (the Calm and Streak goal layouts) forgives one missed day per
+// calendar week on a daily goal: that day neither counts toward the number nor
+// ends the streak. It's computed, not stored, so switching layouts never
+// changes any saved data — the classic layout just leaves it off.
+export function computeGoalStreak(goal, { rest = false } = {}) {
   const target = goal.target || 0;
   if (target <= 0) return 0;
   const progress = goal.progress || {};
@@ -317,11 +321,96 @@ export function computeGoalStreak(goal) {
   while (!isScheduled(cursor)) cursor = addDays(cursor, -1);
   if (!met(cursor)) cursor = back(cursor);
   let count = 0;
-  while (met(cursor)) {
-    count++;
-    cursor = back(cursor);
+  const restWeeks = new Set();
+  for (let guard = 0; guard < 800; guard++) {
+    if (met(cursor)) {
+      count++;
+      cursor = back(cursor);
+      continue;
+    }
+    if (rest && period === 'daily') {
+      const wk = weekKey(cursor);
+      if (!restWeeks.has(wk)) {
+        restWeeks.add(wk);
+        cursor = back(cursor);
+        continue;
+      }
+    }
+    break;
   }
   return count;
+}
+
+// --- Day streak (the Streak goals layout) -------------------------------
+
+// The daily goals that were due on a given day. A goal created after that day
+// wasn't due yet, so it can't have missed it.
+export function dailyGoalsOn(goals, date) {
+  const d = date instanceof Date ? date : fromISODate(date);
+  const iso = toISODate(d);
+  return goals.filter((g) => {
+    if ((g.period || 'weekly') !== 'daily' || (g.target || 0) <= 0) return false;
+    if (g.repeatDays?.length && !g.repeatDays.includes(d.getDay())) return false;
+    if (typeof g.createdAt === 'string' && g.createdAt.slice(0, 10) > iso) return false;
+    return true;
+  });
+}
+
+// 'none' (nothing was due), 'met', 'partial' (some done) or 'missed'. `rule`
+// is how a day counts: 'all' goals met, or 'any' one goal met.
+export function dayStatus(goals, date, rule = 'all') {
+  const d = date instanceof Date ? date : fromISODate(date);
+  const iso = toISODate(d);
+  const due = dailyGoalsOn(goals, d);
+  if (due.length === 0) return 'none';
+  const done = due.filter((g) => (g.progress?.[iso] || 0) >= g.target || (g.frozenKeys || []).includes(iso)).length;
+  if (rule === 'any') return done > 0 ? 'met' : 'missed';
+  if (done === due.length) return 'met';
+  return done > 0 ? 'partial' : 'missed';
+}
+
+// Consecutive days the person showed up. Like a single goal's streak it starts
+// from yesterday while today is still in progress, skips days with nothing due,
+// and forgives one missed day per week.
+export function computeDayStreak(goals, rule = 'all') {
+  const dailies = goals.filter((g) => (g.period || 'weekly') === 'daily' && (g.target || 0) > 0);
+  if (dailies.length === 0) return 0;
+  const created = dailies.map((g) => (typeof g.createdAt === 'string' ? g.createdAt.slice(0, 10) : '0000-00-00')).sort()[0];
+  let cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  const first = dayStatus(goals, cursor, rule);
+  if (first !== 'met' && first !== 'none') cursor = addDays(cursor, -1);
+  let count = 0;
+  const restWeeks = new Set();
+  for (let guard = 0; guard < 400; guard++) {
+    if (toISODate(cursor) < created) break;
+    const st = dayStatus(goals, cursor, rule);
+    if (st === 'none') {
+      cursor = addDays(cursor, -1);
+      continue;
+    }
+    if (st === 'met') {
+      count++;
+      cursor = addDays(cursor, -1);
+      continue;
+    }
+    const wk = weekKey(cursor);
+    if (restWeeks.has(wk)) break;
+    restWeeks.add(wk);
+    cursor = addDays(cursor, -1);
+  }
+  return count;
+}
+
+// Seven days (week start first) with how each went, for the week strip.
+export function weekStrip(goals, rule, weekStartDate) {
+  const today = todayISO();
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(weekStartDate, i);
+    const iso = toISODate(d);
+    const status = iso > today ? 'future' : dayStatus(goals, d, rule);
+    return { iso, label: WEEKDAY_LETTERS[d.getDay()], status, isToday: iso === today };
+  });
 }
 
 // Splits a weekly target into a per-day pace — "read 10 chapters this week"

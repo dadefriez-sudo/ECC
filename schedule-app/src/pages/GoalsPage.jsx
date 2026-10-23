@@ -10,6 +10,7 @@ import { useTodayResync } from '../data/useTodayResync.js';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import MilestoneCelebration from '../components/MilestoneCelebration.jsx';
 import ObjectivesView from './ObjectivesView.jsx';
+import { CalmView, StreakView } from '../components/GoalsLayouts.jsx';
 import {
   goalKey,
   weekKey,
@@ -24,6 +25,9 @@ import {
   computeGoalStreak,
   goalFreezesLeft,
   goalCompletion,
+  dailyGoalsOn,
+  computeDayStreak,
+  weekStrip,
   WEEKDAY_LETTERS,
   weeklyPace,
   paceCumulative,
@@ -63,6 +67,12 @@ export default function GoalsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const isPro = !!state.settings?.isPro;
+  // Which Goals layout is showing: 'calm' (default), 'streak' (Pro) or 'classic'.
+  // Streak falls back to Calm if Pro lapses, rather than locking the tab.
+  const savedStyle = state.settings?.goalsStyle || 'calm';
+  const goalsStyle = savedStyle === 'streak' && !isPro ? 'calm' : savedStyle;
+  const classic = goalsStyle === 'classic';
+  const dayRule = state.settings?.dayStreakRule === 'any' ? 'any' : 'all';
   // Habits (the existing daily/weekly streak tracker) and Objectives (the
   // higher-level quarterly/annual layer with milestones) share this one tab
   // rather than splitting into two bottom-nav entries — one is the cadence
@@ -229,22 +239,29 @@ export default function GoalsPage() {
   const shownTotalsPct = useCountUp(totals.pct);
 
   // "All goals done" moment for today. Fires only on the transition (the last
-  // goal getting finished while you're looking), never just because the page
-  // opened already complete — the ref is reseeded whenever the day or tab
-  // changes, the same way the streak milestones above are.
+  // goal getting finished), never just because the page opened already
+  // complete — the ref is reseeded whenever the day changes, the same way the
+  // streak milestones above are. Based on *today's* goals, not whichever
+  // day/tab the classic layout happens to be showing.
+  const todayGoals = useMemo(() => dailyGoalsOn(state.goals, new Date()), [state.goals]);
+  const todayKeyNow = todayISO();
+  const todayTotals = goalCompletion(todayGoals, todayKeyNow);
   const dayDoneRef = useRef({ key: null, allDone: false });
   useEffect(() => {
-    const allDone = isDaily && atCurrent && totals.count > 0 && totals.met === totals.count;
+    const allDone = todayTotals.count > 0 && todayTotals.met === todayTotals.count;
     const prev = dayDoneRef.current;
-    if (prev.key === key && !prev.allDone && allDone) {
+    if (prev.key === todayKeyNow && !prev.allDone && allDone) {
       successTick();
-      setCelebrate({
-        headline: 'All goals done!',
-        message: `${totals.count} of ${totals.count} today. See you tomorrow.`,
-      });
+      const streak = goalsStyle === 'streak' ? computeDayStreak(state.goals, dayRule) : 0;
+      setCelebrate(
+        streak > 0
+          ? { headline: `${streak}-day streak!`, message: `All ${todayTotals.count} goals done today.` }
+          : { headline: 'All goals done!', message: `${todayTotals.count} of ${todayTotals.count} today. See you tomorrow.` }
+      );
     }
-    dayDoneRef.current = { key, allDone };
-  }, [key, isDaily, atCurrent, totals.met, totals.count]);
+    dayDoneRef.current = { key: todayKeyNow, allDone };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayKeyNow, todayTotals.met, todayTotals.count]);
 
   // Inline "type a number" entry for counter goals (the +/- stepper is slow for
   // a 30 minute goal).
@@ -252,7 +269,7 @@ export default function GoalsPage() {
   const commitTyping = () => {
     if (!typing) return;
     const n = Math.max(0, Math.round(Number(typing.value) || 0));
-    actions.setGoalProgress(typing.id, key, n);
+    actions.setGoalProgress(typing.id, typing.key || key, n);
     setTyping(null);
   };
 
@@ -396,7 +413,7 @@ export default function GoalsPage() {
             Objectives
           </button>
         </div>
-        {view === 'habits' && (
+        {view === 'habits' && classic && (
           <>
             <div className="seg seg--full">
               <button className={`seg-btn${isDaily ? ' seg-btn--on' : ''}`} onClick={() => setPeriod('daily')}>
@@ -444,7 +461,7 @@ export default function GoalsPage() {
 
       {view === 'objectives' && <ObjectivesView state={state} actions={actions} isPro={isPro} navigate={navigate} />}
 
-      {view === 'habits' && goals.length > 0 && (
+      {view === 'habits' && classic && goals.length > 0 && (
         <section className="summary-card">
           <div className="summary-ring" style={ringStyle(shownTotalsPct)}>
             <span>{shownTotalsPct}%</span>
@@ -462,7 +479,7 @@ export default function GoalsPage() {
         </section>
       )}
 
-      {view === 'habits' && (goals.length === 0 ? (
+      {view === 'habits' && classic && (goals.length === 0 ? (
         <EmptyState isDaily={isDaily} onAdd={() => openNew()} onPick={(t) => openNew(t)} />
       ) : (
         groups.map(([category, list]) => (
@@ -665,7 +682,30 @@ export default function GoalsPage() {
         ))
       ))}
 
-      {view === 'habits' && goals.length > 0 && <div className="fab-spacer" aria-hidden="true" />}
+      {view === 'habits' && !classic && state.goals.length === 0 && (
+        <EmptyState isDaily onAdd={() => openNew()} onPick={(t) => openNew(t)} />
+      )}
+      {view === 'habits' && !classic && state.goals.length > 0 && (
+        (() => {
+          const layoutProps = {
+            todayGoals,
+            weeklyGoals: state.goals.filter((g) => (g.period || 'weekly') === 'weekly' && (g.target || 0) > 0),
+            weekKey: weekKey(new Date()),
+            weekEndLabel: formatDayLabel(toISODate(addDays(startOfWeek(new Date()), 6))).split(',')[0],
+            rule: dayRule,
+            dayStreak: computeDayStreak(state.goals, dayRule),
+            strip: weekStrip(state.goals, dayRule, startOfWeek(new Date())),
+            typing,
+            setTyping,
+            commitTyping,
+            applyDelta,
+            setProgress: (id, k, n) => actions.setGoalProgress(id, k, n),
+            openEdit,
+          };
+          return goalsStyle === 'streak' ? <StreakView h={layoutProps} /> : <CalmView h={layoutProps} />;
+        })()
+      )}
+      {view === 'habits' && (classic ? goals.length > 0 : state.goals.length > 0) && <div className="fab-spacer" aria-hidden="true" />}
 
       {view === 'habits' && (
         <button className="fab" onClick={() => openNew()} aria-label="New goal">

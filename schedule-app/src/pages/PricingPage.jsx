@@ -18,6 +18,8 @@ const PRO_PRICE = '$9.99';
 const FEATURES = [
   { label: 'Goals, Planner, Map, People', free: true, pro: true },
   { label: 'Contact history timeline', free: false, pro: true },
+  { label: 'Streak goals layout (day streak, week strip)', free: false, pro: true },
+  { label: 'Goal history and heatmaps', free: false, pro: true },
   { label: 'People status groups', free: false, pro: true },
   { label: 'Day & week templates', free: false, pro: true },
   { label: 'Color themes (22, incl. pastels)', free: false, pro: true },

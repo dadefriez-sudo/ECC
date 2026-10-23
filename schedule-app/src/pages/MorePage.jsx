@@ -142,6 +142,7 @@ const SETTINGS_INDEX = [
     groups: [
       { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
       { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style' },
+      { id: 'g20', title: 'Goals layout', keywords: 'goals habits layout calm streak classic day streak style rest day' },
       { id: 'g6', title: 'Quick-add menu', keywords: 'customize fab plus button actions reorder' },
       { id: 'g7', title: 'Navigation tabs', keywords: 'customize tab bar bottom reorder hide' },
     ],
@@ -758,6 +759,51 @@ export default function MorePage() {
               <LockIcon /> Unlock to customize
             </span>
           </button>
+        )}
+      </SettingsGroup>
+      <SettingsGroup {...grp('g20')}>
+        <span className="detail-label">Goals layout</span>
+        <p className="muted small">Pick how the Goals tab looks. Your goals and progress are the same in every layout.</p>
+        <div className="seg seg--full">
+          {[
+            { value: 'calm', label: 'Calm' },
+            { value: 'streak', label: 'Streak', pro: true },
+            { value: 'classic', label: 'Classic' },
+          ].map((o) => (
+            <button
+              key={o.value}
+              className={`seg-btn${(s.goalsStyle || 'calm') === o.value ? ' seg-btn--on' : ''}`}
+              onClick={() => (o.pro && !isPro ? navigate('/pricing') : actions.setSettings({ goalsStyle: o.value }))}
+            >
+              {o.label} {o.pro && !isPro && <Icon name="lock" size={13} />}
+            </button>
+          ))}
+        </div>
+        <p className="muted small">
+          {(s.goalsStyle || 'calm') === 'classic'
+            ? 'Classic: cards with progress bars, Today and This week tabs, and a date picker.'
+            : (s.goalsStyle || 'calm') === 'streak' && isPro
+            ? 'Streak: a day streak, a week strip and big one tap cards. One missed day a week never breaks it.'
+            : 'Calm: one simple list. Tap the circle to finish a goal, with seven dots of history.'}
+        </p>
+        {s.goalsStyle === 'streak' && isPro && (
+          <>
+            <p className="muted small">A day counts toward your streak when you finish</p>
+            <div className="seg seg--full">
+              {[
+                { value: 'all', label: 'All goals' },
+                { value: 'any', label: 'Any one goal' },
+              ].map((o) => (
+                <button
+                  key={o.value}
+                  className={`seg-btn${(s.dayStreakRule === 'any' ? 'any' : 'all') === o.value ? ' seg-btn--on' : ''}`}
+                  onClick={() => actions.setSettings({ dayStreakRule: o.value })}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </SettingsGroup>
       <SettingsGroup {...grp('g6')}>
