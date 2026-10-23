@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useReducer } from 'react';
+import { createContext, useContext, useEffect, useReducer, useCallback } from 'react';
+import { recordAction } from './activityLog.js';
 import { makeSeed } from './seed.js';
 import { uid, todayISO, DEFAULT_KIND_COLORS, eventContactIds, withContactIds } from './helpers.js';
 import { DEFAULT_HOME_BLOCKS } from './homeBlocks.js';
@@ -465,7 +466,16 @@ function reducer(state, action) {
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, undefined, loadState);
+  const [state, rawDispatch] = useReducer(reducer, undefined, loadState);
+  // Every action passes through here so the local usage log (activityLog.js)
+  // sees it. useReducer's dispatch is stable, so this stays stable too.
+  const dispatch = useCallback(
+    (action) => {
+      recordAction(action?.type);
+      rawDispatch(action);
+    },
+    [rawDispatch]
+  );
 
   useEffect(() => {
     try {

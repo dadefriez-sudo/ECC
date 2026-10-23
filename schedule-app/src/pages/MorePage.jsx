@@ -48,6 +48,7 @@ import { backupSupported, writeBackupNow } from '../data/backup.js';
 import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js';
 import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
+import WeekCard from '../components/WeekCard.jsx';
 
 const formatHour = (h) => formatTime(`${String(h).padStart(2, '0')}:00`);
 const HOURS = Array.from({ length: 24 }, (_, h) => ({ value: h, label: formatHour(h) }));
@@ -185,6 +186,7 @@ const SETTINGS_INDEX = [
       ...(AI_ENABLED
         ? [{ id: 'gai', title: 'Assistant', keywords: 'claude ai chat bubble ask assistant helper' }]
         : []),
+      { id: 'g21', title: 'Your week in Keystone', keywords: 'usage activity stats days used week tester report share send' },
       { id: 'g16', title: 'Feedback', keywords: 'bug idea suggest contact support tour tutorial replay update version play store rate review rating star' },
       { id: 'g17', title: 'Your data', keywords: 'backup export import json reset clear cache delete storage' },
       { id: 'g18', title: 'Legal', keywords: 'privacy policy terms of service data collection legal' },
@@ -1319,6 +1321,10 @@ export default function MorePage() {
           </p>
         </SettingsGroup>
       )}
+      <SettingsGroup {...grp('g21')}>
+        <span className="detail-label">Your week in Keystone</span>
+        <WeekCard />
+      </SettingsGroup>
       <SettingsGroup {...grp('g16')}>
         <span className="detail-label">Feedback</span>
         <p className="muted small">Have an idea or found a bug? I'd love to hear it.</p>

@@ -7,6 +7,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import TabBar from './components/TabBar.jsx';
 import Tutorial from './components/Tutorial.jsx';
 import Onboarding from './components/Onboarding.jsx';
+import { recordOpen, withoutActivity } from './data/activityLog.js';
 import AssistantBubble from './components/AssistantBubble.jsx';
 import Modal from './components/Modal.jsx';
 import { maybeAutoBackup } from './data/backup.js';
@@ -777,6 +778,15 @@ export default function App() {
   // first run and a replay go through exactly one code path.
   const [replayTour, setReplayTour] = useState(false);
 
+  // Local usage log (see data/activityLog.js): note each launch and each return
+  // to the app, so "days used" can be shown without any analytics.
+  useEffect(() => {
+    recordOpen();
+    const onVisible = () => document.visibilityState === 'visible' && recordOpen();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
   // The tour narrates the Home screen, so both the first run and a replay
   // from Settings put you there before it starts — otherwise it plays over
   // whichever page you happened to be on and describes something else.
@@ -911,7 +921,9 @@ export default function App() {
         ) : (
           <Onboarding
             onStartFresh={() => actions.clearData()}
-            onAddGoals={(templates) => templates.forEach((t) => actions.addGoal({ ...t, createdAt: todayISO() }))}
+            onAddGoals={(templates) =>
+              withoutActivity(() => templates.forEach((t) => actions.addGoal({ ...t, createdAt: todayISO() })))
+            }
             onDone={(path) => {
               actions.setSettings({ tutorialSeen: true });
               if (path) navigate(path);
