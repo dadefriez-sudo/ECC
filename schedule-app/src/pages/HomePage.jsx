@@ -16,8 +16,7 @@ import {
   formatShortDate,
   expandEventOnDay,
   computeGoalStreak,
-  addDays,
-  toISODate,
+  nextTaskDueDate,
 } from '../data/helpers.js';
 import { requestNotificationPermission, notificationsSupported } from '../data/notifications.js';
 import { HOME_BLOCK_TYPES, normalizeHomeBlocks } from '../data/homeBlocks.js';
@@ -165,7 +164,7 @@ export default function HomePage() {
     flashCompleted(t.id);
     const completedDates = [...(t.completedDates || []), todayISO()];
     if (t.repeat && t.repeat !== 'none' && t.dueDate) {
-      const nextDueDate = toISODate(addDays(t.dueDate, t.repeat === 'weekly' ? 7 : 1));
+      const nextDueDate = nextTaskDueDate(t.dueDate, t.repeat);
       actions.updateTask({ ...t, done: false, dueDate: nextDueDate, completedDates });
     } else {
       actions.updateTask({ ...t, done: true, completedDates });

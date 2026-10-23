@@ -31,6 +31,19 @@ export function addDays(date, n) {
   return d;
 }
 
+// Next due date for a repeating task that was just checked off. Steps by the
+// repeat interval from the old due date (so a weekly task keeps its weekday),
+// but never lands on or before today: a task that was missed for several days
+// jumps straight to its next upcoming date instead of needing one tap per
+// missed day. A task checked off early (due in the future) advances one step.
+export function nextTaskDueDate(dueDate, repeat, today = todayISO()) {
+  const step = repeat === 'weekly' ? 7 : 1;
+  const due = fromISODate(dueDate);
+  const late = Math.round((fromISODate(today) - due) / 86400000);
+  const steps = late >= 0 ? Math.floor(late / step) + 1 : 1;
+  return toISODate(addDays(due, steps * step));
+}
+
 // Start of week for the given date — Monday by default, or Sunday when
 // setSundayWeekStart(true) has been called (see More → Calendar settings).
 export function startOfWeek(date) {

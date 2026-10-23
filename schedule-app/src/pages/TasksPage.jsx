@@ -10,7 +10,7 @@ import Icon from '../components/Icon.jsx';
 import { useToast } from '../data/toast.jsx';
 import { useEdgeFade } from '../data/useEdgeFade.js';
 import { requestNotificationPermission, notificationsSupported } from '../data/notifications.js';
-import { todayISO, addDays, toISODate, formatTime, formatShortDate } from '../data/helpers.js';
+import { todayISO, nextTaskDueDate, formatTime, formatShortDate } from '../data/helpers.js';
 import { useBackDismiss } from '../data/useBackDismiss.js';
 
 const TASK_REMINDER_OFFSETS = [
@@ -108,7 +108,7 @@ export default function TasksPage() {
     flashCompleted(t.id);
     const completedDates = [...(t.completedDates || []), todayISO()];
     if (t.repeat && t.repeat !== 'none' && t.dueDate) {
-      const nextDueDate = toISODate(addDays(t.dueDate, t.repeat === 'weekly' ? 7 : 1));
+      const nextDueDate = nextTaskDueDate(t.dueDate, t.repeat);
       actions.updateTask({ ...t, done: false, dueDate: nextDueDate, completedDates });
     } else {
       actions.updateTask({ ...t, done: true, completedDates });
