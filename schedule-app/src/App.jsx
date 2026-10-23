@@ -6,6 +6,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import TabBar from './components/TabBar.jsx';
 import Tutorial from './components/Tutorial.jsx';
+import Onboarding from './components/Onboarding.jsx';
 import AssistantBubble from './components/AssistantBubble.jsx';
 import Modal from './components/Modal.jsx';
 import { maybeAutoBackup } from './data/backup.js';
@@ -14,7 +15,7 @@ import { initIAP } from './data/iap.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
-import { setUse24hFormat, setSundayWeekStart, distanceMeters } from './data/helpers.js';
+import { setUse24hFormat, setSundayWeekStart, distanceMeters, todayISO } from './data/helpers.js';
 import { setHapticsEnabled } from './data/haptics.js';
 import { fetchMe, backendConfigured, fetchSyncedData, pushSyncedData, pushAccountabilitySnapshot } from './data/api.js';
 import { buildAccountabilitySnapshot } from './data/accountabilitySnapshot.js';
@@ -899,14 +900,24 @@ export default function App() {
           CLERK_ENABLED is still required underneath it: AssistantBubble calls
           useAuth(), which needs a ClerkProvider above it. */}
       {AI_ENABLED && CLERK_ENABLED && <AssistantBubble />}
-      {showTour && !TOUR_EXEMPT_PATHS.has(location.pathname) && state.settings?.legalAccepted === true && (
-        <Tutorial
-          onDone={() => {
-            setReplayTour(false);
-            actions.setSettings({ tutorialSeen: true });
-          }}
-        />
-      )}
+      {showTour && !TOUR_EXEMPT_PATHS.has(location.pathname) && state.settings?.legalAccepted === true &&
+        (replayTour ? (
+          <Tutorial
+            onDone={() => {
+              setReplayTour(false);
+              actions.setSettings({ tutorialSeen: true });
+            }}
+          />
+        ) : (
+          <Onboarding
+            onStartFresh={() => actions.clearData()}
+            onAddGoals={(templates) => templates.forEach((t) => actions.addGoal({ ...t, createdAt: todayISO() }))}
+            onDone={(path) => {
+              actions.setSettings({ tutorialSeen: true });
+              if (path) navigate(path);
+            }}
+          />
+        ))}
     </div>
   );
 }

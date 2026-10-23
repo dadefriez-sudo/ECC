@@ -10,6 +10,7 @@ import { useTodayResync } from '../data/useTodayResync.js';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import MilestoneCelebration from '../components/MilestoneCelebration.jsx';
 import ObjectivesView from './ObjectivesView.jsx';
+import { GOAL_TEMPLATES } from '../data/goalTemplates.js';
 import { CalmView, StreakView } from '../components/GoalsLayouts.jsx';
 import {
   goalKey,
@@ -38,17 +39,6 @@ import {
   notificationsSupported,
 } from '../data/notifications.js';
 import Icon from '../components/Icon.jsx';
-
-// One tap starting points for the New goal sheet and the empty state, so a new
-// user picks a habit instead of inventing a title, a target and a unit.
-const GOAL_TEMPLATES = [
-  { title: 'Read scripture', period: 'daily', target: 1, unit: 'chapter' },
-  { title: 'Exercise', period: 'daily', target: 30, unit: 'minutes' },
-  { title: 'Drink water', period: 'daily', target: 8, unit: 'glasses' },
-  { title: 'Study', period: 'daily', target: 15, unit: 'minutes' },
-  { title: 'Plan tomorrow tonight', period: 'daily', target: 1, unit: 'time' },
-  { title: 'Text someone you served with', period: 'weekly', target: 2, unit: 'people' },
-];
 
 const emptyGoal = (period) => ({
   title: '',

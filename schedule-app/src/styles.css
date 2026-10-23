@@ -6898,3 +6898,63 @@ body[data-assistant='on'] .conflict-list {
   align-items: center;
   gap: 12px;
 }
+
+/* --- First-run setup (Onboarding) --------------------------------------- */
+.onboarding-card h2 {
+  margin-bottom: 6px;
+}
+.onboard-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  text-align: left;
+}
+.onboard-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.onboard-option strong {
+  font-size: 17px;
+}
+.onboard-option span {
+  font-size: 14px;
+  color: var(--text-muted, var(--muted, #93a0ad));
+}
+.onboard-option em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.onboard-option--rec {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.onboard-chips {
+  margin: 14px 0 18px;
+}
+.template-chip--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.onboard-final {
+  flex-direction: column;
+}
+.onboarding-card {
+  padding-top: 52px;
+}
+.onboarding-card .tutorial-dots {
+  margin-top: 20px;
+}

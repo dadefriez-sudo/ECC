@@ -16,7 +16,7 @@ const STEPS = [
   {
     icon: 'target',
     title: 'Goals',
-    body: 'Track weekly or custom-period goals. Tap a goal to log progress toward it.',
+    body: 'Track daily and weekly habits. Tap the circle to finish a goal, or use the quick buttons for ones with a bigger target.',
   },
   {
     icon: 'calendar',
