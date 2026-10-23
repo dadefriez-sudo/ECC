@@ -37,6 +37,21 @@ const NEW_EVENT_DEFAULTS = {
   repeat: 'none',
 };
 
+// Which locally removed events to also delete on Google. Removing a few is
+// normal. Removing many at once is nearly always "Clear everything", a restored
+// backup, a cloud sync or starting fresh, none of which means "wipe my Google
+// Calendar", so a big batch is held back instead of being pushed.
+export const MAX_AUTO_DELETES = 10;
+export function planDeletes(snapshot, allLocalIds) {
+  const gone = Object.entries(snapshot || {}).filter(([id, prev]) => !allLocalIds.has(id) && prev.googleEventId);
+  const total = Object.keys(snapshot || {}).length || 1;
+  const tooMany = gone.length > MAX_AUTO_DELETES || (gone.length >= 3 && gone.length / total > 0.5);
+  return {
+    deletes: tooMany ? [] : gone.map(([localId, prev]) => ({ localId, action: 'delete', googleEventId: prev.googleEventId })),
+    skipped: tooMany ? gone.map(([id]) => id) : [],
+  };
+}
+
 export async function runGoogleCalendarSync(getToken, state, actions) {
   const snapshot = state.settings?.googleCalendarSyncSnapshot || {};
   const changes = [];
@@ -57,10 +72,10 @@ export async function runGoogleCalendarSync(getToken, state, actions) {
       changes.push({ localId: ev.id, action: 'update', googleEventId: prev.googleEventId, event: pickSyncedFields(ev) });
     }
   }
-  for (const [localId, prev] of Object.entries(snapshot)) {
-    if (!allLocalIds.has(localId) && prev.googleEventId) {
-      changes.push({ localId, action: 'delete', googleEventId: prev.googleEventId });
-    }
+  const { deletes, skipped } = planDeletes(snapshot, allLocalIds);
+  for (const d of deletes) changes.push(d);
+  if (skipped.length) {
+    console.warn(`Google Calendar sync: kept ${skipped.length} events on Google (too many removed here at once).`);
   }
 
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -74,6 +89,9 @@ export async function runGoogleCalendarSync(getToken, state, actions) {
   // and drop anything we deleted, before applying Google's own changes —
   // so a create+immediate-remote-edit in the same cycle merges correctly.
   const nextSnapshot = { ...snapshot };
+  // Events we chose not to delete on Google are simply unlinked, so they are
+  // never deleted later and would come back in if Google is ever fully re-read.
+  for (const id of skipped) delete nextSnapshot[id];
   for (const r of results || []) {
     if (r.deleted) delete nextSnapshot[r.localId];
     else if (r.googleEventId) nextSnapshot[r.localId] = { googleEventId: r.googleEventId, hash: hashEvent(pickSyncedFields(state.events.find((e) => e.id === r.localId) || {})) };

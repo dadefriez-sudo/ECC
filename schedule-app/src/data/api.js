@@ -50,7 +50,12 @@ export const verifyPurchase = (getToken, body) =>
 // { events, contacts } payload for the caller to merge locally, the same
 // way an .ics/.vcf file import already works (see MorePage.jsx).
 export const googleAuthUrl = (getToken) => request('/api/google/auth', { getToken });
-export const importGoogleData = (getToken) => request('/api/google/import', { getToken, method: 'POST' });
+export const importGoogleData = (getToken) =>
+  request('/api/google/import', {
+    getToken,
+    method: 'POST',
+    body: { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+  });
 export const disconnectGoogle = (getToken) => request('/api/google/disconnect', { getToken, method: 'POST' });
 // Ongoing two-way Calendar sync (single events only — see
 // backend/src/routes/google.js's calendar-sync comment), run whenever the

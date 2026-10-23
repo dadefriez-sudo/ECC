@@ -49,6 +49,7 @@ import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js
 import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
 import WeekCard from '../components/WeekCard.jsx';
+import { findExistingContact } from '../data/contactMatch.js';
 import { isBackupShape } from '../data/store.jsx';
 
 const formatHour = (h) => formatTime(`${String(h).padStart(2, '0')}:00`);
@@ -1798,7 +1799,15 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
   // bookkeeping (this one has no concept of a googleEventId snapshot).
   const reimportContacts = async () => {
     try {
-      const { contacts } = await importGoogleData(getToken);
+      const { contacts: fromGoogle } = await importGoogleData(getToken);
+      // Only what isn't already in People: importing again must not duplicate everyone.
+      const have = [...state.contacts];
+      const contacts = [];
+      for (const c of fromGoogle) {
+        if (findExistingContact(have, c)) continue;
+        contacts.push(c);
+        have.push(c);
+      }
       for (const c of contacts) {
         actions.addContact({
           id: uid('c'),
@@ -1814,7 +1823,11 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
           createdAt: todayISO(),
         });
       }
-      showToast(`Imported ${contacts.length} contact${contacts.length === 1 ? '' : 's'} from Google.`);
+      const already = fromGoogle.length - contacts.length;
+      showToast(
+        `Imported ${contacts.length} new contact${contacts.length === 1 ? '' : 's'} from Google` +
+          (already > 0 ? ` (${already} already in People).` : '.')
+      );
     } catch (err) {
       showToast(err.message);
     }

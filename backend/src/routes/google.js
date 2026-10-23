@@ -79,12 +79,27 @@ router.get('/auth', requireUser, (req, res) => {
   res.json({ url });
 });
 
+// What the browser shows after Google's consent screen. From the Android app the
+// consent opens in the phone's browser, so redirecting to the web address would
+// leave the person on a page that has nothing to do with the app. Say what
+// happened and send them back; the web link is there for the browser version.
+function landingPage(ok, webUrl) {
+  const title = ok ? 'Google is connected' : 'Google did not connect';
+  const body = ok
+    ? 'Go back to the Keystone app. Your calendar will start syncing the next time it is open.'
+    : 'Go back to the Keystone app and try connecting again.';
+  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0f141a;color:#f1ece0;font:16px/1.5 system-ui,sans-serif;text-align:center;padding:24px">
+<div><h1 style="font-size:24px;margin:0 0 8px">${title}</h1><p style="color:#97a3af;margin:0 0 20px">${body}</p>
+<a href="${webUrl.replace(/"/g, '&quot;')}" style="color:#e0c15a">Using Keystone in a browser? Continue here</a></div>`;
+}
+
 // Google redirects here after consent. Stores the refresh token and sends
 // the browser back into the app — the frontend picks up from the
 // `?google=connected` query param (see MorePage.jsx).
 router.get('/callback', async (req, res) => {
   const frontend = process.env.FRONTEND_URL || '';
-  const fail = (reason) => res.redirect(`${frontend}/#/more?google=error&reason=${encodeURIComponent(reason)}`);
+  const fail = (reason) => res.type('html').send(landingPage(false, `${frontend}/#/more?google=error&reason=${encodeURIComponent(reason)}`));
 
   if (!getOAuthConfig()) return fail('not_configured');
   const userId = verifyState(req.query.state);
@@ -107,7 +122,7 @@ router.get('/callback', async (req, res) => {
       where: { id: userId },
       data: { googleRefreshToken: encryptToken(tokens.refresh_token), googleConnectedAt: new Date() },
     });
-    res.redirect(`${frontend}/#/more?google=connected`);
+    res.type('html').send(landingPage(true, `${frontend}/#/more?google=connected`));
   } catch (err) {
     console.error('Google OAuth callback failed:', err);
     fail('exchange_failed');
@@ -120,20 +135,44 @@ async function clientForUser(user) {
   return client;
 }
 
+// Google sends event times with a UTC offset, and Keystone stores plain local
+// date and time strings. Convert in the *person's* time zone. This used to use
+// the server's own clock (UTC on most hosts), so a 9:00 AM Mountain event
+// arrived as 3:00 PM, an 8:00 PM one landed on the next day, and the sync then
+// pushed those wrong times back to Google, corrupting the calendar.
+export function localDateTime(raw, timeZone) {
+  const d = new Date(raw);
+  const tz = timeZone || 'UTC';
+  let parts;
+  try {
+    parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(d);
+  } catch {
+    // An unknown time zone name: fall back to UTC rather than failing the sync.
+    return localDateTime(raw, 'UTC');
+  }
+  const get = (t) => parts.find((p) => p.type === t).value;
+  return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` };
+}
+
 // Maps Google Calendar's event shape onto the plain fields Keystone's own
 // .ics importer already produces (data/ics.js's parseICS) — the frontend
 // merges these in exactly the way it merges a parsed .ics file today.
-function mapCalendarEvent(ev) {
+export function mapCalendarEvent(ev, timeZone) {
   const startRaw = ev.start?.dateTime || ev.start?.date;
   const endRaw = ev.end?.dateTime || ev.end?.date;
   if (!startRaw) return null;
   const allDay = !ev.start?.dateTime;
-  const toDateTime = (raw) => {
-    const d = new Date(raw);
-    const date = d.toISOString().slice(0, 10);
-    const time = allDay ? '00:00' : d.toTimeString().slice(0, 5);
-    return { date, time };
-  };
+  const tz = timeZone || ev.start?.timeZone;
+  // An all-day event is a plain calendar date; never push it through a time zone.
+  const toDateTime = (raw) => (allDay ? { date: String(raw).slice(0, 10), time: '00:00' } : localDateTime(raw, tz));
   const start = toDateTime(startRaw);
   const end = endRaw ? toDateTime(endRaw) : start;
   return {
@@ -204,7 +243,7 @@ router.post('/import', requireUser, async (req, res, next) => {
     // linked instead of pushing it back to Google as a duplicate create.
     const events = (eventsRes.data.items || [])
       .map((item) => {
-        const mapped = mapCalendarEvent(item);
+        const mapped = mapCalendarEvent(item, req.body?.timeZone);
         return mapped ? { ...mapped, googleEventId: item.id } : null;
       })
       .filter(Boolean);
@@ -340,7 +379,7 @@ router.post('/calendar-sync', requireUser, async (req, res, next) => {
     const serverChanges = items
       .map((item) => {
         if (item.status === 'cancelled') return { googleEventId: item.id, deleted: true };
-        const mapped = mapCalendarEvent(item);
+        const mapped = mapCalendarEvent(item, timeZone);
         return mapped ? { googleEventId: item.id, event: mapped } : null;
       })
       .filter(Boolean);
