@@ -110,6 +110,13 @@ export default function TasksPage() {
     if (t.repeat && t.repeat !== 'none' && t.dueDate) {
       const nextDueDate = nextTaskDueDate(t.dueDate, t.repeat);
       actions.updateTask({ ...t, done: false, dueDate: nextDueDate, completedDates });
+      // A repeating task un-ticks itself and moves on, so there's no checkbox to
+      // reverse a mistaken tap — offer Undo, which restores the task exactly as
+      // it was (old due date, no extra completion logged).
+      showToast(`Done. Next due ${formatShortDate(nextDueDate)}`, 'Undo', () => {
+        cancelCompletion(t.id);
+        actions.updateTask(t);
+      });
     } else {
       actions.updateTask({ ...t, done: true, completedDates });
     }
