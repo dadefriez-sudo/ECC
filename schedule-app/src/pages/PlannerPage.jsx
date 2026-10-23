@@ -1111,6 +1111,7 @@ const EDGE_ZONE_PX = 30; // how close to the timeline's edge before a drag pages
 // event, scrolling, and picking it up again. These drive an auto-scroll while
 // a drag is armed and held near the top or bottom of the visible timeline.
 const AUTO_SCROLL_ZONE_PX = 78; // how close to an edge before the page starts moving
+const SCHEDULE_SNAP_MIN = 5; // drag/resize step in the schedule-from-calendar picker
 const AUTO_SCROLL_MAX_PX = 15; // per frame at the very edge (~900px/s)
 const SWIPE_THRESHOLD_PX = 60; // horizontal drag distance to swipe-navigate a day/month
 // Duration for the one case a swipe still animates on release: a drag that
@@ -3489,21 +3490,22 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
     const g = dragRef.current;
     if (!g) return;
     const dy = e.clientY - g.startClientY;
-    // Minute-level, not the day timeline's 15-minute snap — scheduling from
-    // the calendar is about landing on an exact time (e.g. a call that
-    // actually starts at 2:05), not roughing in a block.
-    const deltaMin = Math.round(dy / pxPerMin);
+    // 5-minute steps: finer than the day timeline's 15-minute snap (scheduling
+    // from the calendar is about landing near an exact time, e.g. a call at
+    // 2:05) but not minute-by-minute, which was too fiddly to hit by thumb.
+    const snap5 = (m) => Math.round(m / SCHEDULE_SNAP_MIN) * SCHEDULE_SNAP_MIN;
+    const deltaMin = dy / pxPerMin;
     const minStart = dayStart * 60;
     const maxEnd = dayEnd * 60;
     if (g.mode === 'move') {
       const dur = g.startE - g.startS;
-      let nextS = Math.max(minStart, Math.min(maxEnd - dur, g.startS + deltaMin));
+      const nextS = Math.max(minStart, Math.min(maxEnd - dur, snap5(g.startS + deltaMin)));
       commit(nextS, nextS + dur, g.snapRef);
     } else if (g.mode === 'resize-top') {
-      const nextS = Math.max(minStart, Math.min(g.startE - 1, g.startS + deltaMin));
+      const nextS = Math.max(minStart, Math.min(g.startE - SCHEDULE_SNAP_MIN, snap5(g.startS + deltaMin)));
       commit(nextS, g.startE, g.snapRef);
     } else if (g.mode === 'resize-bottom') {
-      const nextE = Math.min(maxEnd, Math.max(g.startS + 1, g.startE + deltaMin));
+      const nextE = Math.min(maxEnd, Math.max(g.startS + SCHEDULE_SNAP_MIN, snap5(g.startE + deltaMin)));
       commit(g.startS, nextE, g.snapRef);
     }
   };
