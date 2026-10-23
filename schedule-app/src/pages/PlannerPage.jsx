@@ -697,13 +697,39 @@ export default function PlannerPage() {
       : mode === 'week'
       ? formatWeekRange(weekStart)
       : formatMonthLabel(monthStart);
+  // Week and Month show how much is on, e.g. "9 events this week".
+  const periodCount = useMemo(() => {
+    if (mode === 'week') {
+      return weekDays(weekStart).reduce((n, d) => n + occurrencesFor(state.events, toISODate(d)).length, 0);
+    }
+    if (mode === 'month') {
+      const month = monthStart.getMonth();
+      return monthGrid(monthStart)
+        .flat()
+        .filter((d) => d.getMonth() === month)
+        .reduce((n, d) => n + occurrencesFor(state.events, toISODate(d)).length, 0);
+    }
+    return 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, state.events, cursor]);
+  const countLabel = `${periodCount} ${periodCount === 1 ? 'event' : 'events'}`;
   const headerSub =
-    mode === 'day' ? (isToday(cursor) ? 'Today' : '') : mode === 'week' ? 'Week' : 'Month';
+    mode === 'day'
+      ? isToday(cursor) ? 'Today' : ''
+      : mode === 'week'
+      ? `${countLabel} this week`
+      : `${countLabel} this month`;
 
   const openDay = (iso) => {
     manualNavRef.current = true;
     setCursor(iso);
     setMode('day');
+  };
+  // Month: the first tap on a day just selects it (its events show under the
+  // grid); tapping the selected day again opens it in Day view.
+  const selectDay = (iso) => {
+    manualNavRef.current = true;
+    setCursor(iso);
   };
 
   // Only computed for the day being looked at — a conflict on some other day
@@ -917,6 +943,8 @@ export default function PlannerPage() {
           events={state.events}
           kindColors={kindColors}
           onOpenDay={openDay}
+          onSelectDay={selectDay}
+          onAdd={(iso) => openNew(iso)}
           onOpen={openView}
           cursor={cursor}
           onSwipe={step}
@@ -1226,7 +1254,12 @@ function DayView({
   // whole point of paging is comparing the same time slot across days)
   // means each new day opens already scrolled that same amount.
   useEffect(() => {
-    getScrollEl()?.scrollTo(0, 0);
+    // Open an hour before the day's first event (rather than at the very
+    // top of an empty morning); a day with no events starts at the top.
+    const starts = occurrencesFor(events, date).filter((e) => e.e2 > e.s).map((e) => e.s);
+    const first = starts.length ? Math.min(...starts) : null;
+    const target = first == null ? 0 : Math.max(0, (first - 60 - dayStart * 60) * pxPerMin);
+    getScrollEl()?.scrollTo(0, target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
   // Brief highlight on the 30-min block a tap-to-create landed on, so the
@@ -1261,6 +1294,32 @@ function DayView({
 
   const nowMins = useMinuteOfDay();
   const showNowLine = isToday(date) && nowMins >= dayStart * 60 && nowMins <= (dayEnd + 1) * 60;
+
+  // The first stretch of 3+ free hours (from now on today, from the start of
+  // the day otherwise), labelled "Free until 2 PM". Purely a hint: the
+  // label ignores taps, so tapping it still adds an event like any empty slot.
+  const freeGap = useMemo(() => {
+    const MIN_FREE = 180;
+    const from = isToday(date) ? Math.max(dayStart * 60, nowMins) : dayStart * 60;
+    const endMin = dayEnd * 60;
+    let at = from;
+    const busy = dayEvents.map((e) => [e.s, e.e2]).sort((a, b) => a[0] - b[0]);
+    for (const [bs, be] of busy) {
+      if (be <= at) continue;
+      if (bs - at >= MIN_FREE) return { start: at, end: bs, from };
+      at = Math.max(at, be);
+    }
+    return endMin - at >= MIN_FREE ? { start: at, end: endMin, from } : null;
+  }, [dayEvents, date, nowMins, dayStart, dayEnd]);
+  const freeGapLabel = freeGap
+    ? freeGap.end >= dayEnd * 60
+      ? freeGap.start === freeGap.from
+        ? 'Free for the rest of the day · tap to add'
+        : `Free after ${formatTime(minutesToTime(freeGap.start))} · tap to add`
+      : freeGap.start === freeGap.from
+      ? `Free until ${formatTime(minutesToTime(freeGap.end))} · tap to add`
+      : `Free ${formatTime(minutesToTime(freeGap.start))} – ${formatTime(minutesToTime(freeGap.end))} · tap to add`
+    : '';
 
   // Resolved against each occurrence's OWN recDate (not whatever `date` is
   // currently on screen) so the group-drag ghost below stays correct across
@@ -1964,7 +2023,11 @@ function DayView({
           }}
         >
           {hours.map((h, i) => (
-            <div className={`hour-row${i === 0 ? ' hour-row--first' : ''}`} key={h} style={{ height: pxPerHour }}>
+            <div
+              className={`hour-row${i === 0 ? ' hour-row--first' : ''}${isToday(date) && (h + 1) * 60 <= nowMins ? ' hour-row--past' : ''}`}
+              key={h}
+              style={{ height: pxPerHour }}
+            >
               <span className="hour-label">{formatTime(`${String(h).padStart(2, '0')}:00`)}</span>
               <div className="hour-line" />
             </div>
@@ -1981,6 +2044,27 @@ function DayView({
               aria-hidden="true"
             >
               <span className="now-line-dot" />
+            </div>
+          )}
+          {/* A sibling rather than a child: the line is semi-transparent,
+              which would trap the label beneath the event blocks. */}
+          {showNowLine && (
+            <span
+              className="now-line-time"
+              style={{ top: (nowMins - dayStart * 60) * pxPerMin - 17 }}
+              aria-hidden="true"
+            >
+              {formatTime(minutesToTime(nowMins))}
+            </span>
+          )}
+
+          {freeGap && (
+            <div
+              className="free-gap"
+              style={{ top: (freeGap.start - dayStart * 60) * pxPerMin + 8 }}
+              aria-hidden="true"
+            >
+              {freeGapLabel}
             </div>
           )}
 
@@ -2079,11 +2163,9 @@ function DayView({
                       {ev.reminder?.length > 0 && <span className="repeat-glyph"> <Icon name="bell" size={13} /></span>}
                     </span>
                     <span className="event-title">{ev.title || 'Untitled'}</span>
-                    {(who || kindLabel) && (
+                    {(who || kindLabel || ev.location) && (
                       <span className="event-who">
-                        {kindLabel}
-                        {who && kindLabel ? ' · ' : ''}
-                        {who}
+                        {[kindLabel, who, ev.location].filter(Boolean).join(' · ')}
                       </span>
                     )}
                   </>
@@ -2397,7 +2479,7 @@ function WeekView({
           <section
             key={iso}
             ref={(el) => (dayRefs.current[iso] = el)}
-            className={`agenda-day${isToday(iso) ? ' agenda-day--today' : ''}${
+            className={`agenda-day${dayEvents.length === 0 ? ' agenda-day--empty' : ''}${isToday(iso) ? ' agenda-day--today' : ''}${
               isDropTarget ? ' agenda-day--drop' : ''
             }`}
           >
@@ -2458,7 +2540,7 @@ function WeekView({
 
 // --- Month grid --------------------------------------------------------------
 
-function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, onSwipe, contacts, statuses, birthdaysEnabled = true }) {
+function MonthView({ monthStart, events, kindColors, onOpenDay, onSelectDay, onAdd, onOpen, cursor, onSwipe, contacts, statuses, birthdaysEnabled = true }) {
   const weeks = monthGrid(monthStart);
   const month = monthStart.getMonth();
   const year = monthStart.getFullYear();
@@ -2468,6 +2550,10 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
   const suppressClickRef = useRef(false);
   const contactColor = useMemo(() => makeContactColor(contacts, statuses), [contacts, statuses]);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const selectedDayEvents = useMemo(
+    () => occurrencesFor(events, cursor).sort((a, b) => a.s - b.s),
+    [events, cursor]
+  );
 
   // Direction of the most recent month change, for the same slide-in
   // treatment the day timeline uses — same reasoning, diffs a comparable
@@ -2525,7 +2611,7 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
   };
 
   return (
-    <>
+    <div className="month-scroll">
     <div
       className="month-grid"
       onPointerDown={swipe.onPointerDown}
@@ -2557,7 +2643,7 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
               <button
                 key={iso}
                 className={`month-cell${inMonth ? '' : ' month-cell--out'}${isToday(iso) ? ' month-cell--today' : ''}${iso === cursor ? ' month-cell--cursor' : ''}`}
-                onClick={() => onOpenDay(iso)}
+                onClick={() => (iso === cursor || !inMonth ? onOpenDay(iso) : onSelectDay(iso))}
               >
                 <span className="month-daynum">{d.getDate()}</span>
                 {markedDates.has(iso) && (
@@ -2582,6 +2668,41 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
       ))}
       </div>
       </div>
+      <section className="month-day">
+        <div className="month-day-head">
+          <span className="month-day-title">{formatDayLabel(cursor)}</span>
+          <span className="muted small">
+            {selectedDayEvents.length} {selectedDayEvents.length === 1 ? 'event' : 'events'}
+          </span>
+          <button className="btn btn-ghost btn-sm" onClick={() => onOpenDay(cursor)}>
+            Open day
+          </button>
+        </div>
+        <div className="agenda-events">
+          {selectedDayEvents.length === 0 ? (
+            <button className="agenda-empty" onClick={() => onAdd(cursor)}>
+              + Add
+            </button>
+          ) : (
+            selectedDayEvents.map((ev) => {
+              const recurring = ev.repeat && ev.repeat !== 'none';
+              return (
+                <button
+                  key={`${ev.id}:${ev.recDate}`}
+                  className={`agenda-chip${ev.done ? ' agenda-chip--done' : ''}`}
+                  style={{ '--ev': eventColor(ev, contactColor, undefined, kindColors) }}
+                  onClick={() => onOpen(ev)}
+                >
+                  <span className="chip-time">{formatTime(ev.start)}</span>
+                  <span className="chip-title">{ev.title || 'Untitled'}</span>
+                  {ev.reminder?.length > 0 && <span className="repeat-glyph"><Icon name="bell" size={13} /></span>}
+                  {recurring && <span className="repeat-glyph"><Icon name={ev.isException ? 'pencil' : 'repeat'} size={13} /></span>}
+                </button>
+              );
+            })
+          )}
+        </div>
+      </section>
       {upcoming.length > 0 && (
         <section className="month-upcoming">
           <button
@@ -2617,7 +2738,7 @@ function MonthView({ monthStart, events, kindColors, onOpenDay, onOpen, cursor, 
           )}
         </section>
       )}
-    </>
+    </div>
   );
 }
 

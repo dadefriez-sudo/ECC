@@ -351,6 +351,7 @@ textarea {
    locked shell. */
 .page--locked > .timeline,
 .page--locked > .agenda,
+.page--locked > .month-scroll,
 .page--locked > .month-grid {
   flex: 1;
   min-height: 0;
@@ -7458,4 +7459,74 @@ body[data-assistant='on'] .conflict-list {
 }
 .contact-list--dir .swipe-row-content {
   background: var(--bg);
+}
+
+/* ---- Planner refresh: tighter header, free-time hint, past hours, month day list ---- */
+.page--locked .week-nav {
+  margin-top: 8px;
+  padding: 2px;
+}
+.page--locked .select-toggle-row {
+  margin-top: 6px;
+}
+.page--locked .select-toggle-row .btn-sm {
+  padding-block: 6px;
+}
+.hour-row--past .hour-label,
+.hour-row--past .hour-line {
+  opacity: 0.5;
+}
+.now-line-time {
+  position: absolute;
+  right: 6px;
+  z-index: 6;
+  pointer-events: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--danger, #d1495b);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+.free-gap {
+  position: absolute;
+  left: 52px;
+  right: 4px;
+  height: 44px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+.agenda-day--empty {
+  align-items: center;
+  padding: 6px 10px;
+}
+.page--locked .month-grid:not(.mini-month-grid) .month-cell {
+  /* A fixed height, not a shorter aspect-ratio: ratio plus the grid's
+     default stretch inflated the columns past the screen edge. */
+  aspect-ratio: auto;
+  height: 44px;
+  min-width: 0;
+}
+.month-day {
+  margin-top: 14px;
+}
+.month-day-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.month-day-title {
+  flex: 1;
+  font-weight: 750;
+  font-size: 16px;
+}
+.month-day .agenda-events {
+  gap: 8px;
 }
