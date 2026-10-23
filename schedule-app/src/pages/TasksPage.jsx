@@ -20,6 +20,20 @@ const TASK_REMINDER_OFFSETS = [
   { mins: 1440, label: '1 day before' },
 ];
 
+// How a due date reads under a task: nothing for today (the section already
+// says so), otherwise "Yesterday", "3 days ago", "Tomorrow", a weekday for the
+// coming week, and a short date beyond that.
+function friendlyDue(iso, today) {
+  if (!iso || iso === today) return '';
+  const day = (d) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
+  const diff = Math.round((day(iso) - day(today)) / 86400000);
+  if (diff === -1) return 'Yesterday';
+  if (diff < 0) return `${-diff} days ago`;
+  if (diff === 1) return 'Tomorrow';
+  if (diff < 7) return new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long' });
+  return formatShortDate(iso);
+}
+
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -41,7 +55,6 @@ export default function TasksPage() {
   const location = useLocation();
   const showToast = useToast();
   const taskCompleteAnim = state.settings?.taskCompleteAnim ?? true;
-  const taskSwipeRefs = useRef(new Map());
   const today = todayISO();
 
   // Only reachable from Home's "See all" link, so the device's own back
@@ -276,13 +289,7 @@ export default function TasksPage() {
 
   const renderTaskRow = (t) => (
     <li key={t.id} className={filingIds.has(t.id) ? 'task-filing' : undefined}>
-      <SwipeToDelete
-        ref={(el) => {
-          if (el) taskSwipeRefs.current.set(t.id, el);
-          else taskSwipeRefs.current.delete(t.id);
-        }}
-        onDelete={() => deleteTaskWithUndo(t)}
-      >
+      <SwipeToDelete onDelete={() => deleteTaskWithUndo(t)}>
         <div className="task-row">
           <button
             className={`task-check${t.done || justCompletedIds.has(t.id) ? ' task-check--on' : ''}${justCompletedIds.has(t.id) && taskCompleteAnim ? ' task-check--pop' : ''}`}
@@ -300,9 +307,9 @@ export default function TasksPage() {
               {t.title}
               {t.repeat && t.repeat !== 'none' && <span className="repeat-glyph"> <Icon name="repeat" size={13} /></span>}
             </span>
-            {(t.location || t.dueDate) && !t.done && (
-              <span className="task-meta muted small">
-                {[t.location, t.dueDate && formatShortDate(t.dueDate)].filter(Boolean).join(' · ')}
+            {!t.done && [t.location, friendlyDue(t.dueDate, today)].some(Boolean) && (
+              <span className={`task-meta muted small${t.dueDate && t.dueDate < today ? ' task-meta--late' : ''}`}>
+                {[t.location, friendlyDue(t.dueDate, today)].filter(Boolean).join(' · ')}
               </span>
             )}
           </button>
@@ -316,13 +323,6 @@ export default function TasksPage() {
               {t.subtasks.filter((s) => s.done).length}/{t.subtasks.length}
             </button>
           )}
-          <button
-            className="icon-btn task-del"
-            onClick={() => taskSwipeRefs.current.get(t.id)?.remove()}
-            aria-label="Delete task"
-          >
-            <Icon name="close" size={16} />
-          </button>
         </div>
       </SwipeToDelete>
       {(t.subtasks || []).length > 0 && expandedTaskIds.has(t.id) && (
@@ -347,6 +347,43 @@ export default function TasksPage() {
 
   const totalOpen = groups.reduce((n, g) => n + g.items.length, 0);
 
+  // "N left today": today's open tasks, with overdue counted alongside. What
+  // was finished today (a repeating task that rolled forward counts too)
+  // fills the ring.
+  const [filter, setFilter] = useState('all');
+  const groupItems = (key) => groups.find((g) => g.key === key)?.items || [];
+  const leftToday = groupItems('today').length;
+  const overdueCount = groupItems('overdue').length;
+  const doneToday = (state.tasks || []).filter((t) => {
+    if (justCompletedIds.has(t.id) || filingIds.has(t.id)) return false;
+    const last = (t.completedDates || [])[(t.completedDates || []).length - 1];
+    const repeating = t.repeat && t.repeat !== 'none';
+    return last === today && (repeating || t.done);
+  }).length;
+  const dayTotal = doneToday + leftToday + overdueCount;
+  const allClear = dayTotal > 0 && leftToday + overdueCount === 0;
+
+  const moveOverdueToToday = () => {
+    const before = groupItems('overdue');
+    if (before.length === 0) return;
+    for (const t of before) actions.updateTask({ ...t, dueDate: today });
+    showToast(
+      `Moved ${before.length} task${before.length === 1 ? '' : 's'} to today`,
+      'Undo',
+      () => before.forEach((t) => actions.updateTask(t))
+    );
+  };
+  const FILTERS = [
+    { key: 'all', label: 'All', n: totalOpen },
+    { key: 'today', label: 'Today', n: leftToday },
+    { key: 'overdue', label: 'Overdue', n: overdueCount },
+    { key: 'upcoming', label: 'Upcoming', n: groupItems('upcoming').length },
+    { key: 'nodate', label: 'No date', n: groupItems('nodate').length },
+  ].filter((f) => f.key === 'all' || f.n > 0);
+  // A filter whose group has since emptied falls back to showing everything.
+  const activeFilter = FILTERS.some((f) => f.key === filter) ? filter : 'all';
+  const shownGroups = activeFilter === 'all' ? groups : groups.filter((g) => g.key === activeFilter);
+
   return (
     <div className="page">
       <header className="page-head">
@@ -355,7 +392,44 @@ export default function TasksPage() {
         </div>
       </header>
 
-      <section className="detail-section">
+      {dayTotal > 0 && (
+        <section className={`detail-section task-progress${allClear ? ' task-progress--clear' : ''}`}>
+          {allClear ? (
+            <>
+              <div className="task-progress-emoji" aria-hidden="true">🎉</div>
+              <strong className="task-progress-title">All done for today</strong>
+              <span className="muted small">
+                {doneToday} of {dayTotal} finished
+              </span>
+            </>
+          ) : (
+            <div className="task-progress-main">
+              <div
+                className="task-progress-ring"
+                style={{ '--p': Math.round((doneToday / dayTotal) * 100) }}
+                aria-hidden="true"
+              >
+                <span>
+                  {doneToday}/{dayTotal}
+                </span>
+              </div>
+              <div className="task-progress-text">
+                <strong className="task-progress-title">
+                  {leftToday === 0 ? 'Nothing else due today' : `${leftToday} left today`}
+                </strong>
+                <span className="muted small">
+                  {overdueCount > 0 ? `Plus ${overdueCount} overdue` : 'Nice and steady.'}
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="task-progress-bar" aria-hidden="true">
+            <i style={{ width: `${Math.round((doneToday / dayTotal) * 100)}%` }} />
+          </div>
+        </section>
+      )}
+
+      <section className="detail-section task-add-card">
         <div className="task-add-row">
           <input
             value={newTaskText}
@@ -377,35 +451,58 @@ export default function TasksPage() {
         </div>
       )}
 
-      {groups.map((g) => (
-        <section className="detail-section" key={g.key}>
-          <div className="section-head">
-            <span className="detail-label">{g.label} · {g.items.length}</span>
-          </div>
-          <ul className="task-list">{g.items.map(renderTaskRow)}</ul>
-        </section>
-      ))}
-
-      {doneTasks.length > 0 && (
-        <section className="detail-section">
-          <ul className="task-list">
-            <li className="task-done-head">
-              <button
-                className={`task-done-toggle${showDone ? ' task-done-toggle--open' : ''}`}
-                onClick={() => setShowDone((v) => !v)}
-                aria-expanded={showDone}
-              >
-                <Icon name="chevronDown" size={15} />
-                Done · {doneTasks.length}
-              </button>
-              <button className="task-done-clear" onClick={clearDoneTasks}>
-                Clear
-              </button>
-            </li>
-            {showDone && doneTasks.map(renderTaskRow)}
-          </ul>
-        </section>
+      {FILTERS.length > 2 && (
+        <div className="chips task-filter-chips">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              className={`chip${activeFilter === f.key ? ' chip--on' : ''}`}
+              onClick={() => setFilter(f.key)}
+            >
+              {f.label} <span className="task-chip-n">{f.n}</span>
+            </button>
+          ))}
+        </div>
       )}
+
+      <div className="tasks-flow">
+        {shownGroups.map((g) => (
+          <section key={g.key} className={`task-group task-group--${g.key}`}>
+            <div className="task-group-head">
+              <span className="detail-label">
+                {g.label} · {g.items.length}
+              </span>
+              {g.key === 'overdue' && (
+                <button className="task-group-action" onClick={moveOverdueToToday}>
+                  Move to today
+                </button>
+              )}
+            </div>
+            <ul className="task-list">{g.items.map(renderTaskRow)}</ul>
+          </section>
+        ))}
+
+        {doneTasks.length > 0 && (
+          <section className="task-group">
+            <ul className="task-list">
+              <li className="task-done-head">
+                <button
+                  className={`task-done-toggle${showDone ? ' task-done-toggle--open' : ''}`}
+                  onClick={() => setShowDone((v) => !v)}
+                  aria-expanded={showDone}
+                >
+                  <Icon name="chevronDown" size={15} />
+                  Done · {doneTasks.length}
+                </button>
+                <button className="task-done-clear" onClick={clearDoneTasks}>
+                  Clear
+                </button>
+              </li>
+              {showDone && doneTasks.map(renderTaskRow)}
+            </ul>
+          </section>
+        )}
+      </div>
 
       <EditorSheet
         open={!!editingTask}
