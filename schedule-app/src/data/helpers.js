@@ -458,6 +458,18 @@ export function goalFreezesLeft(goal, isPro) {
   return Math.max(0, quota - used);
 }
 
+// Overall completion for a set of goals in one period: each goal counts
+// equally (capped at 100%), however big its target. Summing raw targets made a
+// "30 minutes" goal weigh 30 times a "1 time" goal and mixed minutes with
+// glasses, so the percentage meant nothing.
+export function goalCompletion(goals, key) {
+  const live = goals.filter((g) => (g.target || 0) > 0);
+  const frac = (g) => Math.min(1, (g.progress?.[key] || 0) / g.target);
+  const met = live.filter((g) => (g.progress?.[key] || 0) >= g.target).length;
+  const pct = live.length ? Math.round((live.reduce((s, g) => s + frac(g), 0) / live.length) * 100) : 0;
+  return { met, count: live.length, pct };
+}
+
 // The event's "type" is really just its interaction medium — what kind of
 // contact touchpoint it is. An event carries one of these fixed `kind`
 // values directly, which is also how the event detail view knows to surface

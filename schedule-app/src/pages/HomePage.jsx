@@ -16,6 +16,7 @@ import {
   formatShortDate,
   expandEventOnDay,
   computeGoalStreak,
+  goalCompletion,
   nextTaskDueDate,
 } from '../data/helpers.js';
 import { requestNotificationPermission, notificationsSupported } from '../data/notifications.js';
@@ -227,12 +228,7 @@ export default function HomePage() {
   );
   const weeklyGoals = state.goals.filter((g) => (g.period || 'weekly') === 'weekly');
 
-  const ringPct = (goals, key) => {
-    if (goals.length === 0) return 0;
-    const target = goals.reduce((s, g) => s + (g.target || 0), 0);
-    const done = goals.reduce((s, g) => s + Math.min(g.progress?.[key] || 0, g.target || 0), 0);
-    return target ? Math.round((done / target) * 100) : 0;
-  };
+  const ringPct = (goals, key) => goalCompletion(goals, key).pct;
   const dailyPct = ringPct(dailyGoals, dailyKey);
   const weeklyPct = ringPct(weeklyGoals, weekKey(new Date()));
   // Best current streak across every goal — the single most eye-catching

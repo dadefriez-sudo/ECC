@@ -52,9 +52,9 @@ export default function MilestoneCelebration({ celebrate, onDone }) {
           <Icon name="flame" size={30} />
         </span>
         <strong>
-          {celebrate.milestone}-{celebrate.periodLabel} streak!
+          {celebrate.headline || `${celebrate.milestone}-${celebrate.periodLabel} streak!`}
         </strong>
-        <span className="muted">{celebrate.title}</span>
+        <span className="muted">{celebrate.message || celebrate.title}</span>
       </div>
     </div>
   );

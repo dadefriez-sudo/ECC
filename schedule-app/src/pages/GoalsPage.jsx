@@ -23,6 +23,7 @@ import {
   isToday,
   computeGoalStreak,
   goalFreezesLeft,
+  goalCompletion,
   WEEKDAY_LETTERS,
   weeklyPace,
   paceCumulative,
@@ -33,6 +34,17 @@ import {
   notificationsSupported,
 } from '../data/notifications.js';
 import Icon from '../components/Icon.jsx';
+
+// One tap starting points for the New goal sheet and the empty state, so a new
+// user picks a habit instead of inventing a title, a target and a unit.
+const GOAL_TEMPLATES = [
+  { title: 'Read scripture', period: 'daily', target: 1, unit: 'chapter' },
+  { title: 'Exercise', period: 'daily', target: 30, unit: 'minutes' },
+  { title: 'Drink water', period: 'daily', target: 8, unit: 'glasses' },
+  { title: 'Study', period: 'daily', target: 15, unit: 'minutes' },
+  { title: 'Plan tomorrow tonight', period: 'daily', target: 1, unit: 'time' },
+  { title: 'Text someone you served with', period: 'weekly', target: 2, unit: 'people' },
+];
 
 const emptyGoal = (period) => ({
   title: '',
@@ -213,13 +225,36 @@ export default function GoalsPage() {
     clearHold(holdKey);
   };
 
-  const totals = useMemo(() => {
-    const target = goals.reduce((s, g) => s + (g.target || 0), 0);
-    const done = goals.reduce((s, g) => s + Math.min(progressOf(g), g.target || 0), 0);
-    const met = goals.filter((g) => progressOf(g) >= (g.target || 0) && g.target > 0).length;
-    return { target, done, met, pct: target ? Math.round((done / target) * 100) : 0 };
-  }, [goals, key]);
+  const totals = useMemo(() => goalCompletion(goals, key), [goals, key]);
   const shownTotalsPct = useCountUp(totals.pct);
+
+  // "All goals done" moment for today. Fires only on the transition (the last
+  // goal getting finished while you're looking), never just because the page
+  // opened already complete — the ref is reseeded whenever the day or tab
+  // changes, the same way the streak milestones above are.
+  const dayDoneRef = useRef({ key: null, allDone: false });
+  useEffect(() => {
+    const allDone = isDaily && atCurrent && totals.count > 0 && totals.met === totals.count;
+    const prev = dayDoneRef.current;
+    if (prev.key === key && !prev.allDone && allDone) {
+      successTick();
+      setCelebrate({
+        headline: 'All goals done!',
+        message: `${totals.count} of ${totals.count} today. See you tomorrow.`,
+      });
+    }
+    dayDoneRef.current = { key, allDone };
+  }, [key, isDaily, atCurrent, totals.met, totals.count]);
+
+  // Inline "type a number" entry for counter goals (the +/- stepper is slow for
+  // a 30 minute goal).
+  const [typing, setTyping] = useState(null); // { id, value }
+  const commitTyping = () => {
+    if (!typing) return;
+    const n = Math.max(0, Math.round(Number(typing.value) || 0));
+    actions.setGoalProgress(typing.id, key, n);
+    setTyping(null);
+  };
 
   const groups = useMemo(() => {
     const map = new Map();
@@ -274,8 +309,8 @@ export default function GoalsPage() {
     window.history.replaceState({}, '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const openNew = () => {
-    const d = emptyGoal(period);
+  const openNew = (tpl) => {
+    const d = { ...emptyGoal(tpl?.period || period), ...(tpl || {}) };
     setEditing(d);
     initialJsonRef.current = JSON.stringify(d);
     setShowAdvanced(false);
@@ -419,14 +454,16 @@ export default function GoalsPage() {
               {totals.met} of {goals.length} {isDaily ? 'daily' : 'weekly'} goals met
             </strong>
             <span className="muted">
-              {totals.done} of {totals.target} {isDaily ? 'today' : 'this week'}
+              {totals.met === goals.length
+                ? 'All done. Nice work.'
+                : `${goals.length - totals.met} left ${isDaily ? 'today' : 'this week'}`}
             </span>
           </div>
         </section>
       )}
 
       {view === 'habits' && (goals.length === 0 ? (
-        <EmptyState isDaily={isDaily} onAdd={() => openNew()} />
+        <EmptyState isDaily={isDaily} onAdd={() => openNew()} onPick={(t) => openNew(t)} />
       ) : (
         groups.map(([category, list]) => (
           <section key={category} className="goal-group">
@@ -445,8 +482,14 @@ export default function GoalsPage() {
               const freezesLeft = goalFreezesLeft(g, isPro);
               // Freezing only makes sense for the period actually in progress
               // right now — not some other day/week the user has navigated to.
-              const canFreeze = atCurrent && !done && !frozenHere && freezesLeft > 0 && streak >= 1;
-              const outOfFreezes = atCurrent && !done && !frozenHere && freezesLeft === 0 && streak >= 1 && !isPro;
+              // ...and only once the streak is actually in danger: from 6 PM for a
+              // daily goal, from the last two days for a weekly one. Offering it
+              // under every unfinished goal from 8 AM was noise (and anxiety).
+              const atRisk = isDaily
+                ? new Date().getHours() >= 18
+                : Math.round((new Date() - weekStart) / 86400000) >= 5;
+              const canFreeze = atCurrent && atRisk && !done && !frozenHere && freezesLeft > 0 && streak >= 1;
+              const outOfFreezes = atCurrent && atRisk && !done && !frozenHere && freezesLeft === 0 && streak >= 1 && !isPro;
               return (
                 <div key={g.id}>
                   <div className={`goal-card${done ? ' goal-card--done' : ''}`}>
@@ -491,6 +534,18 @@ export default function GoalsPage() {
                         <AnimatedNumber value={value} /> / {g.target} {g.unit}
                       </span>
                     </button>
+                    {g.target === 1 ? (
+                      // A yes/no goal needs a check, not a -/+ stepper.
+                      <button
+                        className={`goal-check${done ? ' goal-check--on' : ''}`}
+                        data-haptic={done ? 'select' : 'none'}
+                        onClick={() => applyDelta(g.id, key, done ? -1 : 1)}
+                        aria-label={done ? `Undo ${g.title}` : `Mark ${g.title} done`}
+                        aria-pressed={done}
+                      >
+                        {done && <Icon name="check" size={20} />}
+                      </button>
+                    ) : (
                     <div className="stepper">
                       <button
                         className="step-btn"
@@ -532,7 +587,43 @@ export default function GoalsPage() {
                         +
                       </button>
                     </div>
+                    )}
                   </div>
+                  {g.target >= 10 && !done && (
+                    <div className="quick-chips">
+                      {typing?.id === g.id ? (
+                        <>
+                          <input
+                            className="quick-input"
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            autoFocus
+                            value={typing.value}
+                            onChange={(e) => setTyping({ id: g.id, value: e.target.value })}
+                            onKeyDown={(e) => e.key === 'Enter' && commitTyping()}
+                            aria-label={`Set ${g.title} progress`}
+                          />
+                          <button className="quick-chip quick-chip--go" onClick={commitTyping}>Set</button>
+                          <button className="quick-chip" onClick={() => setTyping(null)}>Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <button className="quick-chip" onClick={() => applyDelta(g.id, key, 5)}>+5</button>
+                          {g.target >= 20 && (
+                            <button className="quick-chip" onClick={() => applyDelta(g.id, key, 10)}>+10</button>
+                          )}
+                          <button className="quick-chip" onClick={() => setTyping({ id: g.id, value: String(value) })}>Type</button>
+                          <button
+                            className="quick-chip quick-chip--go"
+                            onClick={() => actions.setGoalProgress(g.id, key, g.target)}
+                          >
+                            Done
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                   {!isDaily && objectivesByGoal.get(g.id)?.length > 0 && (
                     <div className="objective-linked">
                       {objectivesByGoal.get(g.id).map((o) => (
@@ -559,7 +650,7 @@ export default function GoalsPage() {
                       data-haptic="select"
                       onClick={() => useFreeze(g, key)}
                     >
-                      <Icon name="snowflake" size={15} /> Use a streak freeze to protect {isDaily ? 'today' : 'this week'} ({freezesLeft} left this month)
+                      <Icon name="snowflake" size={15} /> Protect your streak with a freeze ({freezesLeft} left this month)
                     </button>
                   )}
                   {outOfFreezes && (
@@ -573,6 +664,8 @@ export default function GoalsPage() {
           </section>
         ))
       ))}
+
+      {view === 'habits' && goals.length > 0 && <div className="fab-spacer" aria-hidden="true" />}
 
       {view === 'habits' && (
         <button className="fab" onClick={() => openNew()} aria-label="New goal">
@@ -609,6 +702,15 @@ export default function GoalsPage() {
                 placeholder="e.g. Drink water"
               />
             </label>
+            {!editing.id && !editing.title && (
+              <div className="template-chips template-chips--sheet">
+                {GOAL_TEMPLATES.map((t) => (
+                  <button key={t.title} type="button" className="template-chip" onClick={() => setEditing({ ...editing, ...t })}>
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            )}
             {editing.id && (
               <button
                 type="button"
@@ -838,7 +940,7 @@ function WeekPace({ goal, value, weekStart, atCurrent, expanded, onToggle, onSet
   );
 }
 
-function EmptyState({ isDaily, onAdd }) {
+function EmptyState({ isDaily, onAdd, onPick }) {
   return (
     <div className="empty">
       <div className="empty-icon"><Icon name="target" size={48} /></div>
@@ -848,6 +950,13 @@ function EmptyState({ isDaily, onAdd }) {
           ? 'Track small daily habits like water, reading, or steps. Your progress resets fresh each day.'
           : 'Set weekly targets, like workouts or people to reach out to, and watch your progress build across the week.'}
       </p>
+      <div className="template-chips">
+        {GOAL_TEMPLATES.filter((t) => t.period === (isDaily ? 'daily' : 'weekly')).map((t) => (
+          <button key={t.title} className="template-chip" onClick={() => onPick(t)}>
+            {t.title}
+          </button>
+        ))}
+      </div>
       <button className="btn btn-primary" onClick={onAdd}>
         + New goal
       </button>

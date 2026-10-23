@@ -6579,3 +6579,81 @@ body[data-assistant='on'] .conflict-list {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* --- Goals quick wins: one tap check, quick-add chips, templates --------- */
+.goal-check {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text) 35%, transparent);
+  background: transparent;
+  color: var(--accent-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.goal-check:active {
+  transform: scale(0.92);
+}
+.goal-check--on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.quick-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 2px 2px;
+  flex-wrap: wrap;
+}
+.quick-chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.quick-chip--go {
+  margin-left: auto;
+  color: var(--text);
+}
+.quick-input {
+  width: 90px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+}
+.template-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 14px 0 16px;
+}
+.template-chips--sheet {
+  justify-content: flex-start;
+  margin: 0;
+}
+.template-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+.fab-spacer {
+  height: 72px;
+}
