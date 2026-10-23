@@ -945,7 +945,7 @@ export default function HomePage() {
             </button>
             <button
               className="icon-btn"
-              onClick={() => (isPro ? setEditMode((v) => !v) : navigate('/pricing'))}
+              onClick={() => setEditMode((v) => !v)}
               aria-label={editMode ? 'Done editing home screen' : 'Edit home screen'}
               title={editMode ? 'Done' : 'Edit home screen'}
             >
@@ -958,39 +958,51 @@ export default function HomePage() {
       {editMode ? (
         <section className="detail-section">
           <span className="detail-label">Customize home screen</span>
-          <p className="muted small">Drag to reorder, toggle off to hide. Tap Done above when finished.</p>
+          <p className="muted small">
+            Pick a layout{isPro ? ', drag blocks to reorder (Classic), or toggle them off to hide' : ''}. Tap Done above when finished.
+          </p>
           <p className="muted small">Home layout</p>
           <div className="seg seg--full">
             {HOME_STYLES.map((o) => (
               <button
                 key={o.value}
                 className={`seg-btn${homeStyle === o.value ? ' seg-btn--on' : ''}`}
-                onClick={() => actions.setSettings({ homeStyle: o.value })}
+                onClick={() =>
+                  o.value === 'bento' && !isPro ? navigate('/pricing') : actions.setSettings({ homeStyle: o.value })
+                }
               >
-                {o.label}
+                {o.label} {o.value === 'bento' && !isPro && <Icon name="lock" size={13} />}
               </button>
             ))}
           </div>
-          <p className="muted small">Goals block style</p>
-          <div className="seg seg--full">
-            {[
-              { value: 'rings', label: 'Rings' },
-              { value: 'compact', label: 'Top goals' },
-            ].map((o) => (
-              <button
-                key={o.value}
-                className={`seg-btn${(goalsCompact ? 'compact' : 'rings') === o.value ? ' seg-btn--on' : ''}`}
-                onClick={() => actions.setSettings({ homeGoalsStyle: o.value })}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-          <ReorderToggleList
-            items={homeBlocks}
-            types={HOME_BLOCK_TYPES}
-            onChange={(next) => actions.setSettings({ homeBlocks: next })}
-          />
+          {isPro ? (
+            <>
+            <p className="muted small">Goals block style</p>
+            <div className="seg seg--full">
+              {[
+                { value: 'rings', label: 'Rings' },
+                { value: 'compact', label: 'Top goals' },
+              ].map((o) => (
+                <button
+                  key={o.value}
+                  className={`seg-btn${(goalsCompact ? 'compact' : 'rings') === o.value ? ' seg-btn--on' : ''}`}
+                  onClick={() => actions.setSettings({ homeGoalsStyle: o.value })}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <ReorderToggleList
+              items={homeBlocks}
+              types={HOME_BLOCK_TYPES}
+              onChange={(next) => actions.setSettings({ homeBlocks: next })}
+            />
+            </>
+          ) : (
+            <button className="btn btn-ghost full" onClick={() => navigate('/pricing')}>
+              <Icon name="lock" size={14} /> Reorder and hide blocks with Pro
+            </button>
+          )}
         </section>
       ) : isEmptyHome ? (
         <p className="muted center-pad">{emptyHomeMessage}</p>
