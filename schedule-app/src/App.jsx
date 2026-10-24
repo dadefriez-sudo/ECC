@@ -18,7 +18,7 @@ import { runReminderScan, notify, notificationPermission, scheduleNativeReminder
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
 import { setUse24hFormat, setSundayWeekStart, distanceMeters, todayISO } from './data/helpers.js';
-import { setHapticsLevel, getHapticsLevel } from './data/haptics.js';
+import { setHapticsLevel, getHapticsLevel, pickTick } from './data/haptics.js';
 import {
   fetchMe,
   backendConfigured,
@@ -768,8 +768,17 @@ export default function App() {
       // with its own haptics (see PlannerPage) — a delegated tap here on every
       // press would double up with (and pre-empt) that feedback.
       if (el.classList.contains('event-block')) return;
+      // Tabs and segmented controls: a deliberate choice, so one light tick
+      // (never when tapping the one that is already selected).
+      if (el.classList.contains('tab') || el.classList.contains('seg-btn')) {
+        if (!el.classList.contains('tab--active') && !el.classList.contains('seg-btn--on')) pickTick();
+        return;
+      }
       if (el.getAttribute('role') === 'switch') {
-        if (quiet) return;
+        if (quiet) {
+          pickTick();
+          return;
+        }
         // Direction-aware: turning a setting ON is a firmer confirm, turning
         // it OFF is the lighter routine tap — instead of every switch in
         // Settings feeling identical regardless of which way it flipped.

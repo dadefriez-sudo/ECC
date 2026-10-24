@@ -783,7 +783,7 @@ export default function MorePage() {
         <div className="seg seg--full">
           {[
             { value: 'off', label: 'Off' },
-            { value: 'essential', label: 'Essential' },
+            { value: 'essential', label: 'Subtle' },
             { value: 'full', label: 'Full' },
           ].map((o) => (
             <button
@@ -800,7 +800,7 @@ export default function MorePage() {
             ? 'No vibration anywhere.'
             : hapticsLevel === 'full'
             ? 'A tick for nearly every tap, toggle and drag.'
-            : 'Only for the moments that matter: finishing a task or goal, deleting, saving.'}
+            : 'A light tick for tabs and switches, a soft tap when you save or check something off, and a fuller pulse when you finish a task or goal.'}
         </p>
       </SettingsGroup>
       <SettingsGroup {...grp('g20')}>

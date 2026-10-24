@@ -10,10 +10,18 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 const isNative = Capacitor.isNativePlatform();
 const webSupported = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 
-// off: nothing. essential (the default): only the moments that matter, such
-// as finishing a task or goal, deleting or discarding, saving, and a
-// long-press arming. full: the original behavior, a tick for nearly every
-// tap, toggle and drag step.
+// Three levels:
+//   off        nothing.
+//   essential  (the default, shown as "Subtle") a small vocabulary used with
+//              restraint, one feel per kind of moment:
+//                pick     the lightest tick, for a deliberate choice: a tab,
+//                         a segmented control, a switch
+//                confirm  a soft tap when something is saved or checked off
+//                success  the one fuller pulse, for finishing a task or goal
+//                warn     a double pulse for deleting or discarding
+//              Nothing fires for routine taps, scrolling, or drag steps.
+//   full       the original behavior: a tick for nearly every tap and drag
+//              step, with firmer confirms.
 let level = 'essential';
 export function setHapticsLevel(v) {
   level = v === 'off' || v === 'full' ? v : 'essential';
@@ -73,8 +81,12 @@ export function tapTick() {
 // Slightly firmer pulse for a committed action: save, add, toggle on.
 export function confirmTick() {
   if (level === 'off' || !throttled(level === 'full' ? MIN_INTERVAL_MS : ESSENTIAL_CONFIRM_GAP_MS)) return;
-  if (isNative) return fireNative(() => Haptics.impact({ style: ImpactStyle.Medium }));
-  fireWeb(14);
+  // Subtle uses a light impact, so a save or check-off is a soft tap rather
+  // than a thump; only Full keeps the firmer medium one.
+  if (isNative) {
+    return fireNative(() => Haptics.impact({ style: level === 'full' ? ImpactStyle.Medium : ImpactStyle.Light }));
+  }
+  fireWeb(level === 'full' ? 14 : 10);
 }
 
 // Two-pulse pattern for a destructive action: delete, discard.
@@ -91,6 +103,15 @@ export function warnTick() {
 // the one-shot impact() used above.
 export function selectTick() {
   if (level !== 'full' || !throttled()) return;
+  if (isNative) return fireNative(() => Haptics.selectionChanged());
+  fireWeb(5);
+}
+
+// The lightest tick, for a deliberate choice that changes what you see: a
+// tab, a segmented control, a switch. Unlike selectTick (continuous drag
+// stepping, Full only) this is allowed in Subtle, and only ever once per tap.
+export function pickTick() {
+  if (level === 'off' || !throttled(level === 'full' ? MIN_INTERVAL_MS : 120)) return;
   if (isNative) return fireNative(() => Haptics.selectionChanged());
   fireWeb(5);
 }
