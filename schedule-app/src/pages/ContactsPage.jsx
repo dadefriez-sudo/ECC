@@ -13,6 +13,7 @@ import { syncContactAddressPin } from '../data/geocode.js';
 import { parseVCard, generateVCard } from '../data/vcard.js';
 import { useDeleteContactWithUndo } from '../data/useDeleteContact.js';
 import { useToast } from '../data/toast.jsx';
+import { selectTick } from '../data/haptics.js';
 
 // Overdue logic lives in data/reconnect.js now — it needs the interaction
 // list and a settings flag, not just a day count. Re-exported here so the
@@ -33,6 +34,30 @@ import ImportAddressReview from '../components/ImportAddressReview.jsx';
 // rather than a separate branch: '0000-00-00' reads as earliest, so a
 // contact with no createdAt/lastContacted naturally lands last in a
 // newest-first sort instead of needing its own case.
+// The A-Z list. People are ordered by first name by default (or by last name,
+// a setting), ignoring case and accents, with anything that does not start
+// with a letter (a number, a symbol) collected under # at the end.
+const stripAccents = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+function nameSortKey(name, order) {
+  const n = (name || '').trim();
+  if (order !== 'last') return n;
+  const parts = n.split(/\s+/);
+  return parts.length < 2 ? n : `${parts[parts.length - 1]} ${parts.slice(0, -1).join(' ')}`;
+}
+function letterFromKey(key) {
+  const ch = stripAccents((key || '#').trim().charAt(0)).toUpperCase();
+  return /[A-Z]/.test(ch) ? ch : '#';
+}
+const nameComparator = (order) => (a, b) => {
+  const ka = nameSortKey(a.name, order);
+  const kb = nameSortKey(b.name, order);
+  const la = letterFromKey(ka) === '#';
+  const lb = letterFromKey(kb) === '#';
+  if (la !== lb) return la ? 1 : -1;
+  return ka.localeCompare(kb, undefined, { sensitivity: 'base' });
+};
+const ALPHABET = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
+
 const CONTACT_SORTS = {
   name: (a, b) => a.name.localeCompare(b.name),
   added: (a, b) => (b.createdAt || '0000-00-00').localeCompare(a.createdAt || '0000-00-00'),
@@ -160,6 +185,7 @@ export default function ContactsPage() {
 
   const favoriteCount = useMemo(() => state.contacts.filter((c) => c.favorite).length, [state.contacts]);
 
+  const nameOrder = state.settings?.contactNameOrder === 'last' ? 'last' : 'first';
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return state.contacts
@@ -179,8 +205,8 @@ export default function ContactsPage() {
             (c.notes || '').toLowerCase().includes(q)
           : true
       )
-      .sort(CONTACT_SORTS[sortMode] || CONTACT_SORTS.name);
-  }, [state.contacts, query, filter, groupFilters, isOverdue, sortMode]);
+      .sort(sortMode === 'name' ? nameComparator(nameOrder) : CONTACT_SORTS[sortMode] || CONTACT_SORTS.name);
+  }, [state.contacts, query, filter, groupFilters, isOverdue, sortMode, nameOrder]);
 
   const showBanner = !query.trim() && filter === '' && groupFilters.size === 0 && overdue.length > 0;
 
@@ -190,8 +216,8 @@ export default function ContactsPage() {
   // behind the button beside the search box.
   const noFilters = !query.trim() && filter === '' && groupFilters.size === 0;
   const favorites = useMemo(
-    () => state.contacts.filter((c) => c.favorite).sort(CONTACT_SORTS.name).slice(0, 12),
-    [state.contacts]
+    () => state.contacts.filter((c) => c.favorite).sort(nameComparator(nameOrder)).slice(0, 12),
+    [state.contacts, nameOrder]
   );
   const showFavRow = noFilters && !selectMode && favorites.length > 0;
   const filtersActive = filter !== '' || groupFilters.size > 0 || sortMode !== 'name';
@@ -204,12 +230,19 @@ export default function ContactsPage() {
       ? 'Favorites'
       : '';
   const byLetter = sortMode === 'name' && filter !== '__overdue';
-  const letterOf = (name) => {
-    const ch = (name || '#').trim().charAt(0).toUpperCase();
-    return /[A-Z]/.test(ch) ? ch : '#';
-  };
-  const letters = useMemo(() => [...new Set(filtered.map((c) => letterOf(c.name)))], [filtered]);
-  const showIndex = filtered.length >= 15 && letters.length >= 4;
+  const letterOf = (c) => letterFromKey(nameSortKey(c.name, nameOrder));
+  // Rows grouped under their letter, A to Z then #.
+  const groups = useMemo(() => {
+    const map = new Map();
+    for (const c of filtered) {
+      const l = letterFromKey(nameSortKey(c.name, nameOrder));
+      if (!map.has(l)) map.set(l, []);
+      map.get(l).push(c);
+    }
+    return ALPHABET.filter((l) => map.has(l)).map((l) => ({ letter: l, items: map.get(l) }));
+  }, [filtered, nameOrder]);
+  const presentLetters = useMemo(() => new Set(groups.map((g) => g.letter)), [groups]);
+  const showIndex = filtered.length >= 12 && groups.length >= 3;
 
   const initialAddJsonRef = useRef('');
   const startAdd = () => {
@@ -366,6 +399,69 @@ export default function ContactsPage() {
     setImportGroupPrompt(null);
   };
 
+  // The letter headings stick just under the page header while you scroll, so
+  // it needs the header's real height (it changes with filters and select mode).
+  useEffect(() => {
+    const head = document.querySelector('.page-head');
+    if (!head) return undefined;
+    const set = () => document.documentElement.style.setProperty('--people-head-h', `${Math.round(head.getBoundingClientRect().height)}px`);
+    set();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(set) : null;
+    ro?.observe(head);
+    return () => {
+      ro?.disconnect();
+      document.documentElement.style.removeProperty('--people-head-h');
+    };
+  }, []);
+
+  const renderContactRow = (c) => {
+    const st = statusById[c.statusId];
+    const over = isOverdue(c);
+    const isSel = selected.has(c.id);
+    return (
+      <li key={c.id}>
+        <SwipeRow
+          disabled={selectMode}
+          swipeRight={swipeFor(swipeRightKey, c)}
+          swipeLeft={swipeFor(swipeLeftKey, c)}
+        >
+          <div className="contact-row-inner">
+            <button
+              className="contact-row"
+              onClick={() => (selectMode ? toggleSelected(c.id) : navigate(`/contacts/${c.id}`))}
+            >
+              {selectMode && <span className={`select-dot${isSel ? ' select-dot--on' : ''}`} />}
+              <span className="avatar-slot">
+                <Avatar name={c.name} photo={c.photo} color={st?.color} size={iconSize} />
+                {over && <span className="overdue-dot" aria-hidden="true" />}
+              </span>
+              <span className="contact-main">
+                <span className="contact-name">
+                  {c.name}
+                  {over && filter !== '__overdue' && <span className="overdue-tag">Reconnect</span>}
+                </span>
+                <span className="contact-sub muted">
+                  {st && <span className="dot-badge" style={{ color: st.color }}>{st.label}</span>}
+                  {st && ' · '}
+                  Last: {daysAgoLabel(c.lastContacted)}
+                </span>
+              </span>
+              {!selectMode && !(filter === '__overdue') && <Chevron />}
+            </button>
+            {!selectMode && filter === '__overdue' && (
+              <button
+                className="btn btn-ghost btn-sm reconnect-log"
+                onClick={() => actions.updateContact({ ...c, lastContacted: todayISO() })}
+              >
+                <Icon name="check" size={15} /> Log
+              </button>
+            )}
+          </div>
+        </SwipeRow>
+      </li>
+    );
+  };
+
   return (
     <div className="page">
       <header className="page-head">
@@ -454,75 +550,23 @@ export default function ContactsPage() {
       ) : filtered.length === 0 ? (
         <p className="muted center-pad">No one matches that search.</p>
       ) : (
-        <ul className={`contact-list${byLetter ? ' contact-list--dir' : ''}`}>
-          {filtered.map((c, idx) => {
-            const st = statusById[c.statusId];
-            const over = isOverdue(c);
-            const isSel = selected.has(c.id);
-            const letter = letterOf(c.name);
-            const newLetter = byLetter && (idx === 0 || letterOf(filtered[idx - 1].name) !== letter);
-            return (
-              <li key={c.id}>
-                {newLetter && (
-                  <div className="people-letter" id={`pl-${letter}`}>
-                    {letter}
-                  </div>
-                )}
-                <SwipeRow
-                  disabled={selectMode}
-                  swipeRight={swipeFor(swipeRightKey, c)}
-                  swipeLeft={swipeFor(swipeLeftKey, c)}
-                >
-                  <div className="contact-row-inner">
-                    <button
-                      className="contact-row"
-                      onClick={() => (selectMode ? toggleSelected(c.id) : navigate(`/contacts/${c.id}`))}
-                    >
-                      {selectMode && <span className={`select-dot${isSel ? ' select-dot--on' : ''}`} />}
-                      <span className="avatar-slot">
-                        <Avatar name={c.name} photo={c.photo} color={st?.color} size={iconSize} />
-                        {over && <span className="overdue-dot" aria-hidden="true" />}
-                      </span>
-                      <span className="contact-main">
-                        <span className="contact-name">
-                          {c.name}
-                          {over && filter !== '__overdue' && <span className="overdue-tag">Reconnect</span>}
-                        </span>
-                        <span className="contact-sub muted">
-                          {st && <span className="dot-badge" style={{ color: st.color }}>{st.label}</span>}
-                          {st && ' · '}
-                          Last: {daysAgoLabel(c.lastContacted)}
-                        </span>
-                      </span>
-                      {!selectMode && !(filter === '__overdue') && <Chevron />}
-                    </button>
-                    {!selectMode && filter === '__overdue' && (
-                      <button
-                        className="btn btn-ghost btn-sm reconnect-log"
-                        onClick={() => actions.updateContact({ ...c, lastContacted: todayISO() })}
-                      >
-                        <Icon name="check" size={15} /> Log
-                      </button>
-                    )}
-                  </div>
-                </SwipeRow>
-              </li>
-            );
-          })}
+        <ul className={`contact-list${byLetter ? ' contact-list--dir contact-list--groups' : ''}`}>
+          {byLetter
+            ? groups.map((g) => (
+                <li key={g.letter} className="people-group" id={`pl-${g.letter}`}>
+                  <div className="people-letter">{g.letter}</div>
+                  <ul className="contact-list contact-list--dir">{g.items.map(renderContactRow)}</ul>
+                </li>
+              ))
+            : filtered.map(renderContactRow)}
         </ul>
       )}
 
       {byLetter && showIndex && !selectMode && (
-        <nav className="people-index" aria-label="Jump to letter">
-          {letters.map((l) => (
-            <button
-              key={l}
-              onClick={() => document.getElementById(`pl-${l}`)?.scrollIntoView({ block: 'start' })}
-            >
-              {l}
-            </button>
-          ))}
-        </nav>
+        <AlphabetRail
+          present={presentLetters}
+          onJump={(l) => document.getElementById(`pl-${l}`)?.scrollIntoView({ block: 'start' })}
+        />
       )}
 
       <Modal
@@ -593,6 +637,25 @@ export default function ContactsPage() {
             <span>Sort</span>
             <Select value={sortMode} onChange={setSortMode} options={SORT_OPTIONS} />
           </div>
+          {sortMode === 'name' && (
+            <div className="field">
+              <span>Order names by</span>
+              <div className="seg seg--full">
+                {[
+                  { value: 'first', label: 'First name' },
+                  { value: 'last', label: 'Last name' },
+                ].map((o) => (
+                  <button
+                    key={o.value}
+                    className={`seg-btn${nameOrder === o.value ? ' seg-btn--on' : ''}`}
+                    onClick={() => actions.setSettings({ contactNameOrder: o.value })}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {state.contacts.length > 0 && (
             <button
               className="btn btn-ghost full"
@@ -771,6 +834,60 @@ export default function ContactsPage() {
         )}
       </EditorSheet>
     </div>
+  );
+}
+
+// The side rail: all 26 letters and #, dimmed when nobody starts with that
+// letter. Tap a letter, or drag a finger along the rail to scrub through the
+// list; a bubble shows the letter you are on. A letter with nobody under it
+// jumps to the next one that has someone.
+function AlphabetRail({ present, onJump }) {
+  const railRef = useRef(null);
+  const [active, setActive] = useState(null);
+  const lastRef = useRef(null);
+
+  const letterAt = (clientY) => {
+    const r = railRef.current.getBoundingClientRect();
+    const i = Math.max(0, Math.min(ALPHABET.length - 1, Math.floor(((clientY - r.top) / r.height) * ALPHABET.length)));
+    return ALPHABET[i];
+  };
+  const go = (clientY) => {
+    const letter = letterAt(clientY);
+    if (letter === lastRef.current) return;
+    lastRef.current = letter;
+    setActive(letter);
+    const from = ALPHABET.indexOf(letter);
+    const target = ALPHABET.slice(from).find((l) => present.has(l)) || [...ALPHABET].reverse().find((l) => present.has(l));
+    if (target) onJump(target);
+    selectTick();
+  };
+  const end = () => {
+    lastRef.current = null;
+    setTimeout(() => setActive(null), 350);
+  };
+
+  return (
+    <>
+      {active && <div className="people-index-bubble" aria-hidden="true">{active}</div>}
+      <nav
+        ref={railRef}
+        className="people-index"
+        aria-label="Jump to letter"
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+          go(e.clientY);
+        }}
+        onPointerMove={(e) => e.buttons !== 0 && go(e.clientY)}
+        onPointerUp={end}
+        onPointerCancel={end}
+      >
+        {ALPHABET.map((l) => (
+          <span key={l} className={`people-index-l${present.has(l) ? '' : ' people-index-l--off'}${active === l ? ' people-index-l--on' : ''}`}>
+            {l}
+          </span>
+        ))}
+      </nav>
+    </>
   );
 }
 

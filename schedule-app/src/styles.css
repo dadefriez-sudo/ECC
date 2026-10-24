@@ -8007,3 +8007,83 @@ body[data-assistant='on'] .conflict-list {
 .fav-toggle--on svg path {
   fill: currentColor;
 }
+
+/* ---- People A-Z list v2: grouped sections with sticky letters, full rail ---- */
+.contact-list--groups {
+  gap: 0;
+}
+.people-group {
+  scroll-margin-top: var(--people-head-h, 0px);
+}
+.contact-list--groups > .people-group > .contact-list {
+  margin-top: 0;
+}
+.people-letter {
+  position: sticky;
+  top: var(--people-head-h, 0px);
+  z-index: 3;
+  margin: 0;
+  padding: 8px 4px 6px;
+  background: var(--bg);
+  scroll-margin-top: var(--people-head-h, 0px);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+}
+.people-index {
+  position: fixed;
+  right: 0;
+  top: calc(var(--people-head-h, 120px) + 12px);
+  /* Ends above the floating + button so the last letters stay reachable. */
+  bottom: calc(var(--tabbar-h) + var(--saib) + 88px);
+  z-index: 6;
+  transform: none;
+  width: 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.people-index-l {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent);
+  width: 100%;
+  text-align: center;
+}
+.people-index-l--off {
+  opacity: 0.28;
+}
+.people-index-l--on {
+  color: var(--text);
+  transform: scale(1.35);
+}
+.people-index-bubble {
+  position: fixed;
+  right: 46px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 7;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  font-weight: 800;
+  box-shadow: var(--shadow-lg, 0 10px 28px rgba(0, 0, 0, 0.3));
+  pointer-events: none;
+}
+/* Leave room on the right of the rows for the rail. */
+.contact-list--groups .contact-row-inner {
+  padding-right: 22px;
+}
