@@ -15,6 +15,7 @@ import { maybeAutoBackup } from './data/backup.js';
 import { checkForUpdate, completeUpdate } from './data/appUpdate.js';
 import { initIAP } from './data/iap.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
+import { registerNotificationActions, listenForNotificationActions } from './data/notificationActions.js';
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
 import { setUse24hFormat, setSundayWeekStart, distanceMeters, todayISO } from './data/helpers.js';
@@ -649,6 +650,13 @@ export default function App() {
   // mounted.
   const locationRef = useRef(location);
   locationRef.current = location;
+  // Buttons on reminder notifications (Mark done, Log +1, Snooze), and opening
+  // a screen when a notification that names one is tapped.
+  useEffect(() => {
+    registerNotificationActions();
+    return listenForNotificationActions(() => ({ state: stateRef.current, actions, navigate }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     // Refreshes the day's native-scheduled reminders (see notifications.js)
     // on the same cadence as the foreground scan below — a no-op on the web

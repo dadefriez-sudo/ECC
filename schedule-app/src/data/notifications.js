@@ -21,6 +21,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { todayISO, timeToMinutes, matchesRule, formatTime, addDays, toISODate, formatShortDate, startOfWeek } from './helpers.js';
 import { contactDatesOn, contactDateLabel } from './contactDates.js';
 import { REVIEW_FROM_HOUR } from './weeklyReview.js';
+import { ACTION_TYPE } from './notificationActions.js';
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -331,7 +332,14 @@ export async function scheduleNativeReminders(state) {
     for (const time of g.reminder?.times || []) {
       const due = timeToMinutes(time);
       if (due < nowMin) continue;
-      upcoming.push({ key: `goal:${g.id}:${time}:${today}`, title: 'Goal reminder', body: `Time for: ${g.title}`, at: due });
+      upcoming.push({
+        key: `goal:${g.id}:${time}:${today}`,
+        title: 'Goal reminder',
+        body: `Time for: ${g.title}`,
+        at: due,
+        actionTypeId: ACTION_TYPE.goal,
+        extra: { kind: 'goal', id: g.id },
+      });
     }
   }
 
@@ -347,6 +355,8 @@ export async function scheduleNativeReminders(state) {
         title: e.title || 'Upcoming event',
         body: `Starts at ${formatTime(e.start)}${lead ? ` · in ${lead} min` : ''}`,
         at: trigger,
+        actionTypeId: ACTION_TYPE.event,
+        extra: { kind: 'event', id: e.id },
       });
     }
   }
@@ -370,6 +380,8 @@ export async function scheduleNativeReminders(state) {
             ? `Due ${formatShortDate(t.dueDate)} at ${formatTime(t.dueTime)}`
             : `Due at ${formatTime(t.dueTime)} · in ${lead} min`,
         at: trigger,
+        actionTypeId: ACTION_TYPE.task,
+        extra: { kind: 'task', id: t.id },
       });
     }
   }
@@ -444,6 +456,8 @@ export async function scheduleNativeReminders(state) {
             // batching in the first place, exact-alarm permission or not.
             allowWhileIdle: true,
           },
+          ...(u.actionTypeId ? { actionTypeId: u.actionTypeId } : {}),
+          ...(u.extra ? { extra: u.extra } : {}),
         })),
       });
     }
