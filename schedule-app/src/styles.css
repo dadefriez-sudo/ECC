@@ -7966,3 +7966,33 @@ body[data-assistant='on'] .conflict-list {
     inset: -10px;
   }
 }
+
+/* ---- Goals (Calm): one divider per goal, chips tucked under their goal ---- */
+.calm-item {
+  border-bottom: 1px solid var(--border);
+}
+.calm-item > .calm-row {
+  border-bottom: none;
+}
+.calm-item > .layout-chips {
+  margin: -4px 2px 12px 52px;
+}
+.calm-item:has(> .layout-chips) > .calm-row {
+  padding-bottom: 8px;
+}
+/* The last goal can scroll clear of the floating + button. */
+.calm,
+.streak-layout {
+  padding-bottom: 96px;
+}
+/* A quieter chip, so a row of them does not shout over the goal's name. */
+.layout-chips .quick-chip {
+  padding: 5px 12px;
+  background: transparent;
+  font-weight: 650;
+}
+.layout-chips .quick-chip--go {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--accent);
+}

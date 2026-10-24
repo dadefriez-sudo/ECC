@@ -17,6 +17,20 @@ import {
 //   Calm   — one quiet list: tap the circle, done. Seven dots of history.
 //   Streak — a day streak, a week strip and bigger one tap cards (Pro).
 
+// "1 more times" read badly. Units are stored in the plural ("glasses",
+// "people", "sessions"), so when exactly one is left, use the singular.
+const IRREGULAR_SINGULAR = { people: 'person', children: 'child', feet: 'foot' };
+function unitFor(unit, n) {
+  const u = (unit || '').trim();
+  if (n !== 1 || !u) return u;
+  const lower = u.toLowerCase();
+  if (IRREGULAR_SINGULAR[lower]) return IRREGULAR_SINGULAR[lower];
+  if (/ies$/i.test(u)) return u.replace(/ies$/i, 'y');
+  if (/(ss|x|ch|sh)es$/i.test(u)) return u.replace(/es$/i, '');
+  if (/s$/i.test(u) && !/ss$/i.test(u)) return u.replace(/s$/i, '');
+  return u;
+}
+
 const isMet = (g, key) => (g.progress?.[key] || 0) >= g.target || (g.frozenKeys || []).includes(key);
 
 function CountChips({ g, value, k, h }) {
@@ -44,7 +58,7 @@ function CountChips({ g, value, k, h }) {
         <>
           <button className="quick-chip" onClick={() => h.applyDelta(g.id, k, 5)}>+5</button>
           {g.target >= 20 && <button className="quick-chip" onClick={() => h.applyDelta(g.id, k, 10)}>+10</button>}
-          <button className="quick-chip" onClick={() => h.setTyping({ id: g.id, value: String(value), key: k })}>Type</button>
+          <button className="quick-chip" onClick={() => h.setTyping({ id: g.id, value: String(value), key: k })}>Custom</button>
           <button className="quick-chip quick-chip--go" onClick={() => h.setProgress(g.id, k, g.target)}>Done</button>
         </>
       )}
@@ -99,7 +113,7 @@ function WeeklyRow({ g, h, card }) {
   const done = value >= g.target;
   const left = Math.max(0, g.target - value);
   return (
-    <>
+    <div className={card ? undefined : 'calm-item'}>
       <div className={card ? `sk-card sk-card--week${done ? ' sk-card--done' : ''}` : 'calm-row'}>
         <span className={`wk-count${done ? ' wk-count--on' : ''}`}>
           {done ? <Icon name="check" size={16} /> : `${value}/${g.target}`}
@@ -107,7 +121,7 @@ function WeeklyRow({ g, h, card }) {
         <button className="calm-main" onClick={() => h.openEdit(g)}>
           <span className="calm-title">{g.title}</span>
           <span className="calm-sub">
-            {done ? 'Done for the week' : `${left} more ${g.unit || 'to go'} by ${h.weekEndLabel}`}
+            {done ? 'Done for the week' : `${left} more ${unitFor(g.unit, left) || 'to go'} by ${h.weekEndLabel}`}
           </span>
         </button>
         {!done && (
@@ -117,7 +131,7 @@ function WeeklyRow({ g, h, card }) {
         )}
       </div>
       {!done && <CountChips g={g} value={value} k={h.weekKey} h={h} />}
-    </>
+    </div>
   );
 }
 
@@ -143,7 +157,7 @@ export function CalmView({ h }) {
         const line = g.target > 1 ? `${value} of ${g.target} ${g.unit || ''}`.trim() : '';
         const sl = streakLine(g);
         return (
-          <div key={g.id}>
+          <div key={g.id} className="calm-item">
             <div className="calm-row">
               <GoalCircle g={g} value={value} k={todayKey} h={h} />
               <button className="calm-main" onClick={() => h.openEdit(g)}>
