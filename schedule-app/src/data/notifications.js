@@ -18,8 +18,9 @@
 // it runs.
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { todayISO, timeToMinutes, matchesRule, formatTime, addDays, toISODate, formatShortDate } from './helpers.js';
+import { todayISO, timeToMinutes, matchesRule, formatTime, addDays, toISODate, formatShortDate, startOfWeek } from './helpers.js';
 import { contactDatesOn, contactDateLabel } from './contactDates.js';
+import { REVIEW_FROM_HOUR } from './weeklyReview.js';
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -399,6 +400,20 @@ export async function scheduleNativeReminders(state) {
         title: `${entry.kind === 'birthday' ? '🎂' : '💍'} ${text}`,
         body: detail,
         at: CONTACT_DATE_REMINDER_MIN,
+      });
+    }
+  }
+
+  // Weekly review nudge at 4 PM on the last day of the week.
+  if (state.settings?.weeklyReviewReminder !== false) {
+    const lastDay = toISODate(addDays(startOfWeek(now), 6));
+    if (today === lastDay && REVIEW_FROM_HOUR * 60 > nowMin) {
+      upcoming.push({
+        key: `review:${today}`,
+        title: 'Your week in review',
+        body: 'See how the week went and plan the next one.',
+        at: REVIEW_FROM_HOUR * 60,
+        extra: { route: '/review' },
       });
     }
   }

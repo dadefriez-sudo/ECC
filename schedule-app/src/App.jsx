@@ -68,6 +68,7 @@ const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage.jsx'));
 const SearchPage = lazy(() => import('./pages/SearchPage.jsx'));
 const NotesPage = lazy(() => import('./pages/NotesPage.jsx'));
 const TasksPage = lazy(() => import('./pages/TasksPage.jsx'));
+const WeeklyReviewPage = lazy(() => import('./pages/WeeklyReviewPage.jsx'));
 
 // Routes meant to work as a standalone direct link — store-listing legal
 // pages, the account-deletion page — independent of whether the visitor has
@@ -1012,6 +1013,7 @@ export default function App() {
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/delete-account" element={<DeleteAccountPage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/review" element={<WeeklyReviewPage />} />
             <Route path="/notes" element={<NotesPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

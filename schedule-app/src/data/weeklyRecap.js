@@ -4,8 +4,8 @@ import { startOfWeek, addDays, toISODate, fromISODate, goalKey, todayISO } from 
 // start setting) across goals, contacts, and tasks — three things the app
 // already tracks — into a single motivating digest instead of making the
 // user piece it together from three separate pages.
-export function computeWeeklyRecap(state) {
-  const weekStartDate = startOfWeek(new Date());
+export function computeWeeklyRecap(state, asOf = new Date()) {
+  const weekStartDate = startOfWeek(asOf);
   const days = Array.from({ length: 7 }, (_, i) => toISODate(addDays(weekStartDate, i)));
   const today = todayISO();
   const elapsedDays = days.filter((d) => d <= today);

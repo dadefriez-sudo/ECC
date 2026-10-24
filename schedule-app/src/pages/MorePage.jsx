@@ -144,6 +144,7 @@ const SETTINGS_INDEX = [
     groups: [
       { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
       { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style home layout today bento calm classic' },
+      { id: 'g23', title: 'Weekly review', keywords: 'weekly review week summary sunday recap report card reminder' },
       { id: 'g22', title: 'Haptic feedback', keywords: 'haptic haptics vibration vibrate buzz feedback tick off quiet' },
       { id: 'g20', title: 'Goals layout', keywords: 'goals habits layout calm streak classic day streak style rest day' },
       { id: 'g6', title: 'Quick-add menu', keywords: 'customize fab plus button actions reorder' },
@@ -776,6 +777,37 @@ export default function MorePage() {
             </span>
           </button>
         )}
+      </SettingsGroup>
+      <SettingsGroup {...grp('g23')}>
+        <span className="detail-label">Weekly review</span>
+        <p className="muted small">
+          At the end of the week, a short look back at your goals, tasks and people, with one suggestion for next week.
+        </p>
+        <button className="btn btn-ghost full" onClick={() => navigate('/review')}>
+          Open this week's review
+        </button>
+        <div className="section-head">
+          <span>Show the card on Home</span>
+          <button
+            className={`toggle${(s.weeklyReviewCard ?? true) ? ' toggle--on' : ''}`}
+            role="switch"
+            aria-checked={s.weeklyReviewCard ?? true}
+            onClick={() => actions.setSettings({ weeklyReviewCard: !(s.weeklyReviewCard ?? true) })}
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
+        <div className="section-head">
+          <span>Remind me at 4 PM on the last day</span>
+          <button
+            className={`toggle${(s.weeklyReviewReminder ?? true) ? ' toggle--on' : ''}`}
+            role="switch"
+            aria-checked={s.weeklyReviewReminder ?? true}
+            onClick={() => actions.setSettings({ weeklyReviewReminder: !(s.weeklyReviewReminder ?? true) })}
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
       </SettingsGroup>
       <SettingsGroup {...grp('g22')}>
         <span className="detail-label">Haptic feedback</span>
