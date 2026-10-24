@@ -1497,8 +1497,16 @@ export default function MorePage() {
               <button
                 className="btn btn-danger-ghost"
                 onClick={() => {
+                  const status = state.statuses.find((x) => x.id === editingStatus.id);
+                  const members = state.contacts.filter((c) => c.statusId === editingStatus.id);
                   actions.deleteStatus(editingStatus.id);
                   setEditingStatus(null);
+                  if (status) {
+                    showToast(`Group "${status.label}" deleted`, 'Undo', () => {
+                      actions.addStatus(status);
+                      members.forEach((c) => actions.updateContact(c));
+                    });
+                  }
                 }}
               >
                 Delete

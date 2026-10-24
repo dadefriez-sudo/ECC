@@ -789,8 +789,15 @@ export default function ContactTimelinePage() {
             <button
               className="btn btn-danger"
               onClick={() => {
-                if (confirmDelete.kind === 'note') actions.deleteNote(confirmDelete.id);
-                else actions.deleteInteraction(confirmDelete.id);
+                if (confirmDelete.kind === 'note') {
+                  const note = state.notes.find((x) => x.id === confirmDelete.id);
+                  actions.deleteNote(confirmDelete.id);
+                  if (note) showToast('Note deleted', 'Undo', () => actions.addNote(note));
+                } else {
+                  const logged = state.interactions.find((x) => x.id === confirmDelete.id);
+                  actions.deleteInteraction(confirmDelete.id);
+                  if (logged) showToast('Logged contact deleted', 'Undo', () => actions.addInteraction(logged));
+                }
                 setConfirmDelete(null);
               }}
             >

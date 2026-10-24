@@ -838,6 +838,48 @@ export default function App() {
     };
   }, []);
 
+  // Keyboard: bring a focused field into view above the on-screen keyboard
+  // (after it has finished opening), label the keyboard's action key
+  // "Next" or "Done", and make Enter move to the next field of a form.
+  useEffect(() => {
+    const TEXTY = 'input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]), textarea';
+    const fieldsOf = (el) => {
+      const form = el.closest('.form');
+      return form ? [...form.querySelectorAll(TEXTY)].filter((f) => !f.disabled && f.offsetParent !== null) : [];
+    };
+    let timer = null;
+    const onFocusIn = (e) => {
+      const el = e.target;
+      if (!el.matches?.(TEXTY)) return;
+      if (el.tagName === 'INPUT' && !el.enterKeyHint) {
+        const list = fieldsOf(el);
+        if (list.length > 1) el.enterKeyHint = list.indexOf(el) < list.length - 1 ? 'next' : 'done';
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (document.activeElement === el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 350);
+    };
+    const onKeyDown = (e) => {
+      if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing) return;
+      const el = e.target;
+      if (el.tagName !== 'INPUT' || !el.matches(TEXTY) || el.type === 'search') return;
+      const list = fieldsOf(el);
+      if (list.length < 2) return;
+      const i = list.indexOf(el);
+      e.preventDefault();
+      if (i < list.length - 1) list[i + 1].focus();
+      else el.blur(); // last field: put the keyboard away
+    };
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
+
   // Toggle switches (and other small controls deep in a scrollable settings
   // list) can be left focused after a tap; some mobile browsers then try to
   // keep the focused element in its "preferred" scroll position, which reads

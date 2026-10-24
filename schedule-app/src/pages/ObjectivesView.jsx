@@ -6,6 +6,7 @@ import Select from '../components/Select.jsx';
 import Icon from '../components/Icon.jsx';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import { selectTick, successTick } from '../data/haptics.js';
+import { useToast } from '../data/toast.jsx';
 import { requestNotificationPermission, notificationsSupported } from '../data/notifications.js';
 import {
   todayISO,
@@ -74,6 +75,7 @@ const PACE_LABEL = {
 // way a habit's percentage is always derived from logged counts, so the
 // number on screen can't drift from the milestones that make it up.
 export default function ObjectivesView({ state, actions, isPro, navigate }) {
+  const showToast = useToast();
   const [expanded, setExpanded] = useState(() => new Set());
   const [editing, setEditing] = useState(null); // objective draft
   const [editingMilestone, setEditingMilestone] = useState(null); // milestone draft
@@ -696,8 +698,16 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
             <button
               className="btn btn-danger"
               onClick={() => {
+                const objective = state.objectives.find((o) => o.id === confirmDeleteObjective.id);
+                const milestones = state.milestones.filter((m) => m.objectiveId === confirmDeleteObjective.id);
                 actions.deleteObjective(confirmDeleteObjective.id);
                 setConfirmDeleteObjective(null);
+                if (objective) {
+                  showToast(`"${objective.title || 'Objective'}" deleted`, 'Undo', () => {
+                    actions.addObjective(objective);
+                    milestones.forEach((m) => actions.addMilestone(m));
+                  });
+                }
               }}
             >
               Delete
@@ -720,8 +730,12 @@ export default function ObjectivesView({ state, actions, isPro, navigate }) {
             <button
               className="btn btn-danger"
               onClick={() => {
+                const milestone = state.milestones.find((m) => m.id === confirmDeleteMilestone.id);
                 actions.deleteMilestone(confirmDeleteMilestone.id);
                 setConfirmDeleteMilestone(null);
+                if (milestone) {
+                  showToast(`"${milestone.title || 'Milestone'}" deleted`, 'Undo', () => actions.addMilestone(milestone));
+                }
               }}
             >
               Delete

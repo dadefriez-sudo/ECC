@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore, useActions } from '../data/store.jsx';
+import { useToast } from '../data/toast.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import Checkbox from '../components/Checkbox.jsx';
 import { Brand } from '../components/Logo.jsx';
@@ -53,6 +54,7 @@ const emptyGoal = (period) => ({
 
 export default function GoalsPage() {
   const { state } = useStore();
+  const showToast = useToast();
   const actions = useActions();
   const navigate = useNavigate();
   const location = useLocation();
@@ -715,8 +717,10 @@ export default function GoalsPage() {
             ? {
                 label: 'Delete goal',
                 onClick: () => {
+                  const goal = state.goals.find((g) => g.id === editing.id);
                   actions.deleteGoal(editing.id);
                   setEditing(null);
+                  if (goal) showToast(`"${goal.title || 'Goal'}" deleted`, 'Undo', () => actions.addGoal(goal));
                 },
               }
             : undefined

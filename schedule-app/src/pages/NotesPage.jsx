@@ -170,8 +170,13 @@ export default function NotesPage() {
           <div className="empty-icon"><Icon name="note" size={48} /></div>
           <h2>{query ? 'No matching notes' : 'No notes yet'}</h2>
           <p className="muted">
-            {query ? 'Try a different search.' : 'Tap the + button to jot something down.'}
+            {query ? 'Try a different search.' : 'Jot down an idea, a list, or anything you want to remember.'}
           </p>
+          {!query && (
+            <button className="btn btn-primary" onClick={openNewNote}>
+              + New note
+            </button>
+          )}
         </div>
       ) : (
         <>

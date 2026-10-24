@@ -891,6 +891,14 @@ export default function MapPage() {
         </>
       )}
 
+      {/* First-run hint: an empty map gives no clue what to do. */}
+      {!pickMode && !placing && !selected && !tempPin && !query && (state.pins || []).length === 0 && (
+        <div className="map-empty-hint">
+          <strong>Drop your first pin</strong>
+          <span className="muted small">Tap + or press and hold anywhere on the map. Pin places, or where the people you care about live.</span>
+        </div>
+      )}
+
       {/* Placement banner */}
       {!pickMode && placing && (
         <div className="map-banner">
