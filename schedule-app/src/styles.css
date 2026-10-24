@@ -7996,3 +7996,14 @@ body[data-assistant='on'] .conflict-list {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   color: var(--accent);
 }
+
+/* Favorite star on the contact page (it used to live on every list row). */
+.fav-toggle {
+  color: var(--muted);
+}
+.fav-toggle--on {
+  color: var(--warn);
+}
+.fav-toggle--on svg path {
+  fill: currentColor;
+}

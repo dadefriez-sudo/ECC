@@ -504,19 +504,6 @@ export default function ContactsPage() {
                         <Icon name="check" size={15} /> Log
                       </button>
                     )}
-                    {!selectMode && (
-                      <button
-                        className={`contact-fav-btn${c.favorite ? ' contact-fav-btn--on' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          actions.updateContact({ ...c, favorite: !c.favorite });
-                        }}
-                        aria-label={c.favorite ? `Remove ${c.name} from favorites` : `Add ${c.name} to favorites`}
-                        aria-pressed={!!c.favorite}
-                      >
-                        <Icon name="star" size={18} />
-                      </button>
-                    )}
                   </div>
                 </SwipeRow>
               </li>

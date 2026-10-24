@@ -155,6 +155,15 @@ export default function ContactDetailPage() {
             ‹ People
           </button>
           <div className="page-head-actions">
+            <button
+              className={`icon-btn fav-toggle${contact.favorite ? ' fav-toggle--on' : ''}`}
+              onClick={() => actions.updateContact({ ...contact, favorite: !contact.favorite })}
+              aria-pressed={!!contact.favorite}
+              aria-label={contact.favorite ? `Remove ${contact.name} from favorites` : `Add ${contact.name} to favorites`}
+              title={contact.favorite ? 'Favorite' : 'Mark as favorite'}
+            >
+              <Icon name="star" size={22} />
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={startEdit}>
               Edit
             </button>
