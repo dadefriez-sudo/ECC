@@ -33,6 +33,7 @@ import Icon from '../components/Icon.jsx';
 import AddressField from '../components/AddressField.jsx';
 import { MiniRing, TodayView, BentoView, CalmView } from '../components/HomeLayouts.jsx';
 import WeeklyReviewCard from '../components/WeeklyReviewCard.jsx';
+import WhatsNewCard from '../components/WhatsNewCard.jsx';
 
 // Shown when every home block has been toggled off in Customize mode —
 // picked once at random per visit rather than always the same line, since
@@ -956,6 +957,7 @@ export default function HomePage() {
         </div>
       </header>
 
+      {!editMode && <WhatsNewCard />}
       {!editMode && <WeeklyReviewCard />}
 
       {editMode ? (

@@ -593,6 +593,7 @@ export default function MorePage() {
           <button
             className={`toggle${cloudSyncOn ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Cloud sync"
             aria-checked={cloudSyncOn}
             onClick={() => requirePro(() => actions.setSettings({ cloudSync: !cloudSyncOn }))}
           >
@@ -690,6 +691,7 @@ export default function MorePage() {
           <button
             className={`toggle${(s.taskCompleteAnim ?? true) ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Task completion animation"
             aria-checked={s.taskCompleteAnim ?? true}
             onClick={() => actions.setSettings({ taskCompleteAnim: !(s.taskCompleteAnim ?? true) })}
           >
@@ -702,6 +704,7 @@ export default function MorePage() {
           <button
             className={`toggle${(s.showDailyChallenge ?? true) ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Daily challenge on Home"
             aria-checked={s.showDailyChallenge ?? true}
             onClick={() => actions.setSettings({ showDailyChallenge: !(s.showDailyChallenge ?? true) })}
           >
@@ -791,6 +794,7 @@ export default function MorePage() {
           <button
             className={`toggle${(s.weeklyReviewCard ?? true) ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Show the card on Home"
             aria-checked={s.weeklyReviewCard ?? true}
             onClick={() => actions.setSettings({ weeklyReviewCard: !(s.weeklyReviewCard ?? true) })}
           >
@@ -802,6 +806,7 @@ export default function MorePage() {
           <button
             className={`toggle${(s.weeklyReviewReminder ?? true) ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Remind me at 4 PM on the last day"
             aria-checked={s.weeklyReviewReminder ?? true}
             onClick={() => actions.setSettings({ weeklyReviewReminder: !(s.weeklyReviewReminder ?? true) })}
           >
@@ -940,6 +945,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.use24h ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="24-hour time"
             aria-checked={!!s.use24h}
             onClick={() => actions.setSettings({ use24h: !s.use24h })}
           >
@@ -952,6 +958,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.weekStartsSunday ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Week starts on Sunday"
             aria-checked={!!s.weekStartsSunday}
             onClick={() => actions.setSettings({ weekStartsSunday: !s.weekStartsSunday })}
           >
@@ -964,6 +971,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.showTasksOnTimeline ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Show tasks on day timeline"
             aria-checked={!!s.showTasksOnTimeline}
             onClick={() => actions.setSettings({ showTasksOnTimeline: !s.showTasksOnTimeline })}
           >
@@ -981,6 +989,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.warnOverlaps === true ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Warn about overlapping events"
             aria-checked={s.warnOverlaps === true}
             onClick={() => actions.setSettings({ warnOverlaps: s.warnOverlaps !== true })}
           >
@@ -993,6 +1002,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.showDayTemplates !== false ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Day & week templates"
             aria-checked={s.showDayTemplates !== false}
             onClick={() => actions.setSettings({ showDayTemplates: s.showDayTemplates === false })}
           >
@@ -1005,6 +1015,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.warnTravelTime !== false ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Warn about tight travel time"
             aria-checked={s.warnTravelTime !== false}
             onClick={() => actions.setSettings({ warnTravelTime: s.warnTravelTime === false })}
           >
@@ -1208,6 +1219,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.contactBirthdaysEnabled !== false ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Birthdays & anniversaries"
             aria-checked={s.contactBirthdaysEnabled !== false}
             onClick={() => actions.setSettings({ contactBirthdaysEnabled: s.contactBirthdaysEnabled === false })}
           >
@@ -1224,6 +1236,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.reconnectRemindersEnabled === true ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Reconnect reminders"
             aria-checked={s.reconnectRemindersEnabled === true}
             onClick={() =>
               actions.setSettings({ reconnectRemindersEnabled: s.reconnectRemindersEnabled !== true })
@@ -1283,6 +1296,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.mapShowContactPins ?? true ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Show contact places"
             aria-checked={s.mapShowContactPins ?? true}
             onClick={() => actions.setSettings({ mapShowContactPins: !(s.mapShowContactPins ?? true) })}
           >
@@ -1294,6 +1308,7 @@ export default function MorePage() {
           <button
             className={`toggle${s.mapShowCustomPins ?? true ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Show custom places"
             aria-checked={s.mapShowCustomPins ?? true}
             onClick={() => actions.setSettings({ mapShowCustomPins: !(s.mapShowCustomPins ?? true) })}
           >
@@ -1320,6 +1335,7 @@ export default function MorePage() {
           <button
             className={`toggle${state.settings?.locationRemindersEnabled ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Arrival reminders"
             aria-checked={!!state.settings?.locationRemindersEnabled}
             onClick={() =>
               actions.setSettings({ locationRemindersEnabled: !state.settings?.locationRemindersEnabled })
@@ -1343,6 +1359,7 @@ export default function MorePage() {
           <button
             className={`toggle${notifOn ? ' toggle--on' : ''}`}
             role="switch"
+            aria-label="Allow notifications"
             aria-checked={notifOn}
             onClick={toggleNotifications}
             disabled={!notificationsSupported()}
@@ -1378,6 +1395,7 @@ export default function MorePage() {
             <button
               className={`toggle${s.assistantEnabled !== false ? ' toggle--on' : ''}`}
               role="switch"
+              aria-label="Assistant"
               aria-checked={s.assistantEnabled !== false}
               onClick={() => actions.setSettings({ assistantEnabled: s.assistantEnabled === false })}
             >
@@ -1437,6 +1455,7 @@ export default function MorePage() {
             <button
               className={`toggle${s.autoBackupEnabled ? ' toggle--on' : ''}`}
               role="switch"
+              aria-label="Automatic on-device backup"
               aria-checked={!!s.autoBackupEnabled}
               onClick={() => actions.setSettings({ autoBackupEnabled: !s.autoBackupEnabled, autoBackupPromptSeen: true })}
             >

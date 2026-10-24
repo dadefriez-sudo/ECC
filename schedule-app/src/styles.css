@@ -8087,3 +8087,12 @@ body[data-assistant='on'] .conflict-list {
 .contact-list--groups .contact-row-inner {
   padding-right: 22px;
 }
+
+.whats-new-list {
+  margin: 8px 0 12px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}

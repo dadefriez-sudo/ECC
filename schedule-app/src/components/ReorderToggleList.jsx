@@ -158,6 +158,7 @@ export default function ReorderToggleList({ items, types, onChange, lockedIds = 
                 type="button"
                 className={`toggle${it.enabled ? ' toggle--on' : ''}`}
                 role="switch"
+                aria-label={type?.label}
                 aria-checked={it.enabled}
                 onClick={() => onChange(items.map((x) => (x.id === it.id ? { ...x, enabled: !x.enabled } : x)))}
               >
