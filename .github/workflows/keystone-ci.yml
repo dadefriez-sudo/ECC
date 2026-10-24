@@ -1,0 +1,80 @@
+name: Keystone app CI
+
+# Checks the Keystone app (schedule-app/) and its backend (backend/) on every
+# push and pull request that touches them: the app's tests and build, and the
+# backend's API tests against an in-memory Postgres. It does not deploy anything.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/missionary-calendar-app-ti6dr6
+    paths:
+      - 'schedule-app/**'
+      - 'backend/**'
+      - '.github/workflows/keystone-ci.yml'
+  pull_request:
+    paths:
+      - 'schedule-app/**'
+      - 'backend/**'
+      - '.github/workflows/keystone-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keystone-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App (tests and build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: schedule-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: schedule-app/package-lock.json
+
+      - run: npm ci
+
+      # Cloud sync merge rules and anything else under schedule-app/test.
+      - run: npm test
+
+      # A failing build is the most common way a change breaks the app.
+      - run: npm run build
+
+  backend:
+    name: Backend (API tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Prisma needs a URL to generate its client; the tests start their own
+      # in-memory database and override this.
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5544/postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - run: bash test/accountability/run.sh
