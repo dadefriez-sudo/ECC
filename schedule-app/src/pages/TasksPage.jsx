@@ -199,13 +199,19 @@ export default function TasksPage() {
   // state) opens that task's editor directly, instead of just landing on
   // the list and leaving it to be found by hand.
   useEffect(() => {
+    // Also: the home screen widget's + opens a new task right here.
+    if (location.state?.quickNewTask) {
+      openNewTask();
+      window.history.replaceState({}, '');
+      return;
+    }
     const id = location.state?.openTaskId;
     if (!id) return;
     const t = state.tasks.find((x) => x.id === id);
     if (t) openEditTask(t);
     window.history.replaceState({}, '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.key]);
   const addTaskSubtask = () =>
     setEditingTask((t) => ({ ...t, subtasks: [...(t.subtasks || []), { text: '', done: false }] }));
   const taskDirty = editingTask ? JSON.stringify(editingTask) !== initialTaskJson.current : false;

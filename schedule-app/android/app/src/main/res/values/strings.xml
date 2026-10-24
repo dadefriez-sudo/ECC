@@ -4,4 +4,5 @@
     <string name="title_activity_main">Keystone</string>
     <string name="package_name">com.keystoneplanner.app</string>
     <string name="custom_url_scheme">com.keystoneplanner.app</string>
+    <string name="widget_description">The next things on your day, with a quick way to add a task.</string>
 </resources>

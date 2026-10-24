@@ -16,6 +16,8 @@ import { checkForUpdate, completeUpdate } from './data/appUpdate.js';
 import { initIAP } from './data/iap.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
 import { registerNotificationActions, listenForNotificationActions } from './data/notificationActions.js';
+import { pushWidget } from './data/nativeBridge.js';
+import ShareReceiver from './components/ShareReceiver.jsx';
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
 import { setUse24hFormat, setSundayWeekStart, distanceMeters, todayISO } from './data/helpers.js';
@@ -667,6 +669,7 @@ export default function App() {
     const scan = () => {
       runReminderScan(stateRef.current);
       scheduleNativeReminders(stateRef.current);
+      pushWidget(stateRef.current); // home screen widget (Android; skips if unchanged)
     };
     scan();
     const id = setInterval(scan, 30000);
@@ -970,6 +973,12 @@ export default function App() {
   useEffect(() => {
     setHapticsLevel(hapticsLevel);
   }, [hapticsLevel]);
+  // Keep the Android home screen widget current after edits (the 30 second
+  // scan covers the passing of time; this makes changes show up quickly).
+  useEffect(() => {
+    const id = setTimeout(() => pushWidget(state), 1500);
+    return () => clearTimeout(id);
+  }, [state.events, state.tasks, state.goals]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setUse24hFormat(use24h);
   }, [use24h]);
@@ -980,6 +989,7 @@ export default function App() {
   return (
     <div className="app">
       {CLERK_ENABLED && <SubscriptionSync />}
+      <ShareReceiver />
       {CLERK_ENABLED && <DataSync />}
       {CLERK_ENABLED && <AccountabilitySync />}
       {CLERK_ENABLED && <GoogleCalendarSync />}

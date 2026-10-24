@@ -7872,3 +7872,14 @@ body[data-assistant='on'] .conflict-list {
 .review-suggestion .review-next {
   margin-top: 6px;
 }
+
+.share-preview {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 30vh;
+  overflow: auto;
+}
