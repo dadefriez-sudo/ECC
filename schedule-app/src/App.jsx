@@ -18,7 +18,7 @@ import { runReminderScan, notify, notificationPermission, scheduleNativeReminder
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
 import { setUse24hFormat, setSundayWeekStart, distanceMeters, todayISO } from './data/helpers.js';
-import { setHapticsEnabled } from './data/haptics.js';
+import { setHapticsLevel, getHapticsLevel } from './data/haptics.js';
 import {
   fetchMe,
   backendConfigured,
@@ -756,7 +756,11 @@ export default function App() {
     const fireForElement = (el) => {
       const explicit = el.dataset.haptic;
       if (explicit === 'none') return;
+      // Below Full, routine taps (buttons, chips, rows, toggles, nav) stay
+      // silent; only explicit completion / warning / confirm ticks fire.
+      const quiet = getHapticsLevel() !== 'full';
       if (explicit && HAPTIC_KINDS[explicit]) {
+        if (quiet && (explicit === 'tap' || explicit === 'select')) return;
         HAPTIC_KINDS[explicit]();
         return;
       }
@@ -765,6 +769,7 @@ export default function App() {
       // press would double up with (and pre-empt) that feedback.
       if (el.classList.contains('event-block')) return;
       if (el.getAttribute('role') === 'switch') {
+        if (quiet) return;
         // Direction-aware: turning a setting ON is a firmer confirm, turning
         // it OFF is the lighter routine tap — instead of every switch in
         // Settings feeling identical regardless of which way it flipped.
@@ -773,6 +778,7 @@ export default function App() {
         return;
       }
       if (el.classList.contains('btn-danger') || el.classList.contains('btn-danger-ghost')) warnTick();
+      else if (quiet) return;
       else if (el.classList.contains('btn-primary') || el.classList.contains('fab')) confirmTick();
       else tapTick();
     };
@@ -941,10 +947,11 @@ export default function App() {
   // week boundaries throughout the app.
   const use24h = !!state.settings?.use24h;
   const sundayStart = !!state.settings?.weekStartsSunday;
-  const hapticsEnabled = state.settings?.hapticsEnabled ?? true;
+  // Older installs only have the on/off flag; no choice made yet means Essential.
+  const hapticsLevel = state.settings?.hapticsLevel ?? (state.settings?.hapticsEnabled === false ? 'off' : 'essential');
   useEffect(() => {
-    setHapticsEnabled(hapticsEnabled);
-  }, [hapticsEnabled]);
+    setHapticsLevel(hapticsLevel);
+  }, [hapticsLevel]);
   useEffect(() => {
     setUse24hFormat(use24h);
   }, [use24h]);

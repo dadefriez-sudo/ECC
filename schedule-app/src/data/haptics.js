@@ -10,9 +10,16 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 const isNative = Capacitor.isNativePlatform();
 const webSupported = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 
-let enabled = true;
-export function setHapticsEnabled(v) {
-  enabled = !!v;
+// off: nothing. essential (the default): only the moments that matter, such
+// as finishing a task or goal, deleting or discarding, saving, and a
+// long-press arming. full: the original behavior, a tick for nearly every
+// tap, toggle and drag step.
+let level = 'essential';
+export function setHapticsLevel(v) {
+  level = v === 'off' || v === 'full' ? v : 'essential';
+}
+export function getHapticsLevel() {
+  return level;
 }
 
 function fireWeb(pattern) {
@@ -44,32 +51,35 @@ function fireNative(call) {
 // selectTick against its own history. 60ms is comfortably past a typical
 // short haptic click's own duration.
 const MIN_INTERVAL_MS = 60;
+// In essential mode a plain confirm also waits this long after any other
+// tick, so one action never buzzes twice (a check-off plus its toast, say).
+const ESSENTIAL_CONFIRM_GAP_MS = 400;
 let lastTickAt = 0;
 
-function throttled() {
+function throttled(gap = MIN_INTERVAL_MS) {
   const now = performance.now();
-  if (now - lastTickAt < MIN_INTERVAL_MS) return false;
+  if (now - lastTickAt < gap) return false;
   lastTickAt = now;
   return true;
 }
 
 // Light tick for routine taps: buttons, tabs, chips, dropdown choices.
 export function tapTick() {
-  if (!enabled || !throttled()) return;
+  if (level !== 'full' || !throttled()) return;
   if (isNative) return fireNative(() => Haptics.impact({ style: ImpactStyle.Light }));
   fireWeb(8);
 }
 
 // Slightly firmer pulse for a committed action: save, add, toggle on.
 export function confirmTick() {
-  if (!enabled || !throttled()) return;
+  if (level === 'off' || !throttled(level === 'full' ? MIN_INTERVAL_MS : ESSENTIAL_CONFIRM_GAP_MS)) return;
   if (isNative) return fireNative(() => Haptics.impact({ style: ImpactStyle.Medium }));
   fireWeb(14);
 }
 
 // Two-pulse pattern for a destructive action: delete, discard.
 export function warnTick() {
-  if (!enabled || !throttled()) return;
+  if (level === 'off' || !throttled()) return;
   if (isNative) return fireNative(() => Haptics.notification({ type: NotificationType.Warning }));
   fireWeb([12, 40, 12]);
 }
@@ -80,7 +90,7 @@ export function warnTick() {
 // case (the same call a native picker wheel would use per tick) rather than
 // the one-shot impact() used above.
 export function selectTick() {
-  if (!enabled || !throttled()) return;
+  if (level !== 'full' || !throttled()) return;
   if (isNative) return fireNative(() => Haptics.selectionChanged());
   fireWeb(5);
 }
@@ -90,7 +100,7 @@ export function selectTick() {
 // single pulse so a real accomplishment reads differently from a routine
 // save/toggle, pairing with the checkmark bounce + spark animation.
 export function successTick() {
-  if (!enabled || !throttled()) return;
+  if (level === 'off' || !throttled()) return;
   if (isNative) return fireNative(() => Haptics.notification({ type: NotificationType.Success }));
   fireWeb([10, 30, 18]);
 }

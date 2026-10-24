@@ -144,6 +144,7 @@ const SETTINGS_INDEX = [
     groups: [
       { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
       { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style home layout today bento calm classic' },
+      { id: 'g22', title: 'Haptic feedback', keywords: 'haptic haptics vibration vibrate buzz feedback tick off quiet' },
       { id: 'g20', title: 'Goals layout', keywords: 'goals habits layout calm streak classic day streak style rest day' },
       { id: 'g6', title: 'Quick-add menu', keywords: 'customize fab plus button actions reorder' },
       { id: 'g7', title: 'Navigation tabs', keywords: 'customize tab bar bottom reorder hide' },
@@ -511,6 +512,7 @@ export default function MorePage() {
   };
 
   const s = state.settings || {};
+  const hapticsLevel = s.hapticsLevel ?? (s.hapticsEnabled === false ? 'off' : 'essential');
   const step = (key, delta, min, max) =>
     actions.setSettings({ [key]: Math.max(min, Math.min(max, (s[key] ?? 0) + delta)) });
 
@@ -695,18 +697,6 @@ export default function MorePage() {
         </div>
 
         <div className="section-head">
-          <span>Haptic feedback</span>
-          <button
-            className={`toggle${(s.hapticsEnabled ?? true) ? ' toggle--on' : ''}`}
-            role="switch"
-            aria-checked={s.hapticsEnabled ?? true}
-            onClick={() => actions.setSettings({ hapticsEnabled: !(s.hapticsEnabled ?? true) })}
-          >
-            <span className="toggle-knob" />
-          </button>
-        </div>
-
-        <div className="section-head">
           <span>Daily challenge on Home</span>
           <button
             className={`toggle${(s.showDailyChallenge ?? true) ? ' toggle--on' : ''}`}
@@ -786,6 +776,32 @@ export default function MorePage() {
             </span>
           </button>
         )}
+      </SettingsGroup>
+      <SettingsGroup {...grp('g22')}>
+        <span className="detail-label">Haptic feedback</span>
+        <p className="muted small">How much the phone buzzes as you use the app.</p>
+        <div className="seg seg--full">
+          {[
+            { value: 'off', label: 'Off' },
+            { value: 'essential', label: 'Essential' },
+            { value: 'full', label: 'Full' },
+          ].map((o) => (
+            <button
+              key={o.value}
+              className={`seg-btn${hapticsLevel === o.value ? ' seg-btn--on' : ''}`}
+              onClick={() => actions.setSettings({ hapticsLevel: o.value, hapticsEnabled: o.value !== 'off' })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted small">
+          {hapticsLevel === 'off'
+            ? 'No vibration anywhere.'
+            : hapticsLevel === 'full'
+            ? 'A tick for nearly every tap, toggle and drag.'
+            : 'Only for the moments that matter: finishing a task or goal, deleting, saving.'}
+        </p>
       </SettingsGroup>
       <SettingsGroup {...grp('g20')}>
         <span className="detail-label">Goals layout</span>
