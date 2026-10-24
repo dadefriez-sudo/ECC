@@ -55,14 +55,21 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
     private static RemoteViews build(Context context) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.keystone_widget);
         int[] rowIds = {R.id.widget_row_0, R.id.widget_row_1, R.id.widget_row_2, R.id.widget_row_3};
+        int[] markerIds = {R.id.widget_marker_0, R.id.widget_marker_1, R.id.widget_marker_2, R.id.widget_marker_3};
+        int[] timeIds = {R.id.widget_time_0, R.id.widget_time_1, R.id.widget_time_2, R.id.widget_time_3};
+        int[] titleIds = {R.id.widget_title_0, R.id.widget_title_1, R.id.widget_title_2, R.id.widget_title_3};
+        int[] kindIds = {R.id.widget_kind_0, R.id.widget_kind_1, R.id.widget_kind_2, R.id.widget_kind_3};
 
         for (int rowId : rowIds) {
             views.setViewVisibility(rowId, View.GONE);
         }
         views.setViewVisibility(R.id.widget_more, View.GONE);
 
+        Date now = new Date();
+        views.setTextViewText(R.id.widget_date, new SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(now));
+
         String json = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null);
-        String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+        String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(now);
         boolean filled = false;
 
         if (json != null) {
@@ -74,9 +81,24 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
                     for (int i = 0; i < count; i++) {
                         JSONObject item = items.getJSONObject(i);
                         String time = item.optString("t", "");
-                        String name = item.optString("n", "");
-                        String line = time.isEmpty() ? name : time + "  " + name;
-                        views.setTextViewText(rowIds[i], line);
+                        String kind = item.optString("k", "event");
+                        int marker = R.drawable.widget_marker_event;
+                        int color = 0xFFA77BE8;
+                        String label = "EVENT";
+                        if ("task".equals(kind)) {
+                            marker = R.drawable.widget_marker_task;
+                            color = 0xFF5CC4A0;
+                            label = "TASK";
+                        } else if ("goal".equals(kind)) {
+                            marker = R.drawable.widget_marker_goal;
+                            color = 0xFFE0C15A;
+                            label = "GOAL";
+                        }
+                        views.setInt(markerIds[i], "setBackgroundResource", marker);
+                        views.setTextViewText(timeIds[i], time.isEmpty() ? "Anytime" : time);
+                        views.setTextViewText(titleIds[i], item.optString("n", ""));
+                        views.setTextViewText(kindIds[i], label);
+                        views.setTextColor(kindIds[i], color);
                         views.setViewVisibility(rowIds[i], View.VISIBLE);
                         filled = true;
                     }
@@ -86,8 +108,7 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
                         views.setViewVisibility(R.id.widget_more, View.VISIBLE);
                     }
                     if (!filled) {
-                        views.setTextViewText(rowIds[0], "Nothing else today");
-                        views.setViewVisibility(rowIds[0], View.VISIBLE);
+                        showMessage(views, rowIds[0], markerIds[0], timeIds[0], titleIds[0], kindIds[0], "You're clear for the rest of today");
                         filled = true;
                     }
                 }
@@ -97,8 +118,7 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
         }
 
         if (!filled) {
-            views.setTextViewText(rowIds[0], "Open Keystone to see today");
-            views.setViewVisibility(rowIds[0], View.VISIBLE);
+            showMessage(views, rowIds[0], markerIds[0], timeIds[0], titleIds[0], kindIds[0], "Open Keystone to see today");
         }
 
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
@@ -114,5 +134,13 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.widget_add, PendingIntent.getActivity(context, 1, add, flags));
 
         return views;
+    }
+
+    private static void showMessage(RemoteViews views, int row, int marker, int time, int title, int kind, String text) {
+        views.setInt(marker, "setBackgroundResource", 0);
+        views.setTextViewText(time, "");
+        views.setTextViewText(title, text);
+        views.setTextViewText(kind, "");
+        views.setViewVisibility(row, View.VISIBLE);
     }
 }
