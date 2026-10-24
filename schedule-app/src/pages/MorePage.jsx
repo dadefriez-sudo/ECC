@@ -84,7 +84,7 @@ const DESTRUCTIVE_ACTIONS = {
 // a whole extra labelled section (see styles.css for why they're muted
 // rather than pale, same as every other scheme).
 const COLOR_SCHEMES = [
-  { value: 'default', label: 'Gold', swatch: '#a9822a' },
+  { value: 'default', label: 'Gold', swatch: '#946f16' },
   { value: 'emerald', label: 'Emerald', swatch: '#0f8f72' },
   { value: 'ocean', label: 'Ocean', swatch: '#1f6fb0' },
   { value: 'sunset', label: 'Sunset', swatch: '#d9601f' },
