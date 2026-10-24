@@ -111,6 +111,37 @@ ok('expired invite previews as expired', r.s === 200 && r.j?.status === 'expired
 r = await call(u('xena'), 'GET', '/accountability/invites');
 ok('expired invites drop out of the inviter list', !r.j?.invites?.some((i) => i.token === xi.token));
 
+// 12. cloud sync: optimistic concurrency on /data
+const S = u('sync');
+r = await call(S, 'GET', '/data');
+ok('data: empty account has no data yet', r.s === 200 && r.j?.data === null, JSON.stringify(r));
+r = await call(S, 'PUT', '/data', { data: { tasks: [{ id: 't1' }] } });
+const v1 = r.j?.updatedAt;
+ok('data: first write needs no base', r.s === 200 && !!v1, JSON.stringify(r));
+r = await call(S, 'GET', `/data?since=${encodeURIComponent(v1)}`);
+ok('data: poll with the current version says unchanged, without the blob', r.s === 200 && r.j?.unchanged === true && r.j?.data === undefined, JSON.stringify(r));
+r = await call(S, 'GET', '/data?since=2000-01-01T00:00:00.000Z');
+ok('data: poll with an old version returns the data', r.s === 200 && r.j?.data?.tasks?.length === 1, JSON.stringify(r));
+r = await call(S, 'PUT', '/data', { data: { tasks: [{ id: 't1' }, { id: 't2' }] }, baseUpdatedAt: v1 });
+const v2 = r.j?.updatedAt;
+ok('data: a write built on the current version succeeds', r.s === 200 && !!v2 && v2 !== v1, JSON.stringify(r));
+r = await call(S, 'PUT', '/data', { data: { tasks: [] }, baseUpdatedAt: v1 });
+ok('data: a write built on an old version is refused with 409 and the current copy', r.s === 409 && r.j?.data?.tasks?.length === 2 && r.j?.updatedAt === v2, JSON.stringify(r));
+r = await call(S, 'GET', '/data');
+ok('data: the refused write changed nothing', r.j?.data?.tasks?.length === 2, JSON.stringify(r));
+r = await call(S, 'PUT', '/data', { data: { tasks: [{ id: 'old-client' }] } });
+ok('data: a write with no base still overwrites (older app versions)', r.s === 200, JSON.stringify(r));
+r = await call(S, 'PUT', '/data', { data: {}, baseUpdatedAt: 'not a date' });
+ok('data: a malformed base is rejected', r.s === 400, JSON.stringify(r));
+const cur = (await call(S, 'GET', '/data')).j.updatedAt;
+const [p1, p2] = await Promise.all([
+  call(S, 'PUT', '/data', { data: { tasks: [{ id: 'racer-1' }] }, baseUpdatedAt: cur }),
+  call(S, 'PUT', '/data', { data: { tasks: [{ id: 'racer-2' }] }, baseUpdatedAt: cur }),
+]);
+ok('data: two writes from the same version: exactly one wins', [p1, p2].filter((x) => x.s === 200).length === 1 && [p1, p2].filter((x) => x.s === 409).length === 1, JSON.stringify([p1.s, p2.s]));
+r = await call(u('newsync'), 'PUT', '/data', { data: { tasks: [] }, baseUpdatedAt: new Date().toISOString() });
+ok('data: a first write that names a base still creates the row', r.s === 200, JSON.stringify(r));
+
 await pg.end();
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -24,6 +24,7 @@ async function request(path, { getToken, method = 'GET', body } = {}) {
     // assistant hides its bubble on one and shows a message on the other.
     err.status = res.status;
     err.code = errBody.code;
+    err.body = errBody;
     throw err;
   }
   return res.json();
@@ -65,9 +66,18 @@ export const syncGoogleCalendar = (getToken, body) =>
   request('/api/google/calendar-sync', { getToken, method: 'POST', body });
 
 // Whole-app-data sync: mirrors the same object shape kept in localStorage.
-export const fetchSyncedData = (getToken) => request('/api/data', { getToken });
-export const pushSyncedData = (getToken, data) =>
-  request('/api/data', { getToken, method: 'PUT', body: { data } });
+// `since`: the updatedAt of the copy already held; the server answers
+// { unchanged: true } instead of resending everything when it is still current.
+export const fetchSyncedData = (getToken, since) =>
+  request(`/api/data${since ? `?since=${encodeURIComponent(since)}` : ''}`, { getToken });
+// `baseUpdatedAt`: the version this write was built on. If the server has moved
+// on, it answers 409 with the current copy (err.body.data / err.body.updatedAt).
+export const pushSyncedData = (getToken, data, baseUpdatedAt) =>
+  request('/api/data', {
+    getToken,
+    method: 'PUT',
+    body: baseUpdatedAt ? { data, baseUpdatedAt } : { data },
+  });
 
 // The assistant. One turn per call: post the conversation so far (plus a
 // plain-text digest of the user's schedule) and get back one Claude message,

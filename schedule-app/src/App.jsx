@@ -17,6 +17,7 @@ import { initIAP } from './data/iap.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
 import { registerNotificationActions, listenForNotificationActions } from './data/notificationActions.js';
 import { pushWidget } from './data/nativeBridge.js';
+import { mergeStates, sameState, slim } from './data/syncMerge.js';
 import ShareReceiver from './components/ShareReceiver.jsx';
 import { geoAvailable, watchPosition } from './data/geo.js';
 import { tapTick, confirmTick, warnTick, selectTick, successTick } from './data/haptics.js';
@@ -233,61 +234,144 @@ function FirstRunWithAccount({ onboardingProps, actions }) {
   return <Onboarding {...onboardingProps} />;
 }
 
+// The copy both this device and the server were last known to agree on, kept
+// per account. Cloud sync merges against it (see data/syncMerge.js), which is
+// how a change made on one device and a different change on another both
+// survive instead of the later save erasing the earlier one.
+const SYNC_BASE_KEY = 'compass.data.v1.sync-base';
+function loadSyncBase(userId) {
+  try {
+    const rec = JSON.parse(localStorage.getItem(SYNC_BASE_KEY) || 'null');
+    return rec && rec.userId === userId ? rec : null;
+  } catch {
+    return null;
+  }
+}
+function saveSyncBase(userId, data, updatedAt) {
+  try {
+    localStorage.setItem(SYNC_BASE_KEY, JSON.stringify({ userId, updatedAt, data: slim(data) }));
+  } catch {
+    /* storage full: the next sync just treats this device as a new one */
+  }
+}
+const nextTick = (ms = 60) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function DataSync() {
   const { state } = useStore();
   const actions = useActions();
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken, userId } = useAuth();
   const cloudSyncOn = state.settings?.cloudSync !== false;
   const isPro = !!state.settings?.isPro;
   const active = isSignedIn && cloudSyncOn && isPro && backendConfigured();
 
-  const skipNextPushRef = useRef(false);
   const stateRef = useRef(state);
   stateRef.current = state;
-  // The server timestamp of the version we already hold, so a pull can tell
+  // The server timestamp of the version we already hold, so a poll can tell
   // "nothing new" from "someone else changed something".
   const seenAtRef = useRef(null);
   const busyRef = useRef(false);
+  const againRef = useRef(false);
 
-  const pull = useCallback(
-    async ({ initial = false } = {}) => {
-      if (busyRef.current) return;
+  // One round of syncing: pick up what other devices changed, merge it with
+  // what changed here, and send the result back if there is anything new to
+  // send. If another device saves in the middle of that, the server answers
+  // 409 with its newer copy and the merge simply runs again.
+  const sync = useCallback(
+    async ({ poll = false } = {}) => {
+      if (busyRef.current) {
+        againRef.current = true;
+        return;
+      }
       busyRef.current = true;
       setSyncStatus({ phase: 'syncing', error: null });
       try {
-        const { data, updatedAt } = await fetchSyncedData(getToken);
-        if (!data) {
-          // Nothing up there yet — seed it from this device.
-          const res = await pushSyncedData(getToken, stateRef.current);
-          seenAtRef.current = res?.updatedAt ?? null;
-        } else if (initial || !seenAtRef.current || updatedAt > seenAtRef.current) {
-          seenAtRef.current = updatedAt ?? null;
-          skipNextPushRef.current = true;
-          // The cloud copy replaces what's on this device wholesale, so keep the
-          // local copy one step back: if edits made offline were about to be
-          // overwritten, they can still be recovered by hand.
-          try {
-            localStorage.setItem('compass.data.v1.before-sync', JSON.stringify(stateRef.current));
-          } catch {
-            /* storage full: sync still proceeds */
+        let remote = null; // { data, updatedAt } when there is a server copy to merge with
+        if (poll || !seenAtRef.current) {
+          const r = await fetchSyncedData(getToken, seenAtRef.current);
+          if (!r.unchanged) remote = r;
+        }
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const local = stateRef.current;
+          const baseRec = loadSyncBase(userId);
+
+          if (!remote) {
+            // Nothing new on the server: send only if there is something to send.
+            if (baseRec && sameState(local, baseRec.data)) break;
+            try {
+              const res = await pushSyncedData(getToken, local, seenAtRef.current);
+              seenAtRef.current = res?.updatedAt ?? null;
+              saveSyncBase(userId, local, seenAtRef.current);
+              break;
+            } catch (err) {
+              if (err.status === 409 && err.body?.data) {
+                remote = { data: err.body.data, updatedAt: err.body.updatedAt };
+                continue;
+              }
+              throw err;
+            }
           }
-          actions.importData(data);
-          // Data from their account arrived, so this isn't a first run: don't show setup.
-          if (!stateRef.current.settings?.tutorialSeen) actions.setSettings({ tutorialSeen: true });
+
+          if (!remote.data) {
+            // Nothing up there yet: seed it from this device.
+            const res = await pushSyncedData(getToken, local);
+            seenAtRef.current = res?.updatedAt ?? null;
+            saveSyncBase(userId, local, seenAtRef.current);
+            break;
+          }
+
+          // A brand new, untouched install adopts the account's data as it is.
+          // Anything else is merged, so offline work on this phone is kept.
+          const pristine = !baseRec && !local.settings?.tutorialSeen;
+          const merged = pristine ? remote.data : mergeStates(baseRec?.data ?? null, local, remote.data);
+          seenAtRef.current = remote.updatedAt ?? null;
+          // What the server holds is now the shared starting point, so if the
+          // send below fails or conflicts, the next round starts from here.
+          saveSyncBase(userId, remote.data, seenAtRef.current);
+
+          if (!sameState(merged, local)) {
+            // Keep the pre-merge copy one step back, in case it is ever needed.
+            try {
+              localStorage.setItem('compass.data.v1.before-sync', JSON.stringify(local));
+            } catch {
+              /* storage full: sync still proceeds */
+            }
+            actions.importData(merged);
+            // Data from their account arrived, so this isn't a first run.
+            if (!local.settings?.tutorialSeen) actions.setSettings({ tutorialSeen: true });
+            await nextTick(); // let the new state land before reading it again
+          }
+          if (sameState(merged, remote.data)) break; // nothing of ours to send
+
+          try {
+            const res = await pushSyncedData(getToken, merged, remote.updatedAt);
+            seenAtRef.current = res?.updatedAt ?? null;
+            saveSyncBase(userId, merged, seenAtRef.current);
+            break;
+          } catch (err) {
+            if (err.status === 409 && err.body?.data) {
+              remote = { data: err.body.data, updatedAt: err.body.updatedAt };
+              continue;
+            }
+            throw err;
+          }
         }
         setSyncStatus({ phase: 'idle', at: Date.now(), error: null });
       } catch (err) {
         setSyncStatus({ phase: 'error', error: err.message });
-        console.warn('Cloud sync: pull failed:', err.message);
+        console.warn('Cloud sync failed:', err.message);
       } finally {
         busyRef.current = false;
+        if (againRef.current) {
+          againRef.current = false;
+          sync();
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getToken]
+    [getToken, userId]
   );
 
-  // Initial pull, plus every way of noticing the other device changed
+  // Initial sync, plus every way of noticing another device changed
   // something: a timer, coming back to the tab, and regaining the network.
   useEffect(() => {
     if (!active) {
@@ -295,42 +379,29 @@ function DataSync() {
       setSyncStatus({ phase: 'off', error: null });
       return undefined;
     }
-    pull({ initial: true });
-    const timer = setInterval(pull, PULL_INTERVAL_MS);
+    seenAtRef.current = loadSyncBase(userId)?.updatedAt ?? null;
+    sync({ poll: true });
+    const poll = () => sync({ poll: true });
+    const timer = setInterval(poll, PULL_INTERVAL_MS);
     const onVisible = () => {
-      if (document.visibilityState === 'visible') pull();
+      if (document.visibilityState === 'visible') poll();
     };
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('online', pull);
+    window.addEventListener('online', poll);
     return () => {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('online', pull);
+      window.removeEventListener('online', poll);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, userId]);
 
-  // Debounced push whenever local data changes while sync is active.
+  // Debounced send whenever local data changes while sync is active. Syncing
+  // right after a merge is harmless: nothing differs from the base, so it
+  // stops at once.
   useEffect(() => {
     if (!active) return undefined;
-    if (skipNextPushRef.current) {
-      skipNextPushRef.current = false;
-      return undefined;
-    }
-    const timer = setTimeout(() => {
-      setSyncStatus({ phase: 'syncing', error: null });
-      pushSyncedData(getToken, state)
-        .then((res) => {
-          // Remember our own write, so the next poll doesn't mistake it for
-          // a change from somewhere else and re-import what we just sent.
-          seenAtRef.current = res?.updatedAt ?? seenAtRef.current;
-          setSyncStatus({ phase: 'idle', at: Date.now(), error: null });
-        })
-        .catch((err) => {
-          setSyncStatus({ phase: 'error', error: err.message });
-          console.warn('Cloud sync: push failed:', err.message);
-        });
-    }, PUSH_DEBOUNCE_MS);
+    const timer = setTimeout(() => sync(), PUSH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, active]);

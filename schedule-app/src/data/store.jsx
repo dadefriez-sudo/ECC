@@ -520,12 +520,63 @@ function reducer(state, action) {
   }
 }
 
+// --- Edit stamps (for cloud sync) -------------------------------------------
+//
+// Every time an item in a synced list is added or changed it gets `_u`, the
+// time of that edit. Cloud sync (data/syncMerge.js) uses it to decide which
+// side wins when two devices edited the same field. Stamping happens here, in
+// one place, by noticing which items the reducer replaced, so no individual
+// action has to remember to do it.
+const STAMPED_LISTS = [
+  'goals',
+  'events',
+  'contacts',
+  'pins',
+  'tasks',
+  'notes',
+  'interactions',
+  'templates',
+  'objectives',
+  'milestones',
+  'statuses',
+  'customEventTypes',
+];
+function stampChanges(prev, next) {
+  let out = next;
+  let now = null;
+  for (const key of STAMPED_LISTS) {
+    const before = prev[key];
+    const after = next[key];
+    if (before === after || !Array.isArray(after)) continue;
+    const old = new Map((before || []).map((x) => [x.id, x]));
+    let changed = false;
+    const list = after.map((item) => {
+      if (!item || typeof item !== 'object' || old.get(item.id) === item) return item;
+      changed = true;
+      now = now || new Date().toISOString();
+      return { ...item, _u: now };
+    });
+    if (changed) {
+      if (out === next) out = { ...next };
+      out[key] = list;
+    }
+  }
+  return out;
+}
+// Loading data from outside (a backup, the cloud) or resetting is not an edit.
+const UNSTAMPED_ACTIONS = new Set(['IMPORT_DATA', 'RESET_DATA', 'CLEAR_DATA']);
+function reducerWithStamps(state, action) {
+  const next = reducer(state, action);
+  if (next === state || UNSTAMPED_ACTIONS.has(action.type)) return next;
+  return stampChanges(state, next);
+}
+
 // --- Context ---------------------------------------------------------------
 
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
-  const [state, rawDispatch] = useReducer(reducer, undefined, loadState);
+  const [state, rawDispatch] = useReducer(reducerWithStamps, undefined, loadState);
   // Every action passes through here so the local usage log (activityLog.js)
   // sees it. useReducer's dispatch is stable, so this stays stable too.
   const dispatch = useCallback(
