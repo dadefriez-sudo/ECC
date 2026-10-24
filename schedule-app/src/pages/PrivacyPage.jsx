@@ -7,7 +7,7 @@ import LegalPage from '../components/LegalPage.jsx';
 // accurate to the current codebase as of the date below.
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 5, 2026">
+    <LegalPage title="Privacy Policy" updated="October 24, 2026">
       <p>
         Keystone is made by KeyStone Software and built around one idea: your calendar, your
         goals, and your people are your data, kept on your device by default. This page explains
@@ -29,6 +29,41 @@ export default function PrivacyPage() {
         device unless you move it yourself.
       </p>
 
+      <p>
+        A few features keep small working copies on your device so they can do their job, and
+        none of them send anything anywhere on their own:
+      </p>
+      <ul>
+        <li>
+          <b>Home screen widget (Android).</b> The widget shows the next few things on your day.
+          To draw it, Keystone saves a short summary (the titles and times of those items) in the
+          app's private storage. Those titles appear on your home screen, so anyone who can see
+          your unlocked screen can read them. Remove the widget if you'd rather they didn't.
+        </li>
+        <li>
+          <b>Reminders and notification buttons.</b> Reminders are scheduled on your device and
+          appear in your notification shade with the title of the goal, event, or task, which can
+          show on a lock screen depending on your phone's settings. Buttons such as Mark done and
+          Snooze act on the data on your device.
+        </li>
+        <li>
+          <b>Share into Keystone (Android).</b> When you share text, a link, or an address from
+          another app to Keystone, it is handled on your device and saved as a task, note, or
+          pin only if you choose to. If you pin a shared address, the lookup works like the map
+          search described below.
+        </li>
+        <li>
+          <b>Weekly review.</b> The weekly review is worked out on your device from your own
+          goals, tasks, and contacts. Its optional end-of-week reminder is a local notification.
+        </li>
+        <li>
+          <b>Usage counts and recovery copies.</b> "Your week in Keystone" counts how often you
+          used the app and stays on your phone unless you choose to send it. If cloud sync is
+          on, Keystone also keeps a copy of the last synced version, and one pre-merge copy, in
+          the app's private storage, so a sync can be undone by hand if something goes wrong.
+        </li>
+      </ul>
+
       <h2>What can leave your device, and why</h2>
       <ul>
         <li>
@@ -37,8 +72,16 @@ export default function PrivacyPage() {
           Keystone's free features.
         </li>
         <li>
-          <b>Cloud sync (optional, Pro).</b> If you turn this on, your app data is stored on our
-          server so it can follow you to another device. It's off by default.
+          <b>Cloud sync (optional, Pro).</b> If you turn this on, your app data (events, goals,
+          tasks, notes, contacts including any photos and addresses, map pins, and most
+          settings) is stored on our server so it can follow you to another device. When two of
+          your devices have both changed something, your phone combines the changes using the
+          last synced copy; the server stores one copy and does not read or merge it. Settings
+          that belong to a single device, such as your haptics choice, the last map position,
+          and your Pro status, are not synced. The data is sent over an encrypted connection,
+          is kept until you delete your account, and can be seen by us and our hosting
+          provider as it is not end-to-end encrypted. It's on by default for Pro accounts that
+          are signed in and can be switched off in Settings → Account &amp; sync.
         </li>
         <li>
           <b>Accountability partners (optional).</b> If you invite someone, or accept an invite, to
