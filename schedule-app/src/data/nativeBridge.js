@@ -22,7 +22,7 @@ export function buildWidgetPayload(state, now = new Date()) {
       if (occ.done) continue;
       const start = timeToMinutes(occ.start);
       if (start + 30 < nowMin) continue; // already well under way or over
-      rows.push({ sort: start, t: formatTime(occ.start), n: occ.title || 'Event', k: 'event' });
+      rows.push({ sort: start, t: formatTime(occ.start), n: occ.title || 'Event', k: 'event', i: occ.id });
     }
   }
   for (const t of state.tasks || []) {
@@ -30,9 +30,9 @@ export function buildWidgetPayload(state, now = new Date()) {
     if (t.dueTime) {
       const m = timeToMinutes(t.dueTime);
       if (m + 30 < nowMin) continue;
-      rows.push({ sort: m, t: formatTime(t.dueTime), n: t.title, k: 'task' });
+      rows.push({ sort: m, t: formatTime(t.dueTime), n: t.title, k: 'task', i: t.id });
     } else {
-      rows.push({ sort: 24 * 60, t: '', n: t.title, k: 'task' });
+      rows.push({ sort: 24 * 60, t: '', n: t.title, k: 'task', i: t.id });
     }
   }
   const wk = weekKey(now);
@@ -44,14 +44,14 @@ export function buildWidgetPayload(state, now = new Date()) {
     for (const time of g.reminder.times) {
       const m = timeToMinutes(time);
       if (m + 30 < nowMin) continue;
-      rows.push({ sort: m, t: formatTime(time), n: g.title, k: 'goal' });
+      rows.push({ sort: m, t: formatTime(time), n: g.title, k: 'goal', i: g.id });
     }
   }
 
   rows.sort((a, b) => a.sort - b.sort);
   return {
     day: today,
-    items: rows.slice(0, MAX_ROWS).map(({ t, n, k }) => ({ t, n, k })),
+    items: rows.slice(0, MAX_ROWS).map(({ t, n, k, i }) => ({ t, n, k, i })),
     more: Math.max(0, rows.length - MAX_ROWS),
   };
 }
@@ -78,7 +78,7 @@ export function listenForNativeEvents({ onShare, onAction }) {
       .then((h) => (cancelled ? h.remove() : handles.push(h)))
       .catch(() => {});
   add('shareReceived', onShare);
-  add('widgetAction', (d) => onAction(d?.action));
+  add('widgetAction', (d) => onAction(d?.action, d));
   return () => {
     cancelled = true;
     handles.forEach((h) => h.remove());

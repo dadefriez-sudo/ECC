@@ -71,6 +71,7 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
         String json = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null);
         String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(now);
         boolean filled = false;
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
 
         if (json != null) {
             try {
@@ -100,6 +101,17 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
                         views.setTextViewText(kindIds[i], label);
                         views.setTextColor(kindIds[i], color);
                         views.setViewVisibility(rowIds[i], View.VISIBLE);
+                        String itemId = item.optString("i", "");
+                        if (!itemId.isEmpty()) {
+                            // Tapping a row opens that event, task or goal.
+                            Intent openItem = new Intent(context, MainActivity.class);
+                            openItem.setAction("com.keystoneplanner.app.WIDGET_OPEN_ITEM_" + i);
+                            openItem.putExtra("keystoneAction", "openItem");
+                            openItem.putExtra("keystoneKind", kind);
+                            openItem.putExtra("keystoneId", itemId);
+                            openItem.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                            views.setOnClickPendingIntent(rowIds[i], PendingIntent.getActivity(context, 10 + i, openItem, flags));
+                        }
                         filled = true;
                     }
                     int more = data.optInt("more", 0);
@@ -120,8 +132,6 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
         if (!filled) {
             showMessage(views, rowIds[0], markerIds[0], timeIds[0], titleIds[0], kindIds[0], "Open Keystone to see today");
         }
-
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
 
         Intent open = new Intent(context, MainActivity.class);
         open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);

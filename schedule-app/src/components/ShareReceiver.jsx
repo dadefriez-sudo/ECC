@@ -8,7 +8,8 @@ import { geocodeAddress } from '../data/geocode.js';
 import { todayISO } from '../data/helpers.js';
 
 // Handles what the Android side reports: text shared into Keystone (offers to
-// save it as a task, a note or a map pin) and a tap on the widget's + button.
+// save it as a task, a note or a map pin) and taps on the widget (the + button
+// and each row).
 export default function ShareReceiver() {
   const { state } = useStore();
   const actions = useActions();
@@ -23,8 +24,14 @@ export default function ShareReceiver() {
         onShare: (d) => {
           if (d?.text?.trim()) setShared({ text: d.text.trim(), subject: (d.subject || '').trim() });
         },
-        onAction: (action) => {
+        onAction: (action, d) => {
           if (action === 'newTask') navigate('/tasks', { state: { quickNewTask: true } });
+          else if (action === 'openItem' && d?.id) {
+            // Same destinations Home's own rows use.
+            if (d.kind === 'goal') navigate('/goals', { state: { openGoalId: d.id } });
+            else if (d.kind === 'task') navigate('/tasks', { state: { openTaskId: d.id } });
+            else navigate('/planner', { state: { openEventId: d.id, openEventDate: todayISO() } });
+          }
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

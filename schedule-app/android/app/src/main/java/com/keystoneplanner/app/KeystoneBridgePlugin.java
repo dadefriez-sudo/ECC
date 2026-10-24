@@ -37,9 +37,15 @@ public class KeystoneBridgePlugin extends Plugin {
     }
 
     /** A button on the home screen widget was tapped. */
-    public void deliverAction(String action) {
+    public void deliverAction(String action, String kind, String id) {
         JSObject data = new JSObject();
         data.put("action", action);
+        if (kind != null) {
+            data.put("kind", kind);
+        }
+        if (id != null) {
+            data.put("id", id);
+        }
         notifyListeners("widgetAction", data, true);
     }
 }

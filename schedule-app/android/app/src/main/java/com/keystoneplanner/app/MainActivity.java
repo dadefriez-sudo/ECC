@@ -54,8 +54,10 @@ public class MainActivity extends BridgeActivity {
 
         String action = intent.getStringExtra("keystoneAction");
         if (action != null) {
-            plugin.deliverAction(action);
+            plugin.deliverAction(action, intent.getStringExtra("keystoneKind"), intent.getStringExtra("keystoneId"));
             intent.removeExtra("keystoneAction");
+            intent.removeExtra("keystoneKind");
+            intent.removeExtra("keystoneId");
         }
     }
 }
