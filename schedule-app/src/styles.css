@@ -8096,3 +8096,85 @@ body[data-assistant='on'] .conflict-list {
   gap: 6px;
   font-size: 14px;
 }
+
+/* Goals "Slide" layout: the bar is the control */
+.slide-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px 10px;
+  margin-bottom: 12px;
+}
+.slide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.slide-num {
+  background: none;
+  border: 0;
+  padding: 4px 0 4px 8px;
+  color: var(--text);
+  font: inherit;
+  white-space: nowrap;
+  min-height: 44px;
+}
+.slide-num strong {
+  font-size: 20px;
+}
+.slide-type .quick-input {
+  width: 72px;
+}
+.slide-track {
+  position: relative;
+  height: 52px;
+  margin-top: 8px;
+  border-radius: 16px;
+  background: var(--track);
+  overflow: hidden;
+  touch-action: pan-y;
+  cursor: ew-resize;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.slide-track:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.slide-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, var(--ring-hi, var(--accent)), var(--accent));
+  border-radius: 16px 0 0 16px;
+}
+.slide-track--full .slide-fill {
+  border-radius: 16px;
+  background: var(--good);
+}
+.slide-thumb {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 8px;
+  margin-left: -10px;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.12s ease;
+}
+.slide-track--drag .slide-thumb {
+  transform: scaleY(1.12);
+}
+.slide-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 2px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.slide-card--done .slide-num strong {
+  color: var(--good);
+}

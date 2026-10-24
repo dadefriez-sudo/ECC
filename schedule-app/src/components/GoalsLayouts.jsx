@@ -1,4 +1,6 @@
+import { useRef, useState } from 'react';
 import Icon from './Icon.jsx';
+import { selectTick, successTick } from '../data/haptics.js';
 import AnimatedNumber from './AnimatedNumber.jsx';
 import {
   computeGoalStreak,
@@ -249,6 +251,162 @@ export function StreakView({ h }) {
       {h.weeklyGoals.length > 0 && <div className="calm-sec">THIS WEEK</div>}
       {h.weeklyGoals.map((g) => (
         <WeeklyRow key={g.id} g={g} h={h} card />
+      ))}
+    </div>
+  );
+}
+
+// Drag to set: the progress bar is the control. Slide to the number you're at;
+// it snaps to whole numbers and only saves when you let go.
+function SlideBar({ g, value, k, h }) {
+  const trackRef = useRef(null);
+  const drag = useRef(null);
+  const [draft, setDraft] = useState(null);
+  const shown = draft ?? value;
+  const pct = Math.min(100, (shown / g.target) * 100);
+  const valueAt = (x) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const f = Math.min(1, Math.max(0, (x - r.left) / r.width));
+    return Math.round(f * g.target);
+  };
+  const move = (n) => {
+    if (n !== drag.current.last) {
+      drag.current.last = n;
+      selectTick();
+      setDraft(n);
+    }
+  };
+  const finish = (n) => {
+    if (n !== value) {
+      h.setProgress(g.id, k, n);
+      if (n >= g.target && value < g.target) successTick();
+    }
+    setDraft(null);
+  };
+  const onDown = (e) => {
+    drag.current = { x: e.clientX, y: e.clientY, active: false, last: value, id: e.pointerId };
+  };
+  const onMove = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    if (!d.active) {
+      const dx = Math.abs(e.clientX - d.x);
+      if (dx < 8 || dx < Math.abs(e.clientY - d.y)) return;
+      d.active = true;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
+    move(valueAt(e.clientX));
+  };
+  const onUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (d?.active) finish(d.last);
+  };
+  const onKey = (e) => {
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    h.setProgress(g.id, k, Math.min(g.target, Math.max(0, value + step)));
+  };
+  const tickEvery = g.target <= 10 ? 1 : g.target <= 40 ? 5 : Math.ceil(g.target / 4 / 5) * 5;
+  const ticks = [];
+  for (let t = 0; t < g.target; t += tickEvery) ticks.push(t);
+  ticks.push(g.target);
+  return (
+    <div className="slide">
+      <div
+        ref={trackRef}
+        className={`slide-track${draft != null ? ' slide-track--drag' : ''}${shown >= g.target ? ' slide-track--full' : ''}`}
+        role="slider"
+        tabIndex={0}
+        aria-label={`${g.title} progress`}
+        aria-valuemin={0}
+        aria-valuemax={g.target}
+        aria-valuenow={shown}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        onKeyDown={onKey}
+      >
+        <i className="slide-fill" style={{ width: `${pct}%` }} />
+        <u className="slide-thumb" style={{ left: `${pct}%` }} />
+      </div>
+      <div className="slide-ticks" aria-hidden="true">
+        {ticks.map((t) => (
+          <span key={t}>{t}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SlideCard({ g, k, h, sub }) {
+  const value = g.progress?.[k] || 0;
+  const typing = h.typing?.id === g.id && h.typing.key === k;
+  const done = value >= g.target;
+  return (
+    <div className={`slide-card${done ? ' slide-card--done' : ''}`}>
+      <div className="slide-head">
+        <button className="calm-main" onClick={() => h.openEdit(g)}>
+          <span className="calm-title">{g.title}</span>
+          {sub && <span className="calm-sub">{sub}</span>}
+        </button>
+        {g.target === 1 ? (
+          <GoalCircle g={g} value={value} k={k} h={h} />
+        ) : typing ? (
+          <span className="slide-type">
+            <input
+              className="quick-input"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              autoFocus
+              value={h.typing.value}
+              onChange={(e) => h.setTyping({ id: g.id, value: e.target.value, key: k })}
+              onKeyDown={(e) => e.key === 'Enter' && h.commitTyping()}
+              onBlur={h.commitTyping}
+              aria-label={`Set ${g.title} progress`}
+            />
+          </span>
+        ) : (
+          <button
+            className="slide-num"
+            onClick={() => h.setTyping({ id: g.id, value: String(value), key: k })}
+            aria-label={`${value} of ${g.target} ${g.unit || ''}. Tap to type a number`}
+          >
+            <strong>{value}</strong>
+            <span className="muted"> / {g.target}{g.unit ? ` ${g.unit}` : ''}</span>
+          </button>
+        )}
+      </div>
+      {g.target > 1 && <SlideBar g={g} value={value} k={k} h={h} />}
+    </div>
+  );
+}
+
+export function SlideView({ h }) {
+  const todayKey = todayISO();
+  const doneCount = h.todayGoals.filter((g) => isMet(g, todayKey)).length;
+  return (
+    <div className="calm slide-layout">
+      <div className="calm-head">
+        <div className="calm-date">{formatDayLabel(todayKey)}</div>
+        <div className="muted calm-count">
+          {h.todayGoals.length === 0
+            ? 'Nothing due today'
+            : doneCount === h.todayGoals.length
+            ? 'All done today. Nice work.'
+            : `${doneCount} of ${h.todayGoals.length} done today. Drag a bar to set progress.`}
+        </div>
+      </div>
+      {h.todayGoals.length > 0 && <div className="calm-sec">TODAY</div>}
+      {h.todayGoals.map((g) => (
+        <SlideCard key={g.id} g={g} k={todayKey} h={h} sub={streakLine(g)} />
+      ))}
+      {h.weeklyGoals.length > 0 && <div className="calm-sec">THIS WEEK</div>}
+      {h.weeklyGoals.map((g) => (
+        <SlideCard key={g.id} g={g} k={h.weekKey} h={h} sub={`By ${h.weekEndLabel}`} />
       ))}
     </div>
   );

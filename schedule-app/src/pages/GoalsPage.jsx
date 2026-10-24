@@ -12,7 +12,7 @@ import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import MilestoneCelebration from '../components/MilestoneCelebration.jsx';
 import ObjectivesView from './ObjectivesView.jsx';
 import { GOAL_TEMPLATES } from '../data/goalTemplates.js';
-import { CalmView, StreakView } from '../components/GoalsLayouts.jsx';
+import { CalmView, SlideView, StreakView } from '../components/GoalsLayouts.jsx';
 import {
   goalKey,
   weekKey,
@@ -694,7 +694,13 @@ export default function GoalsPage() {
             setProgress: (id, k, n) => actions.setGoalProgress(id, k, n),
             openEdit,
           };
-          return goalsStyle === 'streak' ? <StreakView h={layoutProps} /> : <CalmView h={layoutProps} />;
+          return goalsStyle === 'streak' ? (
+            <StreakView h={layoutProps} />
+          ) : goalsStyle === 'slide' ? (
+            <SlideView h={layoutProps} />
+          ) : (
+            <CalmView h={layoutProps} />
+          );
         })()
       )}
       {view === 'habits' && (classic ? goals.length > 0 : state.goals.length > 0) && <div className="fab-spacer" aria-hidden="true" />}

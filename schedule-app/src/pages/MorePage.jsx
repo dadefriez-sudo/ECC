@@ -846,6 +846,7 @@ export default function MorePage() {
         <div className="seg seg--full">
           {[
             { value: 'calm', label: 'Calm' },
+            { value: 'slide', label: 'Slide' },
             { value: 'streak', label: 'Streak', pro: true },
             { value: 'classic', label: 'Classic' },
           ].map((o) => (
@@ -861,6 +862,8 @@ export default function MorePage() {
         <p className="muted small">
           {(s.goalsStyle || 'calm') === 'classic'
             ? 'Classic: cards with progress bars, Today and This week tabs, and a date picker.'
+            : (s.goalsStyle || 'calm') === 'slide'
+            ? 'Slide: drag across a goal\'s bar to set today\'s progress. Tap the number to type one instead.'
             : (s.goalsStyle || 'calm') === 'streak' && isPro
             ? 'Streak: a day streak, a week strip and big one tap cards. One missed day a week never breaks it.'
             : 'Calm: one simple list. Tap the circle to finish a goal, with seven dots of history.'}
