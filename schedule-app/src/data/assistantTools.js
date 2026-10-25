@@ -14,7 +14,7 @@ import {
   withContactIds,
 } from './helpers.js';
 import { makeOverdueCheck, reconnectDaysOf } from './reconnect.js';
-import { contactInsights } from './contactInsights.js';
+import { contactInsights, hasHappened } from './contactInsights.js';
 import { optimizeRoute, formatDistance } from './routePlanner.js';
 import { eventPinIdentity } from './pinLabel.js';
 
@@ -134,14 +134,14 @@ const TOOLS = {
     if (insights.length) {
       out.push('Patterns: ' + insights.map((i) => i.text).join(' '));
     }
-    const recent = entries.filter((e) => e.date <= todayISO()).slice(-6);
+    const recent = entries.filter((e) => hasHappened(e)).slice(-6);
     if (recent.length) {
       out.push('Recently:');
       for (const e of recent) {
         out.push(`  ${e.date} — ${e.label}`);
       }
     }
-    const upcoming = entries.filter((e) => e.date > todayISO()).slice(0, 4);
+    const upcoming = entries.filter((e) => !hasHappened(e)).slice(0, 4);
     if (upcoming.length) {
       out.push('Coming up:');
       for (const e of upcoming) out.push(`  ${e.date} — ${e.label}`);

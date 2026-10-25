@@ -26,8 +26,21 @@ const MIN_OCCURRENCES = 3;
 // split, before it's worth calling a habit.
 const DOMINANCE = 0.4;
 
+// Has this entry actually taken place yet? A logged contact on a given day
+// has; an event only has once it's over. An event later today is still ahead of
+// you, even though today's date is not in the future.
+export function hasHappened(entry, now = new Date()) {
+  const today = toISO(now);
+  if (entry.date < today) return true;
+  if (entry.date > today) return false;
+  if (entry.type !== 'event') return true;
+  const start = timeToMinutes(entry.occ?.start || '00:00');
+  const end = Math.max(start, timeToMinutes(entry.occ?.end || entry.occ?.start || '00:00'));
+  return end <= now.getHours() * 60 + now.getMinutes();
+}
+
 export function contactInsights(entries, { now = new Date() } = {}) {
-  const past = entries.filter((e) => e.date <= toISO(now));
+  const past = entries.filter((e) => hasHappened(e, now));
   if (past.length === 0) return [];
 
   const out = [];

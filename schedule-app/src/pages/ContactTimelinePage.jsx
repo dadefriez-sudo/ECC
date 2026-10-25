@@ -14,7 +14,7 @@ import {
   expandEventOnDay,
   eventContactIds,
 } from '../data/helpers.js';
-import { contactInsights } from '../data/contactInsights.js';
+import { contactInsights, hasHappened } from '../data/contactInsights.js';
 import { useToast } from '../data/toast.jsx';
 import { confirmTick, selectTick, warnTick } from '../data/haptics.js';
 import Icon from '../components/Icon.jsx';
@@ -54,6 +54,14 @@ export default function ContactTimelinePage() {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   const today = todayISO();
+  // Re-read the clock each minute so an event moves from Upcoming to Past by
+  // itself once it is over, rather than the moment its date is today.
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setClock(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  const now = useMemo(() => new Date(clock), [clock]);
 
   // Combined chronological feed: calendar events linked to this person
   // (past and future), and logged interactions. Notes live in their own bar
@@ -79,7 +87,9 @@ export default function ContactTimelinePage() {
         out.push({ type: 'interaction', date: ix.date, key: `ix:${ix.id}`, interaction: ix });
       }
     }
-    out.sort((a, b) => b.date.localeCompare(a.date));
+    // Newest first; within a day, later events first (a logged contact has no time).
+    const timeOf = (e) => (e.type === 'event' ? e.occ?.start || '' : '');
+    out.sort((a, b) => b.date.localeCompare(a.date) || timeOf(b).localeCompare(timeOf(a)));
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.events, state.interactions, contact?.id]);
@@ -95,11 +105,11 @@ export default function ContactTimelinePage() {
     [state.notes, contact?.id]
   );
 
-  const insights = useMemo(() => contactInsights(entries, {}), [entries]);
+  const insights = useMemo(() => contactInsights(entries, { now }), [entries, now]);
 
   // `entries` runs newest-first, so future is the head and past is the tail.
-  const futureAll = useMemo(() => entries.filter((e) => e.date > today), [entries, today]);
-  const pastAll = useMemo(() => entries.filter((e) => e.date <= today), [entries, today]);
+  const futureAll = useMemo(() => entries.filter((e) => !hasHappened(e, now)), [entries, now]);
+  const pastAll = useMemo(() => entries.filter((e) => hasHappened(e, now)), [entries, now]);
   const SHOWN = 3;
   // The nearest three ahead are the *last* three of the future block, since
   // that block is sorted furthest-first.
@@ -900,7 +910,7 @@ function TimelineEntry({
       <button className={cls} {...press} aria-pressed={selectMode ? selected : undefined}>
         {check}
         <span className="timeline-item-date">
-          {formatShortDate(entry.date)}
+          {entry.date === todayISO() ? 'Today' : formatShortDate(entry.date)}
           <small>{formatTime(occ.start)}</small>
         </span>
         <span className="timeline-item-body">
