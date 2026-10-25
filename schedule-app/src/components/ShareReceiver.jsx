@@ -17,6 +17,7 @@ export default function ShareReceiver() {
   const showToast = useToast();
   const [shared, setShared] = useState(null); // { text, subject } | null
   const [busy, setBusy] = useState(false);
+  const [placeError, setPlaceError] = useState(false);
 
   useEffect(
     () =>
@@ -40,7 +41,10 @@ export default function ShareReceiver() {
 
   if (!shared) return null;
   const firstLine = (shared.subject || shared.text.split('\n')[0]).slice(0, 120);
-  const close = () => setShared(null);
+  const close = () => {
+    setShared(null);
+    setPlaceError(false);
+  };
 
   const asTask = () => {
     // The title is the subject (Keep's note title) or the first line; the rest
@@ -67,10 +71,13 @@ export default function ShareReceiver() {
   };
   const asPlace = async () => {
     setBusy(true);
+    setPlaceError(false);
     const hit = await geocodeAddress(shared.text.split('\n').join(', '));
     setBusy(false);
     if (!hit) {
-      showToast("Couldn't find that place. Try saving it as a note.");
+      // Shown inside the sheet: a toast would sit behind it and only appear
+      // once the sheet closed.
+      setPlaceError(true);
       return;
     }
     actions.addPin({
@@ -103,6 +110,11 @@ export default function ShareReceiver() {
     >
       <div className="form">
         <p className="share-preview">{shared.text.length > 280 ? `${shared.text.slice(0, 280)}…` : shared.text}</p>
+        {placeError && (
+          <p className="partner-error" role="alert">
+            Couldn't find that place, so it can't be pinned. Try saving it as a note or task instead.
+          </p>
+        )}
         <div className="stack-btns">
           <button className="btn btn-primary" onClick={asTask}>
             Add as a task
