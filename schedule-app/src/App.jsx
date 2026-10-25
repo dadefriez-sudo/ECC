@@ -52,6 +52,7 @@ import { hasActiveBackHandler } from './data/useBackDismiss.js';
 import HomePage from './pages/HomePage.jsx';
 const GoalsPage = lazy(() => import('./pages/GoalsPage.jsx'));
 const GoalHistoryPage = lazy(() => import('./pages/GoalHistoryPage.jsx'));
+const GoalsHistoryPage = lazy(() => import('./pages/GoalsHistoryPage.jsx'));
 const PlannerPage = lazy(() => import('./pages/PlannerPage.jsx'));
 const ContactsPage = lazy(() => import('./pages/ContactsPage.jsx'));
 const ContactDetailPage = lazy(() => import('./pages/ContactDetailPage.jsx'));
@@ -1129,6 +1130,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/goals/history" element={<GoalsHistoryPage />} />
             <Route path="/goals/:id/history" element={<GoalHistoryPage />} />
             <Route path="/planner" element={<PlannerPage />} />
             <Route path="/contacts" element={<ContactsPage />} />

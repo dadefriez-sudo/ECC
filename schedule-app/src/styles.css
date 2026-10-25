@@ -8143,6 +8143,7 @@ body[data-assistant='on'] .conflict-list {
   outline-offset: 2px;
 }
 .slide-fill {
+  transition: width 0.32s cubic-bezier(0.22, 0.9, 0.3, 1);
   position: absolute;
   left: 0;
   top: 0;
@@ -8155,6 +8156,7 @@ body[data-assistant='on'] .conflict-list {
   background: var(--good);
 }
 .slide-thumb {
+  transition: left 0.32s cubic-bezier(0.22, 0.9, 0.3, 1), transform 0.14s ease;
   position: absolute;
   top: 8px;
   bottom: 8px;
@@ -8306,4 +8308,152 @@ body[data-assistant='on'] .conflict-list {
 }
 .tl-dot--next {
   border-radius: 50%;
+}
+.category-chips {
+  margin-bottom: 8px;
+}
+
+/* Follow the finger one-to-one while dragging; glide otherwise. */
+.slide-track--drag .slide-fill,
+.slide-track--drag .slide-thumb {
+  transition: transform 0.14s ease;
+}
+.slide-track {
+  contain: layout paint;
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-fill,
+  .slide-thumb {
+    transition: none;
+  }
+}
+
+/* Goal history entry points and the all-goals history page */
+.pips-btn {
+  background: none;
+  border: 0;
+  padding: 8px 2px;
+  margin: -8px -2px;
+  min-height: 44px;
+}
+.goal-history-btn {
+  flex: none;
+  color: var(--muted);
+}
+.page-head-row .icon-btn {
+  position: relative;
+}
+.icon-btn-lock {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+}
+.gh-days,
+.gh-goals,
+.gh-day-goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gh-day {
+  border-top: 1px solid var(--border);
+}
+.gh-day:first-child {
+  border-top: 0;
+}
+.gh-day-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: 0;
+  padding: 12px 0;
+  min-height: 44px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.gh-day-date {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+.gh-day-bar {
+  width: 72px;
+  height: 8px;
+  border-radius: 6px;
+  background: var(--track);
+  overflow: hidden;
+}
+.gh-day-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 6px;
+}
+.gh-day-bar i.gh-full {
+  background: var(--good);
+}
+.gh-day-count {
+  width: 34px;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.gh-day-goals {
+  padding: 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gh-day-goals li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.gh-ok {
+  color: var(--good);
+}
+.gh-miss {
+  color: var(--muted);
+}
+.gh-goal {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+  min-height: 52px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.gh-goals li:first-child .gh-goal {
+  border-top: 0;
+}
+.gh-goal-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gh-spark {
+  display: flex;
+  gap: 3px;
+}
+.gh-spark i {
+  width: 6px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--track);
+}
+.gh-spark i.gh-spark-on {
+  background: var(--accent);
 }

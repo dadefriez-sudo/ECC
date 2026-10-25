@@ -187,6 +187,12 @@ export default function GoalsPage() {
   // so they need their own light tick to keep confirming each step landed —
   // unless this is the step that completes the goal, which keeps the
   // stronger successTick instead of also firing this one.
+  // History is a Pro view; free accounts are sent to the pricing page, same as
+  // the link inside the goal editor. With no goal, it's the all-goals overview.
+  const openHistory = (g) => {
+    if (!isPro) return navigate('/pricing');
+    navigate(g ? `/goals/${g.id}/history` : '/goals/history');
+  };
   const applyDelta = (goalId, periodKey, delta, { repeatTick = false } = {}) => {
     const g = stateRef.current.goals.find((x) => x.id === goalId);
     if (!g) return;
@@ -391,6 +397,15 @@ export default function GoalsPage() {
       <header className="page-head">
         <div className="page-head-row">
           <Brand>Goals</Brand>
+          <button
+            className="icon-btn"
+            onClick={() => openHistory()}
+            aria-label="Goal history"
+            title="History"
+          >
+            <Icon name="chart" size={20} />
+            {!isPro && <Icon name="lock" size={10} className="icon-btn-lock" />}
+          </button>
         </div>
         {/* One tab, two layers: Habits is the existing daily/weekly streak
             tracker, Objectives is the quarterly/annual layer with
@@ -544,6 +559,14 @@ export default function GoalsPage() {
                         <AnimatedNumber value={value} /> / {g.target} {g.unit}
                       </span>
                     </button>
+                    <button
+                      className="icon-btn goal-history-btn"
+                      onClick={() => openHistory(g)}
+                      aria-label={`${g.title} history`}
+                      title="History"
+                    >
+                      <Icon name="chart" size={18} />
+                    </button>
                     {g.target === 1 ? (
                       // A yes/no goal needs a check, not a -/+ stepper.
                       <button
@@ -692,6 +715,7 @@ export default function GoalsPage() {
             setTyping,
             commitTyping,
             applyDelta,
+            openHistory,
             setProgress: (id, k, n) => actions.setGoalProgress(id, k, n),
             openEdit,
           };
@@ -825,20 +849,35 @@ export default function GoalsPage() {
                     <p className="muted small">Leave all days off to repeat every day.</p>
                   </div>
                 )}
-                <label className="field">
+                <div className="field">
                   <span>Category</span>
+                  {/* The browser's own <datalist> never shows its suggestions in the
+                      Android WebView, so existing categories are plain tap chips. */}
+                  {(() => {
+                    const existing = [...new Set(state.goals.map((g) => g.category?.trim()).filter(Boolean))];
+                    return existing.length > 0 ? (
+                      <div className="template-chips template-chips--sheet category-chips">
+                        {existing.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            className={`template-chip${editing.category.trim() === c ? ' template-chip--on' : ''}`}
+                            onClick={() => setEditing({ ...editing, category: editing.category.trim() === c ? '' : c })}
+                            aria-pressed={editing.category.trim() === c}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                   <input
                     value={editing.category}
                     onChange={(e) => setEditing({ ...editing, category: e.target.value })}
-                    placeholder="e.g. Health"
-                    list="goal-categories"
+                    placeholder="Or type a new one, e.g. Health"
+                    aria-label="Category"
                   />
-                  <datalist id="goal-categories">
-                    {[...new Set(state.goals.map((g) => g.category).filter(Boolean))].map((c) => (
-                      <option key={c} value={c} />
-                    ))}
-                  </datalist>
-                </label>
+                </div>
                 <div className="field">
                   <label className="check-row">
                     <Checkbox

@@ -166,7 +166,9 @@ export function CalmView({ h }) {
                 <span className="calm-title">{g.title}</span>
                 <span className="calm-sub">{[line, sl].filter(Boolean).join(' · ')}</span>
               </button>
-              <Pips g={g} />
+              <button className="pips-btn" onClick={() => h.openHistory(g)} aria-label={`${g.title} history`}>
+                <Pips g={g} />
+              </button>
             </div>
             <CountChips g={g} value={value} k={todayKey} h={h} />
           </div>
@@ -239,6 +241,9 @@ export function StreakView({ h }) {
                 <span className="calm-title">{g.title}</span>
                 <span className="calm-sub">{[line, sl].filter(Boolean).join(' · ')}</span>
               </button>
+              <button className="icon-btn" onClick={() => h.openHistory(g)} aria-label={`${g.title} history`}>
+                <Icon name="chart" size={18} />
+              </button>
             </div>
             {g.target > 1 && !done && (
               <div className="progress-track sk-bar"><div className="progress-fill" style={{ width: `${Math.round((value / g.target) * 100)}%` }} /></div>
@@ -262,14 +267,18 @@ function SlideBar({ g, value, k, h }) {
   const trackRef = useRef(null);
   const drag = useRef(null);
   const [draft, setDraft] = useState(null);
+  // While a finger is down the bar follows it exactly (frac); the number and
+  // ticks snap to whole values. On release the bar glides to the snapped spot.
+  const [frac, setFrac] = useState(null);
   const shown = draft ?? value;
-  const pct = Math.min(100, (shown / g.target) * 100);
-  const valueAt = (x) => {
+  const pct = frac != null ? frac * 100 : Math.min(100, (shown / g.target) * 100);
+  const fracAt = (x) => {
     const r = trackRef.current.getBoundingClientRect();
-    const f = Math.min(1, Math.max(0, (x - r.left) / r.width));
-    return Math.round(f * g.target);
+    return Math.min(1, Math.max(0, (x - r.left) / r.width));
   };
-  const move = (n) => {
+  const move = (f) => {
+    const n = Math.round(f * g.target);
+    setFrac(f);
     if (n !== drag.current.last) {
       drag.current.last = n;
       selectTick();
@@ -282,6 +291,7 @@ function SlideBar({ g, value, k, h }) {
       if (n >= g.target && value < g.target) successTick();
     }
     setDraft(null);
+    setFrac(null);
   };
   const onDown = (e) => {
     drag.current = { x: e.clientX, y: e.clientY, active: false, last: value, id: e.pointerId };
@@ -295,7 +305,7 @@ function SlideBar({ g, value, k, h }) {
       d.active = true;
       e.currentTarget.setPointerCapture?.(e.pointerId);
     }
-    move(valueAt(e.clientX));
+    move(fracAt(e.clientX));
   };
   const onUp = () => {
     const d = drag.current;
@@ -316,7 +326,7 @@ function SlideBar({ g, value, k, h }) {
     <div className="slide">
       <div
         ref={trackRef}
-        className={`slide-track${draft != null ? ' slide-track--drag' : ''}${shown >= g.target ? ' slide-track--full' : ''}`}
+        className={`slide-track${frac != null ? ' slide-track--drag' : ''}${shown >= g.target ? ' slide-track--full' : ''}`}
         role="slider"
         tabIndex={0}
         aria-label={`${g.title} progress`}
@@ -351,6 +361,9 @@ function SlideCard({ g, k, h, sub }) {
         <button className="calm-main" onClick={() => h.openEdit(g)}>
           <span className="calm-title">{g.title}</span>
           {sub && <span className="calm-sub">{sub}</span>}
+        </button>
+        <button className="icon-btn" onClick={() => h.openHistory(g)} aria-label={`${g.title} history`}>
+          <Icon name="chart" size={18} />
         </button>
         {g.target === 1 ? (
           <GoalCircle g={g} value={value} k={k} h={h} />
