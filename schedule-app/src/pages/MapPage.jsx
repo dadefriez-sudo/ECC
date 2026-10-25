@@ -163,9 +163,16 @@ export default function MapPage() {
   const [editing, setEditing] = useState(null);
   const [initialEditingJson, setInitialEditingJson] = useState('');
   const wasEditingRef = useRef(false);
+  // "Move pin": the editor closes while you reposition, then comes back with
+  // the same draft, so the unsaved-changes baseline has to survive the trip.
+  const [moving, setMoving] = useState(null); // { draft, initialJson, lat, lng } | null
+  const [moveQuery, setMoveQuery] = useState('');
+  const [moveSearching, setMoveSearching] = useState(false);
+  const restoreInitialRef = useRef(null);
   if (editing && !wasEditingRef.current) {
     wasEditingRef.current = true;
-    setInitialEditingJson(JSON.stringify(editing));
+    setInitialEditingJson(restoreInitialRef.current ?? JSON.stringify(editing));
+    restoreInitialRef.current = null;
   } else if (!editing && wasEditingRef.current) {
     wasEditingRef.current = false;
   }
@@ -199,6 +206,11 @@ export default function MapPage() {
     }
     if (pickMode) {
       setPickLatLng({ lat: e.latlng.lat, lng: e.latlng.lng });
+      selectTick();
+      return;
+    }
+    if (moving) {
+      setMoving({ ...moving, lat: e.latlng.lat, lng: e.latlng.lng });
       selectTick();
       return;
     }
@@ -237,7 +249,7 @@ export default function MapPage() {
     pressRef.current = null;
   };
   handlersRef.current.onPressStart = (e) => {
-    if (placing || pickMode || !mapRef.current) return;
+    if (placing || pickMode || moving || !mapRef.current) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return; // ignore right/middle click
     clearPressTimer();
     suppressClickRef.current = false;
@@ -522,21 +534,23 @@ export default function MapPage() {
     const layer = pickLayerRef.current;
     if (!layer) return;
     layer.clearLayers();
-    if (!pickMode || !pickLatLng) return;
+    const at = pickMode ? pickLatLng : moving;
+    if (!at) return;
     const icon = L.divIcon({
       className: 'pin-icon pin-icon--pick',
-      html: `<div class="pin-bubble pin-bubble--pick"><span>📍</span></div>`,
+      html: `<div class="pin-bubble pin-bubble--pick"><span>${moving ? moving.draft.emoji || '📍' : '📍'}</span></div>`,
       iconSize: [40, 46],
       iconAnchor: [20, 46],
     });
-    L.marker([pickLatLng.lat, pickLatLng.lng], { icon, keyboard: false, draggable: true })
+    L.marker([at.lat, at.lng], { icon, keyboard: false, draggable: true })
       .addTo(layer)
       .on('dragend', (e) => {
         const ll = e.target.getLatLng();
-        setPickLatLng({ lat: ll.lat, lng: ll.lng });
+        if (pickMode) setPickLatLng({ lat: ll.lat, lng: ll.lng });
+        else setMoving((m) => (m ? { ...m, lat: ll.lat, lng: ll.lng } : m));
         selectTick();
       });
-  }, [pickMode, pickLatLng]);
+  }, [pickMode, pickLatLng, moving?.lat, moving?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pan to the selected pin so it isn't hidden behind the info card.
   useEffect(() => {
@@ -631,6 +645,30 @@ export default function MapPage() {
     setEditing(null);
   };
 
+  const startMove = () => {
+    setMoving({ draft: editing, initialJson: initialEditingJson, lat: editing.lat, lng: editing.lng });
+    setMoveQuery('');
+    setEditing(null);
+    mapRef.current?.setView([editing.lat, editing.lng], Math.max(mapRef.current.getZoom(), 16));
+  };
+  const endMove = (apply) => {
+    const m = moving;
+    setMoving(null);
+    restoreInitialRef.current = m.initialJson;
+    setEditing(apply ? { ...m.draft, lat: m.lat, lng: m.lng } : m.draft);
+  };
+  const searchMove = async () => {
+    const q = moveQuery.trim();
+    if (!q || moveSearching) return;
+    setMoveSearching(true);
+    const hit = await geocodeAddress(q);
+    setMoveSearching(false);
+    if (!hit) return alert("Couldn't find that address.");
+    setMoving((m) => (m ? { ...m, lat: hit.lat, lng: hit.lng } : m));
+    mapRef.current?.setView([hit.lat, hit.lng], 16);
+    selectTick();
+  };
+
   const contactName = (cid) => state.contacts.find((c) => c.id === cid)?.name;
 
   const searchPickLocation = async () => {
@@ -694,7 +732,7 @@ export default function MapPage() {
     <div className="map-page">
       <div ref={containerRef} className="map-canvas" />
 
-      {!pickMode && !placing && (
+      {!pickMode && !moving && !placing && (
         <div className="map-search">
           <Icon name="search" size={18} />
           <input
@@ -716,7 +754,7 @@ export default function MapPage() {
           )}
         </div>
       )}
-      {!pickMode && !placing && query.trim() && (
+      {!pickMode && !moving && !placing && query.trim() && (
         <div className="map-search-results" role="listbox">
           {searchMatches.map((p) => (
             <button key={p.id} className="map-search-row" onClick={() => goToPin(p)}>
@@ -744,7 +782,7 @@ export default function MapPage() {
           cluster reads as one control layer instead of one cluster and a
           stray button. It still writes to the same `mapStyle` setting, so
           Settings and this never disagree. */}
-      {!pickMode && (
+      {!pickMode && !moving && (
         <div className="map-corner">
           <button
             className={`map-round${filtersOpen ? ' map-round--on' : ''}`}
@@ -800,7 +838,7 @@ export default function MapPage() {
         </div>
       )}
 
-      {!pickMode && layersOpen && (
+      {!pickMode && !moving && layersOpen && (
         <div className="map-layers" role="group" aria-label="Map style">
           {MAP_STYLE_OPTIONS.map((o) => (
             <button
@@ -820,7 +858,7 @@ export default function MapPage() {
       )}
 
       {/* Pin filters, hung under the corner controls */}
-      {!pickMode && filtersOpen && (
+      {!pickMode && !moving && filtersOpen && (
         <div className="map-filters" role="group" aria-label="Pin filters">
           {[
             { k: 'contacts', icon: 'person', label: 'People', n: (state.pins || []).filter((p) => p.contactId).length },
@@ -891,8 +929,48 @@ export default function MapPage() {
         </>
       )}
 
+      {moving && (
+        <>
+          <div className="map-banner map-pick-banner">
+            <div className="map-pick-search">
+              <AddressField
+                value={moveQuery}
+                placeholder="Search for an address…"
+                onChange={(text, picked) => {
+                  setMoveQuery(text);
+                  if (picked) {
+                    setMoving((m) => (m ? { ...m, lat: picked.lat, lng: picked.lng } : m));
+                    mapRef.current?.setView([picked.lat, picked.lng], 16);
+                    selectTick();
+                  }
+                }}
+                onSubmit={searchMove}
+              />
+            </div>
+            <button
+              className="map-round map-pick-search-btn"
+              onClick={searchMove}
+              disabled={moveSearching}
+              aria-label="Search"
+              title="Search"
+            >
+              <SearchIcon />
+            </button>
+            <button className="banner-x" onClick={() => endMove(false)} aria-label="Cancel move">
+              <Icon name="close" size={16} />
+            </button>
+          </div>
+          <div className="map-pick-footer">
+            <p className="muted small map-pick-hint">Drag the pin, or tap elsewhere to move it.</p>
+            <button className="btn btn-primary full" onClick={() => endMove(true)}>
+              Move pin here
+            </button>
+          </div>
+        </>
+      )}
+
       {/* First-run hint: an empty map gives no clue what to do. */}
-      {!pickMode && !placing && !selected && !tempPin && !query && (state.pins || []).length === 0 && (
+      {!pickMode && !moving && !placing && !selected && !tempPin && !query && (state.pins || []).length === 0 && (
         <div className="map-empty-hint">
           <strong>Drop your first pin</strong>
           <span className="muted small">Tap + or press and hold anywhere on the map. Pin places, or where the people you care about live.</span>
@@ -919,7 +997,7 @@ export default function MapPage() {
       )}
 
       {/* Temporary long-press pin: a small floating bubble near the tap point */}
-      {!pickMode && tempPin && !selected && (
+      {!pickMode && !moving && tempPin && !selected && (
         <div
           className="temp-pin-bubble"
           style={{
@@ -965,14 +1043,14 @@ export default function MapPage() {
       )}
 
       {/* Add-pin button */}
-      {!pickMode && !placing && !selected && !tempPin && (
+      {!pickMode && !moving && !placing && !selected && !tempPin && (
         <button className="fab map-fab" onClick={() => { setSelectedId(null); setPlacing(true); }} aria-label="Add pin">
           <Icon name="plus" size={26} />
         </button>
       )}
 
       {/* Selected pin card */}
-      {!pickMode && selected && (
+      {!pickMode && !moving && selected && (
         <div className="pin-card">
           <div className="pin-card-head">
             <span className="pin-card-emoji">{selected.emoji || '📍'}</span>
@@ -1148,9 +1226,15 @@ export default function MapPage() {
                 Turn on Arrival reminders in More → Settings, and keep Keystone open, to get notified.
               </p>
             )}
-            <p className="muted small">
-              Location: {editing.lat.toFixed(5)}, {editing.lng.toFixed(5)}
-            </p>
+            <div className="field">
+              <span>Location</span>
+              <p className="muted small">
+                {editing.lat.toFixed(5)}, {editing.lng.toFixed(5)}
+              </p>
+              <button type="button" className="btn btn-ghost" onClick={startMove}>
+                <Icon name="pin" size={16} /> {editing.id ? 'Move pin' : 'Change location'}
+              </button>
+            </div>
           </div>
         )}
       </EditorSheet>
