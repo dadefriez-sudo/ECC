@@ -753,7 +753,6 @@ export default function MapPage() {
   };
   const selectedDistance =
     selected && myPosition ? distanceLabel(metresBetween(myPosition, { lat: selected.lat, lng: selected.lng })) : '';
-  const selectedPhone = selected?.contactId ? state.contacts.find((c) => c.id === selected.contactId)?.phone : '';
 
   return (
     <div className="map-page">
@@ -1104,11 +1103,6 @@ export default function MapPage() {
             <button className="btn btn-primary btn-sm" onClick={() => directionsTo(selected)}>
               <Icon name="send" /> Directions
             </button>
-            {selectedPhone && (
-              <a className="btn btn-ghost btn-sm" href={`tel:${selectedPhone}`}>
-                Call
-              </a>
-            )}
             {/* An event pin isn't a saved pin — it's today's calendar drawn
                 on the map. Editing or deleting it here would have to mean
                 editing the event, which belongs in the Planner. */}

@@ -600,8 +600,8 @@ export default function HomePage() {
     const id = setInterval(() => setClockTick((n) => n + 1), 60000);
     return () => clearInterval(id);
   }, []);
-  // The whole of today in time order, done items included (unlike the
-  // reminders list above, which only shows what is still open).
+  // The rest of the day's story in time order. Goals and tasks leave it once
+  // they're done; events stay (an earlier one reads as "past", not "done").
   const timeline = useMemo(() => {
     const out = [];
     for (const g of state.goals) {
@@ -609,14 +609,15 @@ export default function HomePage() {
       const isDaily = (g.period || 'weekly') === 'daily';
       if (isDaily && g.repeatDays?.length && !g.repeatDays.includes(todayDow)) continue;
       const key = isDaily ? today : weekKey(new Date());
-      const done = (g.progress?.[key] || 0) >= g.target;
+      // A goal that's been met drops off the day's overview.
+      if ((g.progress?.[key] || 0) >= g.target) continue;
       for (const time of g.reminder.times) {
-        out.push({ kind: 'goal', id: `${g.id}:${time}`, goalId: g.id, label: g.title, time, done });
+        out.push({ kind: 'goal', id: `${g.id}:${time}`, goalId: g.id, label: g.title, time, done: false });
       }
     }
     for (const t of state.tasks || []) {
-      if (t.dueDate !== today) continue;
-      out.push({ kind: 'task', id: t.id, task: t, label: t.title, time: t.dueTime || null, done: !!t.done });
+      if (t.dueDate !== today || t.done) continue; // checked off: gone from the overview
+      out.push({ kind: 'task', id: t.id, task: t, label: t.title, time: t.dueTime || null, done: false });
     }
     for (const e of state.events) {
       for (const occ of expandEventOnDay(e, today)) {
@@ -647,9 +648,11 @@ export default function HomePage() {
     }
     return { item, inMins };
   })();
+  const nowKeyForCounts = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
   const layoutProps = {
     navigate,
     order: visibleBlocks.map((b) => b.id),
+    customOrder: homeBlocks.some((b, i) => b.id !== HOME_BLOCK_TYPES[i]?.id),
     enabled: (id) => visibleBlocks.some((b) => b.id === id),
     block: (id) => (visibleBlocks.some((b) => b.id === id) ? renderBlock(id) : null),
     timeline,
@@ -662,6 +665,8 @@ export default function HomePage() {
     weeklyPct,
     openTaskCount: openTasks.length,
     noteCount: notes.length,
+    // What's still ahead today: not done and not already past.
+    leftToday: timeline.filter((i) => !i.done && (!i.time || i.time >= nowKeyForCounts)).length,
     counts: {
       events: timeline.filter((i) => i.kind === 'event' && !i.done).length,
       tasks: timeline.filter((i) => i.kind === 'task' && !i.done).length,
@@ -964,7 +969,7 @@ export default function HomePage() {
         <section className="detail-section">
           <span className="detail-label">Customize home screen</span>
           <p className="muted small">
-            Pick a layout{isPro ? ', drag blocks to reorder (Classic), or toggle them off to hide' : ''}. Tap Done above when finished.
+            Pick a layout{isPro ? ', drag blocks to reorder, or toggle them off to hide' : ''}. Tap Done above when finished.
           </p>
           <p className="muted small">Home layout</p>
           <div className="seg seg--full">

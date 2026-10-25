@@ -165,6 +165,13 @@ export default function PlannerPage() {
   const [editing, setEditing] = useState(null); // draft being edited
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState(() => new Set()); // "id:recDate"
+  // Selecting is a Day view tool; leaving it clears any selection in progress.
+  useEffect(() => {
+    if (mode !== 'day') {
+      setSelectMode(false);
+      setSelected(new Set());
+    }
+  }, [mode]);
   const [smartAddOpen, setSmartAddOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
@@ -848,17 +855,21 @@ export default function PlannerPage() {
           </button>
         </div>
         <div className="select-toggle-row">
-          <button
-            className={`btn btn-sm ${selectMode ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => {
-              setSelectMode((v) => !v);
-              setSelected(new Set());
-              setSelectedDay(null);
-            }}
-          >
-            {selectMode ? 'Cancel select' : 'Select'}
-          </button>
-          {selectMode && <span className="muted small">{selected.size} selected</span>}
+          {mode === 'day' && (
+            <>
+              <button
+                className={`btn btn-sm ${selectMode ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => {
+                  setSelectMode((v) => !v);
+                  setSelected(new Set());
+                  setSelectedDay(null);
+                }}
+              >
+                {selectMode ? 'Cancel select' : 'Select'}
+              </button>
+              {selectMode && <span className="muted small">{selected.size} selected</span>}
+            </>
+          )}
           {mode !== 'month' && state.settings?.showDayTemplates !== false && (
             <button
               className="btn btn-sm btn-ghost"
@@ -2750,14 +2761,6 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindL
 
   const mapsTarget = occ.locLat != null ? directionsTarget(occ.locLat, occ.locLng) : null;
 
-  const shareEvent = () => {
-    if (!isPro) {
-      navigate('/pricing');
-      return;
-    }
-    alert('Inviting others to collaborate on an event needs an account backend, which is not connected in this build yet.');
-  };
-
   // Read-only view, so a swipe down on the grip/header just closes it — no
   // unsaved-changes prompt needed the way the editor sheet has one.
   const [dragY, setDragY] = useState(0);
@@ -2953,9 +2956,6 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindL
           </section>
         )}
 
-        <button className="btn btn-ghost full share-event-btn" onClick={shareEvent}>
-          <Icon name="users" /> Share event {!isPro && '· Pro'}
-        </button>
       </div>
     </div>
   );

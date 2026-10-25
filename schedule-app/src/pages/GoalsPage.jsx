@@ -12,7 +12,6 @@ import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import MilestoneCelebration from '../components/MilestoneCelebration.jsx';
 import ObjectivesView from './ObjectivesView.jsx';
 import MilestonesDue from '../components/MilestonesDue.jsx';
-import { GOAL_TEMPLATES } from '../data/goalTemplates.js';
 import { CalmView, SlideView, StreakView } from '../components/GoalsLayouts.jsx';
 import {
   goalKey,
@@ -474,7 +473,7 @@ export default function GoalsPage() {
       )}
 
       {view === 'habits' && classic && (goals.length === 0 ? (
-        <EmptyState isDaily={isDaily} onAdd={() => openNew()} onPick={(t) => openNew(t)} />
+        <EmptyState isDaily={isDaily} onAdd={() => openNew()} />
       ) : (
         groups.map(([category, list]) => (
           <section key={category} className="goal-group">
@@ -677,7 +676,7 @@ export default function GoalsPage() {
       ))}
 
       {view === 'habits' && !classic && state.goals.length === 0 && (
-        <EmptyState isDaily onAdd={() => openNew()} onPick={(t) => openNew(t)} />
+        <EmptyState isDaily onAdd={() => openNew()} />
       )}
       {view === 'habits' && !classic && state.goals.length > 0 && (
         (() => {
@@ -744,15 +743,6 @@ export default function GoalsPage() {
                 placeholder="e.g. Drink water"
               />
             </label>
-            {!editing.id && !editing.title && (
-              <div className="template-chips template-chips--sheet">
-                {GOAL_TEMPLATES.map((t) => (
-                  <button key={t.title} type="button" className="template-chip" onClick={() => setEditing({ ...editing, ...t })}>
-                    {t.title}
-                  </button>
-                ))}
-              </div>
-            )}
             {editing.id && (
               <button
                 type="button"
@@ -982,7 +972,7 @@ function WeekPace({ goal, value, weekStart, atCurrent, expanded, onToggle, onSet
   );
 }
 
-function EmptyState({ isDaily, onAdd, onPick }) {
+function EmptyState({ isDaily, onAdd }) {
   return (
     <div className="empty">
       <div className="empty-icon"><Icon name="target" size={48} /></div>
@@ -992,13 +982,6 @@ function EmptyState({ isDaily, onAdd, onPick }) {
           ? 'Track small daily habits like water, reading, or steps. Your progress resets fresh each day.'
           : 'Set weekly targets, like workouts or people to reach out to, and watch your progress build across the week.'}
       </p>
-      <div className="template-chips">
-        {GOAL_TEMPLATES.filter((t) => t.period === (isDaily ? 'daily' : 'weekly')).map((t) => (
-          <button key={t.title} className="template-chip" onClick={() => onPick(t)}>
-            {t.title}
-          </button>
-        ))}
-      </div>
       <button className="btn btn-primary" onClick={onAdd}>
         + New goal
       </button>

@@ -237,6 +237,20 @@ textarea {
   color: inherit;
 }
 
+/* Notes: say it outright rather than rely on inheritance, so the editor, the
+   cards and the checklist rows can never pick up a system font. */
+.notes-grid,
+.note-card,
+.note-card *,
+.note-title,
+.note-body,
+.note-checklist,
+.notes-text,
+.page textarea,
+.page input {
+  font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
 /* --- App shell ---------------------------------------------------------- */
 .app {
   max-width: var(--maxw);
@@ -8224,4 +8238,72 @@ body[data-assistant='on'] .conflict-list {
   color: var(--accent);
   font-weight: 700;
   font-size: 13px;
+}
+
+/* Home timeline: past, now, ahead */
+.tl-earlier {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tl--past {
+  opacity: 0.6;
+}
+.tl-row--past .tl-label {
+  color: var(--muted);
+}
+.tl-dot--past {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--muted);
+}
+.tl-dot--next {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.tl-now {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tl-now::before,
+.tl-now::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.35;
+}
+.tl-row--next .tl-label {
+  font-weight: 700;
+}
+.tl-next-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 2px 7px;
+}
+.tl-clear {
+  margin: 4px 0 0;
+}
+.tl-dot--next {
+  border-radius: 50%;
 }

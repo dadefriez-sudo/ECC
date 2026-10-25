@@ -659,8 +659,9 @@ function QAIcon({ kind }) {
       </svg>
     );
   }
+  // The shared handset glyph, so Call looks the same here as everywhere else.
+  if (kind === 'call') return <Icon name="phone" size={22} />;
   const paths = {
-    call: 'M6.5 3.5c.5 3 2 6 4.5 8.5s5.5 4 8.5 4.5l-1.5 3c-4-.5-8-3-11-6s-5.5-7-6-11z',
     text: 'M4 5h16v11H9l-4 3v-3H4z',
     mail: 'M3 6h18v12H3zM3 6l9 7 9-7',
   };
