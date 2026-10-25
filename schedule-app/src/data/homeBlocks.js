@@ -6,6 +6,7 @@ export const HOME_BLOCK_TYPES = [
   { id: 'challenge', label: "Today's challenge", icon: 'compass' },
   { id: 'goals', label: 'Goals', icon: 'target' },
   { id: 'nudges', label: 'Nudges', icon: 'lightbulb' },
+  { id: 'upnext', label: 'Up next', icon: 'clock' },
   { id: 'reminders', label: 'Important reminders', icon: 'bell' },
   { id: 'recap', label: 'Weekly recap', icon: 'chart' },
   { id: 'tasks', label: 'Tasks', icon: 'check' },
@@ -27,8 +28,17 @@ export function normalizeHomeBlocks(list) {
     seen.add(item.id);
     out.push({ id: item.id, enabled: !!item.enabled });
   }
-  for (const b of HOME_BLOCK_TYPES) {
-    if (!seen.has(b.id)) out.push({ id: b.id, enabled: true });
+  // A block type added after someone saved their layout appears (switched on)
+  // next to the block it belongs with, not dumped at the bottom, so an
+  // unchanged layout stays in its default order.
+  for (const [i, b] of HOME_BLOCK_TYPES.entries()) {
+    if (seen.has(b.id)) continue;
+    // Immediately before the next block (in default order) that this layout has.
+    const next = HOME_BLOCK_TYPES.slice(i + 1).find((x) => out.some((o) => o.id === x.id));
+    const at = next ? out.findIndex((o) => o.id === next.id) : -1;
+    const entry = { id: b.id, enabled: true };
+    if (at === -1) out.push(entry);
+    else out.splice(at, 0, entry);
   }
   return out;
 }

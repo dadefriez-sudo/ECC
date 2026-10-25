@@ -31,7 +31,7 @@ import { useSmartAdd } from '../data/useSmartAdd.js';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import Icon from '../components/Icon.jsx';
 import AddressField from '../components/AddressField.jsx';
-import { MiniRing, TodayView, BentoView, CalmView } from '../components/HomeLayouts.jsx';
+import { MiniRing, TodayView, BentoView, CalmView, UpNext } from '../components/HomeLayouts.jsx';
 import WeeklyReviewCard from '../components/WeeklyReviewCard.jsx';
 import WhatsNewCard from '../components/WhatsNewCard.jsx';
 import FollowUpCard from '../components/FollowUpCard.jsx';
@@ -678,6 +678,7 @@ export default function HomePage() {
   // One Home block, exactly as it has always rendered. Every layout reuses this,
   // so tasks, notes, nudges and the rest behave the same whichever layout is picked.
   const renderBlock = (id) => {
+    if (id === 'upnext') return <UpNext key="upnext" h={layoutProps} />;
     if (id === 'challenge') {
       if (state.settings?.showDailyChallenge === false) return null;
       return (

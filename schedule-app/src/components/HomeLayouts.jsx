@@ -37,9 +37,9 @@ const TIMELINE_LIMIT = 8;
 // drag-to-reorder belongs to the Classic layout).
 // Used until the person reorders blocks themselves (Pro); after that their
 // own order from the Home editor wins in every layout.
-const TODAY_DEFAULT = ['reminders', 'nudges', 'goals', 'tasks', 'notes', 'recap', 'challenge'];
+const TODAY_DEFAULT = ['upnext', 'reminders', 'nudges', 'goals', 'tasks', 'notes', 'recap', 'challenge'];
 const BENTO_DEFAULT = ['nudges', 'reminders', 'challenge', 'tasks', 'notes', 'recap'];
-const CALM_DEFAULT = ['reminders', 'nudges', 'goals', 'tasks', 'notes', 'recap', 'challenge'];
+const CALM_DEFAULT = ['upnext', 'reminders', 'nudges', 'goals', 'tasks', 'notes', 'recap', 'challenge'];
 
 // The ids to draw, in order, limited to blocks that are switched on.
 function orderFor(h, fallback) {
@@ -54,7 +54,7 @@ function whenLabel(mins) {
   return `in ${hrs} hr`;
 }
 
-function UpNext({ h }) {
+export function UpNext({ h }) {
   const n = h.upNext;
   if (!n) {
     return (
@@ -184,10 +184,9 @@ export function TodayView({ h }) {
     <>
       {orderFor(h, TODAY_DEFAULT).map((id) =>
         id === 'reminders' ? (
-          <div key="reminders">
-            <UpNext h={h} />
-            <TimelineSection h={h} />
-          </div>
+          <TimelineSection key="reminders" h={h} />
+        ) : id === 'upnext' ? (
+          <UpNext key="upnext" h={h} />
         ) : (
           h.block(id)
         )
@@ -199,7 +198,8 @@ export function TodayView({ h }) {
 // B. Bento (Pro) — a tile grid so progress is visible without scrolling.
 export function BentoView({ h }) {
   const showGoals = h.enabled('goals');
-  const showTiles = showGoals || h.enabled('reminders');
+  const showUpNext = h.enabled('upnext');
+  const showTiles = showGoals || showUpNext || h.enabled('reminders');
   const r = h.recap;
   const nothingYet = r.goalsCompleted === 0 && r.contactsReconnected === 0 && r.tasksCompleted === 0;
   return (
@@ -220,37 +220,37 @@ export function BentoView({ h }) {
               )}
             </button>
           )}
+          {showUpNext && (
+            <button
+              className="bento-tile bento-next"
+              onClick={() => (h.upNext ? h.openItem(h.upNext.item) : h.navigate('/planner'))}
+            >
+              <span className="detail-label">Up next</span>
+              <strong className="bento-next-title">{h.upNext ? h.upNext.item.label : 'All clear'}</strong>
+              <span className="muted small">
+                {h.upNext
+                  ? `${h.upNext.item.time ? formatTime(h.upNext.item.time) : 'Anytime'}${
+                      h.upNext.item.location ? ` · ${h.upNext.item.location}` : ''
+                    }`
+                  : 'Nothing else today'}
+              </span>
+            </button>
+          )}
           {h.enabled('reminders') && (
-            <>
-              <button
-                className="bento-tile bento-next"
-                onClick={() => (h.upNext ? h.openItem(h.upNext.item) : h.navigate('/planner'))}
-              >
-                <span className="detail-label">Up next</span>
-                <strong className="bento-next-title">{h.upNext ? h.upNext.item.label : 'All clear'}</strong>
-                <span className="muted small">
-                  {h.upNext
-                    ? `${h.upNext.item.time ? formatTime(h.upNext.item.time) : 'Anytime'}${
-                        h.upNext.item.location ? ` · ${h.upNext.item.location}` : ''
-                      }`
-                    : 'Nothing else today'}
-                </span>
-              </button>
-              <button className="bento-tile bento-count" onClick={() => h.navigate('/planner')}>
-                <span className="detail-label">Today</span>
-                <strong className="bento-big">
-                  <AnimatedNumber value={h.leftToday} />
-                </strong>
-                <span className="muted small">{h.leftToday === 1 ? 'thing left today' : 'things left today'}</span>
-              </button>
-            </>
+            <button className="bento-tile bento-count" onClick={() => h.navigate('/planner')}>
+              <span className="detail-label">Today</span>
+              <strong className="bento-big">
+                <AnimatedNumber value={h.leftToday} />
+              </strong>
+              <span className="muted small">{h.leftToday === 1 ? 'thing left today' : 'things left today'}</span>
+            </button>
           )}
         </div>
       )}
       {orderFor(h, BENTO_DEFAULT).map((id) => {
         // Goals and Today live in the tiles above; the weekly recap is drawn as
         // three numbers rather than the full block.
-        if (id === 'goals') return null;
+        if (id === 'goals' || id === 'upnext') return null;
         if (id === 'recap') {
           return nothingYet ? null : (
             <section className="detail-section" key="recap">
@@ -343,6 +343,9 @@ export function CalmView({ h }) {
           if (id === 'reminders') {
             flush();
             out.push(<TimelineSection key="reminders" h={h} title="Focus today" />);
+          } else if (id === 'upnext') {
+            flush();
+            out.push(<UpNext key="upnext" h={h} />);
           } else if (id === 'nudges') {
             flush();
             out.push(h.block('nudges'));
