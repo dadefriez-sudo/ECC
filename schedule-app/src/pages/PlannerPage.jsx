@@ -543,7 +543,9 @@ export default function PlannerPage() {
     if (!master) return;
     const dur = timeToMinutes(occ.end) - timeToMinutes(occ.start);
     let ns = timeToMinutes(occ.start) + deltaMin;
-    ns = Math.max(dayStartHour * 60, Math.min(dayEndHour * 60 - dur, ns));
+    // Only a time change is held to the visible hours; moving to another day
+    // leaves the time exactly as it was.
+    if (deltaMin !== 0) ns = Math.max(dayStartHour * 60, Math.min(dayEndHour * 60 - dur, ns));
     const start = minutesToTime(ns);
     const end = minutesToTime(ns + dur);
     const newDate = dayOffset ? toISODate(addDays(occ.occDate, dayOffset)) : occ.occDate;
@@ -2375,7 +2377,6 @@ function WeekView({
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     clearPress();
     const startPoint = { x: e.clientX, y: e.clientY };
-    const target = e.currentTarget;
     pressRef.current = {
       startPoint,
       armed: false,
@@ -2383,7 +2384,6 @@ function WeekView({
         if (!pressRef.current) return;
         pressRef.current.armed = true;
         suppressClickRef.current = true;
-        target.setPointerCapture?.(e.pointerId);
         setDrag({ key, occ: ev, startY: startPoint.y, y: startPoint.y, overIso: ev.occDate });
         // Fired from the next real pointer event rather than here: Chrome
         // drops vibrate() calls that aren't close enough to a user gesture,
@@ -2393,6 +2393,10 @@ function WeekView({
     };
   };
 
+  // Before the hold finishes this only decides whether the finger moved too
+  // far to be a long-press. Once armed, the window-level tracking below takes
+  // over: on a phone the browser would otherwise take the touch over to scroll
+  // the page (cancelling the pointer), which is what made week drags die.
   const onChipMove = (e) => {
     const g = pressRef.current;
     if (!g) return;
@@ -2404,31 +2408,77 @@ function WeekView({
       const dx = e.clientX - g.startPoint.x;
       const dy = e.clientY - g.startPoint.y;
       if (Math.hypot(dx, dy) > MOVE_TOLERANCE_PX) clearPress();
-      return;
     }
-    const overIso = dayUnder(e.clientY);
-    setDrag((d) => {
-      if (!d) return d;
-      if (overIso && overIso !== d.overIso) selectTick();
-      return { ...d, y: e.clientY, overIso: overIso || d.overIso };
-    });
   };
-
   const onChipUp = () => {
     const g = pressRef.current;
-    if (g?.pendingTick) {
-      g.pendingTick = false;
-      confirmTick();
+    if (g?.armed) return; // the window listener finishes an armed drag
+    if (g?.pendingTick) confirmTick();
+    clearPress();
+  };
+
+  const dragRef = useRef(null);
+  dragRef.current = drag;
+  const armedKey = drag?.key;
+  useEffect(() => {
+    if (!armedKey) return undefined;
+    // Nearest ancestor that actually scrolls, so a drag near its top/bottom
+    // edge can pull more of the week into view.
+    let scroller = dayRefs.current[Object.keys(dayRefs.current)[0]]?.parentElement;
+    while (scroller && scroller !== document.body) {
+      const oy = getComputedStyle(scroller).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && scroller.scrollHeight > scroller.clientHeight) break;
+      scroller = scroller.parentElement;
     }
-    if (g?.armed && drag) {
-      if (drag.overIso && drag.overIso !== drag.occ.occDate) {
-        onMoveToDay(drag.occ, drag.overIso);
+    let lastY = null;
+    let raf = 0;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      if (lastY == null || !scroller || scroller === document.body) return;
+      const r = scroller.getBoundingClientRect();
+      const edge = 70;
+      if (lastY < r.top + edge) scroller.scrollTop -= Math.ceil((r.top + edge - lastY) / 6);
+      else if (lastY > r.bottom - edge) scroller.scrollTop += Math.ceil((lastY - (r.bottom - edge)) / 6);
+      const overIso = dayUnder(lastY);
+      if (overIso) setDrag((d) => (d && overIso !== d.overIso ? { ...d, overIso } : d));
+    };
+    raf = requestAnimationFrame(tick);
+    const move = (e) => {
+      lastY = e.clientY;
+      const overIso = dayUnder(e.clientY);
+      setDrag((d) => {
+        if (!d) return d;
+        if (overIso && overIso !== d.overIso) selectTick();
+        return { ...d, y: e.clientY, overIso: overIso || d.overIso };
+      });
+    };
+    const finish = (commit) => {
+      const d = dragRef.current;
+      if (commit && d && d.overIso && d.overIso !== d.occ.occDate) {
+        onMoveToDay(d.occ, d.overIso);
         confirmTick();
       }
-    }
-    clearPress();
-    setDrag(null);
-  };
+      clearPress();
+      setDrag(null);
+    };
+    const up = () => finish(true);
+    const cancel = () => finish(false);
+    // Stops the page scrolling under the finger. Registered non-passive and
+    // only while a drag is armed, so ordinary scrolling is untouched.
+    const block = (e) => e.cancelable && e.preventDefault();
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+    window.addEventListener('touchmove', block, { passive: false });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+      window.removeEventListener('touchmove', block);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [armedKey]);
 
   const handleChipClick = (ev, key) => {
     if (suppressClickRef.current) {
