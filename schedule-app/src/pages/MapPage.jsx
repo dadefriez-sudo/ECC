@@ -143,7 +143,11 @@ export default function MapPage() {
           lat: o.locLat,
           lng: o.locLng,
           contactId: primaryContactId,
+          // The linked person's own photo stands in for the emoji when there is one.
+          photo: byId[primaryContactId]?.photo || '',
           isEvent: true,
+          occId: o.id,
+          occDate: o.occDate || o.recDate || today,
           start: o.start,
         };
       });
@@ -525,7 +529,11 @@ export default function MapPage() {
         className: `pin-icon${sel ? ' pin-icon--sel' : ''}${p.isEvent ? ' pin-icon--event' : ''}`,
         html:
           `<div style="--emoji-size:${emojiSizePct}">` +
-          `<div class="pin-bubble${p.isEvent ? ' pin-bubble--event' : ''}"><span>${escapeHtml(p.emoji || '📍')}</span></div>` +
+          `<div class="pin-bubble${p.isEvent ? ' pin-bubble--event' : ''}${p.photo ? ' pin-bubble--photo' : ''}">` +
+          (p.photo
+            ? `<img class="pin-photo" alt="" src="${escapeHtml(p.photo)}" />`
+            : `<span>${escapeHtml(p.emoji || '📍')}</span>`) +
+          `</div>` +
           (showCaption ? `<div class="pin-caption">${escapeHtml(caption)}</div>` : '') +
           `</div>`,
         iconSize: [40 * grow, 46 * grow],
@@ -1107,8 +1115,13 @@ export default function MapPage() {
                 on the map. Editing or deleting it here would have to mean
                 editing the event, which belongs in the Planner. */}
             {selected.isEvent ? (
-              <button className="btn btn-ghost btn-sm" onClick={() => navigate('/planner')}>
-                Open in Planner
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() =>
+                  navigate('/planner', { state: { openEventId: selected.occId, openEventDate: selected.occDate } })
+                }
+              >
+                Open event
               </button>
             ) : (
               <>

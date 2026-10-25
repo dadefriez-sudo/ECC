@@ -178,7 +178,7 @@ const SETTINGS_INDEX = [
   {
     label: 'Notifications',
     groups: [
-      { id: 'g10', title: 'Allow notifications', keywords: 'alerts permission push allow' },
+      { id: 'g10', title: 'Allow notifications', keywords: 'alerts permission push allow follow up check in after event notes' },
     ],
   },
   {
@@ -1376,6 +1376,23 @@ export default function MorePage() {
               ? 'Get reminders for goals, events, and tasks. These still fire even if Keystone is fully closed.'
               : 'Get reminders for goals and events while Keystone is open. (A web app can’t alert you once it’s fully closed.)'
             : 'This browser doesn’t support notifications.'}
+        </p>
+        <div className="section-head">
+          <span>Ask how events went</span>
+          <button
+            className={`toggle${s.eventFollowUp === true ? ' toggle--on' : ''}`}
+            role="switch"
+            aria-label="Ask how events went"
+            aria-checked={s.eventFollowUp === true}
+            onClick={() => actions.setSettings({ eventFollowUp: s.eventFollowUp !== true })}
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
+        <p className="muted small">
+          When an event ends, get a notification (and a card on Home) to add a note or mark it done. Notes
+          for an event with someone linked go to their timeline. You can also turn this on or off for a
+          single event while editing it.
         </p>
         {notifOn && exactAlarmsConfigurable() && exactAlarmPermission() !== 'granted' && (
           <>

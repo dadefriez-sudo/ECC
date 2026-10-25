@@ -493,9 +493,26 @@ export default function PlannerPage() {
       const overrides = { ...(master.overrides || {}) };
       const ov = { ...pl.fields };
       if (pl.date && pl.date !== pl.recDate) ov.date = pl.date;
+      // The check-in preference belongs to the event, not to one occurrence.
+      delete ov.followUp;
+      // A location added to a series that had none belongs to the whole
+      // series: it's saved on the event itself and each occurrence picks it up
+      // (and shows it on the map) only when its own day comes round. The
+      // occurrence doesn't also carry a private copy, so later edits to the
+      // series location still reach it.
+      let seriesLoc = null;
+      const hadLocation = !!master.location || master.locLat != null;
+      if (!hadLocation && (pl.fields.location || pl.fields.locLat != null)) {
+        seriesLoc = { location: pl.fields.location, locLat: pl.fields.locLat, locLng: pl.fields.locLng };
+        delete ov.location;
+        delete ov.locLat;
+        delete ov.locLng;
+      }
       overrides[pl.recDate] = ov;
       actions.updateEvent({
         ...master,
+        ...(seriesLoc || {}),
+        followUp: pl.fields.followUp,
         overrides,
         doneDates: setMembership(master.doneDates, pl.recDate, pl.done),
       });
@@ -3052,6 +3069,7 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
       locLat: editing.locLat ?? null,
       locLng: editing.locLng ?? null,
       notes: editing.notes || '',
+      followUp: typeof editing.followUp === 'boolean' ? editing.followUp : settings?.eventFollowUp === true,
       date: recurringMaster ? editing.occDate || editing.date : editing.date,
       done: !!editing.done,
       repeat: editing.repeat || 'none',
@@ -3090,6 +3108,8 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
         end: b.end ?? draft.end,
         contactIds: b.contactIds ?? draft.contactIds,
         location: b.location ?? draft.location,
+        locLat: b.locLat !== undefined ? b.locLat : draft.locLat,
+        locLng: b.locLng !== undefined ? b.locLng : draft.locLng,
         notes: b.notes ?? draft.notes,
         date: draft.masterDate,
         repeat: editing.repeat || 'none',
@@ -3105,6 +3125,8 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
         end: editing.end,
         contactIds: eventContactIds(editing),
         location: editing.location || '',
+        locLat: editing.locLat ?? null,
+        locLng: editing.locLng ?? null,
         notes: editing.notes || '',
         date: draft.occDate,
       });
@@ -3156,6 +3178,7 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
           locLat: draft.locLat,
           locLng: draft.locLng,
           notes: draft.notes,
+          followUp: !!draft.followUp,
           kind: draft.kind,
           color: draft.color,
           reminder: draft.reminder,
@@ -3333,6 +3356,18 @@ function EventEditor({ editing, events, contacts, goals, tasks, settings, custom
             <span className="muted small">This browser can't show notifications.</span>
           )}
         </label>
+
+        <div className="field">
+          <label className="check-row">
+            <Checkbox
+              checked={!!draft.followUp}
+              onChange={(e) => setDraft({ ...draft, followUp: e.target.checked })}
+              ariaLabel="Check in after this event"
+            />
+            <span>Check in after this event</span>
+          </label>
+          <span className="muted small">Get a nudge to add a note or mark it done once it ends.</span>
+        </div>
 
         <label className="field">
           <span>With</span>

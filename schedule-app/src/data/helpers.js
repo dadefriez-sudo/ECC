@@ -829,6 +829,8 @@ function makeOccurrence(event, recDate, occDate, ov) {
       contactIds: eventContactIds(event),
       contactId: eventContactIds(event)[0] || '',
       location: event.location || '',
+      locLat: event.locLat ?? null,
+      locLng: event.locLng ?? null,
       notes: event.notes || '',
       date: event.date,
     },

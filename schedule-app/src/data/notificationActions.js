@@ -4,7 +4,8 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { todayISO, nextTaskDueDate, goalKey } from './helpers.js';
 
-export const ACTION_TYPE = { task: 'KS_TASK', event: 'KS_EVENT', goal: 'KS_GOAL' };
+export const ACTION_TYPE = { task: 'KS_TASK', event: 'KS_EVENT', goal: 'KS_GOAL', followUp: 'KS_FOLLOWUP' };
+import { closeFollowUp } from './eventFollowUp.js';
 
 const SNOOZE_MIN = { task: 60, goal: 60, event: 10 };
 
@@ -21,6 +22,13 @@ export async function registerNotificationActions() {
           ],
         },
         { id: ACTION_TYPE.event, actions: [{ id: 'snooze', title: 'Snooze 10 min' }] },
+        {
+          id: ACTION_TYPE.followUp,
+          actions: [
+            { id: 'done', title: 'Mark done' },
+            { id: 'note', title: 'Add a note' },
+          ],
+        },
         {
           id: ACTION_TYPE.goal,
           actions: [
@@ -70,6 +78,20 @@ export function applyNotificationAction(event, ctx) {
   const extra = notification?.extra || {};
   const { state, actions, navigate } = ctx;
 
+  if (extra.kind === 'followUp') {
+    const ev = (state.events || []).find((x) => x.id === extra.id);
+    if (!ev) return 'none';
+    if (actionId === 'done') {
+      actions.updateEvent(closeFollowUp(ev, { recDate: extra.date }, { markDone: true }));
+      return 'done';
+    }
+    // A tap on the notification or "Add a note" opens the check-in on Home.
+    if ((actionId === 'tap' || actionId === 'note') && navigate) {
+      navigate('/', { state: { followUp: { id: extra.id, date: extra.date } } });
+      return 'opened';
+    }
+    return 'none';
+  }
   if (actionId === 'tap') {
     if (extra.route && navigate) navigate(extra.route);
     return extra.route ? 'opened' : 'none';

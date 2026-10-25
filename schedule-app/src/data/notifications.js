@@ -22,6 +22,7 @@ import { todayISO, timeToMinutes, matchesRule, formatTime, addDays, toISODate, f
 import { contactDatesOn, contactDateLabel } from './contactDates.js';
 import { REVIEW_FROM_HOUR } from './weeklyReview.js';
 import { ACTION_TYPE } from './notificationActions.js';
+import { followUpEnabled } from './eventFollowUp.js';
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -236,6 +237,18 @@ export function runReminderScan(state) {
     }
   }
 
+  // "How did it go?" just after an event ends (the card on Home covers the
+  // rest of the day if this is missed).
+  for (const e of state.events || []) {
+    if (!followUpEnabled(e, state.settings)) continue;
+    if (!matchesRule(e, today) || (e.skipDates || []).includes(today)) continue;
+    if ((e.followedUp || []).includes(today)) continue;
+    const end = timeToMinutes(e.end || e.start);
+    if (nowMin >= end && nowMin - end <= 30) {
+      fire(`followup:${e.id}:${today}`, `How did "${e.title || 'your event'}" go?`, 'Open Keystone to add a note or mark it done.');
+    }
+  }
+
   // Task reminders: each selected lead time fires once, counting back from
   // the task's own due date+time (only meaningful when both are set). Not
   // restricted to today's due date — a long lead (1 day before) on a task
@@ -359,6 +372,24 @@ export async function scheduleNativeReminders(state) {
         extra: { kind: 'event', id: e.id },
       });
     }
+  }
+
+  // "How did it go?" when an event ends, for events that ask for one.
+  for (const e of state.events || []) {
+    if (!followUpEnabled(e, state.settings)) continue;
+    if (!matchesRule(e, today) || (e.skipDates || []).includes(today)) continue;
+    if ((e.followedUp || []).includes(today)) continue;
+    if ((e.repeat || 'none') === 'none' ? e.done : (e.doneDates || []).includes(today)) continue;
+    const end = timeToMinutes(e.end || e.start);
+    if (end < nowMin) continue;
+    upcoming.push({
+      key: `followup:${e.id}:${today}`,
+      title: `How did "${e.title || 'your event'}" go?`,
+      body: 'Mark it done or add a note.',
+      at: end,
+      actionTypeId: ACTION_TYPE.followUp,
+      extra: { kind: 'followUp', id: e.id, date: today },
+    });
   }
 
   // Not limited to tasks due today — a 1-day-before lead needs tomorrow's
