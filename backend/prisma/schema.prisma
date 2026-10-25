@@ -181,3 +181,28 @@ model AccountabilitySnapshot {
   data      Json
   updatedAt DateTime @updatedAt
 }
+
+// --- Security bookkeeping -------------------------------------------------
+
+// One row per Google connect attempt: a random, single-use `id` is the OAuth
+// `state`. It expires after ten minutes and is deleted the moment the callback
+// uses it, so an old or intercepted link can't be replayed.
+model OAuthState {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+// What each account has spent on the assistant today, so the cap survives a
+// restart and applies across instances.
+model AssistantUsage {
+  userId   String
+  day      String // YYYY-MM-DD (UTC)
+  requests Int    @default(0)
+  tokens   Int    @default(0)
+
+  @@id([userId, day])
+}

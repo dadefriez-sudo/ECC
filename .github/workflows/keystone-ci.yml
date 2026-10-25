@@ -77,4 +77,6 @@ jobs:
 
       - run: npm ci
 
+      - run: npm test
+
       - run: bash test/accountability/run.sh

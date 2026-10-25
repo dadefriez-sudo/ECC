@@ -111,8 +111,45 @@ ok('expired invite previews as expired', r.s === 200 && r.j?.status === 'expired
 r = await call(u('xena'), 'GET', '/accountability/invites');
 ok('expired invites drop out of the inviter list', !r.j?.invites?.some((i) => i.token === xi.token));
 
+// 12a. cloud sync is Pro on the server too
+const S = 'syncpro'; // listed in BETA_TESTER_EMAILS by run.sh, so it counts as Pro
+r = await call(u('freesync'), 'GET', '/data');
+ok('data: a free account is refused (402)', r.s === 402 && r.j?.code === 'upgrade_required', JSON.stringify(r));
+r = await call(u('freesync'), 'PUT', '/data', { data: { a: 1 } });
+ok('data: a free account cannot write either', r.s === 402, JSON.stringify(r));
+
+// 12b. body size is limited before sign-in, except on the sync route after it
+{
+  const big = JSON.stringify({ pad: 'x'.repeat(2 * 1024 * 1024) });
+  const anon = await fetch(B + '/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: big });
+  ok('an anonymous 2MB body to the sync route is refused before it is read (401)', anon.status === 401, String(anon.status));
+  const other = await fetch(B + '/accountability/snapshot', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer test:${u('bigger')}@t.dev` }, body: big });
+  ok('a 2MB body elsewhere is refused with 413', other.status === 413, String(other.status));
+  const synced = await call('bigpro', 'PUT', '/data', { data: { photo: 'p'.repeat(2 * 1024 * 1024) } });
+  ok('the sync route still takes a 2MB blob from a signed-in Pro account', synced.s === 200, JSON.stringify(synced).slice(0, 120));
+}
+
+// 12c. Google connect: single-use state, confirm page, no replay
+{
+  const g = await call(u('gina'), 'GET', '/google/auth');
+  const url = g.j?.url || '';
+  ok('google/auth returns our own start page, not Google directly', g.s === 200 && /\/api\/google\/start\?s=/.test(url), JSON.stringify(g));
+  const state = decodeURIComponent((url.match(/[?&]s=([^&]+)/) || [])[1] || '');
+  const page = await fetch(B + `/google/start?s=${encodeURIComponent(state)}`);
+  const html = await page.text();
+  ok('the start page names the Keystone account (masked) and offers to continue', page.status === 200 && /g\*\*\*@t\.dev/.test(html) && /Continue to Google/.test(html), html.slice(0, 200));
+  ok('the continue link carries the same state and the narrower calendar scope', html.includes(`state=${encodeURIComponent(state)}`) && /calendar\.events/.test(html), html.slice(0, 400));
+  const first = await (await fetch(B + `/google/callback?state=${encodeURIComponent(state)}&error=access_denied`)).text();
+  ok('the callback accepts the state once (reaches the error it was sent)', /access_denied/.test(first) && !/bad_state/.test(first), first.slice(0, 300));
+  const replay = await (await fetch(B + `/google/callback?state=${encodeURIComponent(state)}&error=access_denied`)).text();
+  ok('the same state cannot be used again', /bad_state/.test(replay), replay.slice(0, 300));
+  const gone = await fetch(B + `/google/start?s=${encodeURIComponent(state)}`);
+  ok('a used state no longer opens the start page', gone.status === 400);
+  const forged = await (await fetch(B + '/google/callback?state=gina.deadbeef&error=x')).text();
+  ok('the old userId.signature style of state is rejected', /bad_state/.test(forged), forged.slice(0, 200));
+}
+
 // 12. cloud sync: optimistic concurrency on /data
-const S = u('sync');
 r = await call(S, 'GET', '/data');
 ok('data: empty account has no data yet', r.s === 200 && r.j?.data === null, JSON.stringify(r));
 r = await call(S, 'PUT', '/data', { data: { tasks: [{ id: 't1' }] } });
@@ -139,7 +176,7 @@ const [p1, p2] = await Promise.all([
   call(S, 'PUT', '/data', { data: { tasks: [{ id: 'racer-2' }] }, baseUpdatedAt: cur }),
 ]);
 ok('data: two writes from the same version: exactly one wins', [p1, p2].filter((x) => x.s === 200).length === 1 && [p1, p2].filter((x) => x.s === 409).length === 1, JSON.stringify([p1.s, p2.s]));
-r = await call(u('newsync'), 'PUT', '/data', { data: { tasks: [] }, baseUpdatedAt: new Date().toISOString() });
+r = await call('newsyncpro', 'PUT', '/data', { data: { tasks: [] }, baseUpdatedAt: new Date().toISOString() });
 ok('data: a first write that names a base still creates the row', r.s === 200, JSON.stringify(r));
 
 await pg.end();

@@ -4,10 +4,14 @@ import { google } from 'googleapis';
 import { requireUser } from '../middleware/requireUser.js';
 import { prisma } from '../db.js';
 import { encryptToken, decryptToken } from '../lib/tokenCrypto.js';
+import { perUserLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 
 const MAX_CHANGES_PER_SYNC = 200;
+// Each call spends the person's Google API quota and our server time.
+const importLimiter = perUserLimiter({ windowMs: 60 * 60 * 1000, limit: 20 });
+const syncLimiter = perUserLimiter({ windowMs: 60 * 60 * 1000, limit: 600 });
 
 // Calendar needs write access for the two-way sync in /calendar-sync
 // (creating/updating/deleting events on the user's behalf) — Contacts stays
@@ -20,7 +24,9 @@ const MAX_CHANGES_PER_SYNC = 200;
 // scope needs to disconnect and reconnect to pick up write access — a
 // stored refresh token keeps whatever scope it was issued with.
 const SCOPES = [
-  'https://www.googleapis.com/auth/calendar',
+  // Events only (read and write), not the whole calendar account: sync never
+  // touches calendar settings, sharing or other calendars.
+  'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/contacts.readonly',
 ];
 
@@ -44,40 +50,100 @@ function newOAuthClient() {
   return new google.auth.OAuth2(cfg.clientId, cfg.clientSecret, cfg.redirectUri);
 }
 
-// The callback is a top-level browser redirect from Google, not a fetch
-// from our own frontend — it can't carry the Clerk session's Authorization
-// header. `state` carries the user id instead, HMAC-signed (reusing
-// CLERK_SECRET_KEY, already required, rather than adding another secret)
-// so the callback can't be pointed at an arbitrary account.
-function signState(userId) {
-  const sig = crypto.createHmac('sha256', process.env.CLERK_SECRET_KEY).update(userId).digest('hex');
-  return `${userId}.${sig}`;
-}
-function verifyState(state) {
-  const [userId, sig] = String(state || '').split('.');
-  if (!userId || !sig) return null;
-  const expected = crypto.createHmac('sha256', process.env.CLERK_SECRET_KEY).update(userId).digest('hex');
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-  return userId;
+// The callback is a top-level browser redirect from Google, not a fetch from
+// our own frontend, so it can't carry the Clerk session's Authorization header.
+// `state` is therefore a random, single-use id kept in the database against the
+// user who asked for it. It expires after ten minutes and is deleted the moment
+// the callback uses it, so a link that was logged, shared or intercepted can't
+// be replayed later to attach someone else's Google account to this one.
+const STATE_TTL_MS = 10 * 60 * 1000;
+
+async function createState(userId) {
+  // Housekeeping: anything past its expiry is dead weight.
+  await prisma.oAuthState.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+  const id = crypto.randomBytes(24).toString('base64url');
+  await prisma.oAuthState.create({ data: { id, userId, expiresAt: new Date(Date.now() + STATE_TTL_MS) } });
+  return id;
 }
 
-// Kicks off the consent flow — the frontend redirects the browser to the
-// returned URL, same pattern as Stripe Checkout.
-router.get('/auth', requireUser, (req, res) => {
+// Returns the user id the state was issued to, or null. Deleting is the check:
+// of two concurrent uses only one removes the row.
+async function consumeState(state) {
+  if (typeof state !== 'string' || state.length < 16 || state.length > 128) return null;
+  const row = await prisma.oAuthState.findUnique({ where: { id: state } });
+  if (!row) return null;
+  const removed = await prisma.oAuthState.deleteMany({ where: { id: state } });
+  if (removed.count !== 1 || row.expiresAt < new Date()) return null;
+  return row.userId;
+}
+
+const maskEmail = (e) => String(e || '').replace(/^(.).*(@.*)$/, '$1***$2');
+const escapeHtml = (v) =>
+  String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// The browser leg starts on our own page, not straight at Google. It says which
+// Keystone account is about to receive the connection, so someone who was sent
+// a connect link by a stranger has a reason to stop.
+function backendOrigin() {
+  try {
+    return new URL(getOAuthConfig().redirectUri).origin;
+  } catch {
+    return '';
+  }
+}
+
+// Kicks off the consent flow: the app opens the returned URL in a browser.
+router.get('/auth', requireUser, async (req, res, next) => {
   if (!getOAuthConfig()) {
     return res.status(400).json({ error: 'Google sync is not configured on the server.' });
   }
-  const client = newOAuthClient();
-  const url = client.generateAuthUrl({
-    access_type: 'offline', // required to get a refresh_token back
-    prompt: 'consent', // forces a refresh_token even on a repeat connect
-    scope: SCOPES,
-    state: signState(req.dbUser.id),
-  });
-  res.json({ url });
+  try {
+    const state = await createState(req.dbUser.id);
+    res.json({ url: `${backendOrigin()}/api/google/start?s=${encodeURIComponent(state)}` });
+  } catch (err) {
+    next(err);
+  }
 });
+
+router.get('/start', async (req, res, next) => {
+  if (!getOAuthConfig()) return res.status(400).type('text').send('Google sync is not configured.');
+  try {
+    const state = String(req.query.s || '');
+    const row = state ? await prisma.oAuthState.findUnique({ where: { id: state } }) : null;
+    if (!row || row.expiresAt < new Date()) {
+      return res.status(400).type('html').send(startPage({ error: true }));
+    }
+    const user = await prisma.user.findUnique({ where: { id: row.userId } });
+    const url = newOAuthClient().generateAuthUrl({
+      access_type: 'offline', // required to get a refresh_token back
+      prompt: 'consent', // forces a refresh_token even on a repeat connect
+      scope: SCOPES,
+      state,
+    });
+    res
+      .set('Cache-Control', 'no-store')
+      .type('html')
+      .send(startPage({ account: maskEmail(user?.email), url }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+function startPage({ error, account, url }) {
+  const shell = (inner) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Google</title>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0f141a;color:#f1ece0;font:16px/1.5 system-ui,sans-serif;text-align:center;padding:24px">
+<div style="max-width:380px">${inner}</div>`;
+  if (error) {
+    return shell(
+      '<h1 style="font-size:22px;margin:0 0 8px">This link has expired</h1><p style="color:#97a3af;margin:0">Go back to the Keystone app and tap Connect Google again.</p>'
+    );
+  }
+  return shell(`<h1 style="font-size:22px;margin:0 0 8px">Connect Google to Keystone?</h1>
+<p style="color:#97a3af;margin:0 0 6px">Your calendar events and contacts will be available to the Keystone account</p>
+<p style="font-weight:700;margin:0 0 18px">${escapeHtml(account || 'your account')}</p>
+<p style="color:#97a3af;margin:0 0 20px;font-size:14px">Only continue if you tapped Connect Google inside the Keystone app just now. If someone sent you this link, close this page.</p>
+<a href="${escapeHtml(url)}" style="display:inline-block;background:#e0c15a;color:#1a1a1a;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:12px">Continue to Google</a>`);
+}
 
 // What the browser shows after Google's consent screen. From the Android app the
 // consent opens in the phone's browser, so redirecting to the web address would
@@ -102,7 +168,13 @@ router.get('/callback', async (req, res) => {
   const fail = (reason) => res.type('html').send(landingPage(false, `${frontend}/#/more?google=error&reason=${encodeURIComponent(reason)}`));
 
   if (!getOAuthConfig()) return fail('not_configured');
-  const userId = verifyState(req.query.state);
+  let userId;
+  try {
+    userId = await consumeState(req.query.state);
+  } catch (err) {
+    console.error('Google OAuth state lookup failed:', err);
+    return fail('exchange_failed');
+  }
   if (!userId) return fail('bad_state');
   if (req.query.error) return fail(String(req.query.error));
   if (!req.query.code) return fail('missing_code');
@@ -204,7 +276,7 @@ function mapContact(person) {
 // picking a .ics/.vcf file today. Call again any time for a fresh import;
 // nothing is deduped server-side (the frontend's existing import handlers
 // don't dedupe either, so this matches that behavior).
-router.post('/import', requireUser, async (req, res, next) => {
+router.post('/import', requireUser, importLimiter, async (req, res, next) => {
   try {
     if (!getOAuthConfig()) {
       return res.status(400).json({ error: 'Google sync is not configured on the server.' });
@@ -324,7 +396,7 @@ async function listAllCalendarChanges(calendar, { syncToken, timeMin }) {
 // accepted for shared calendars (see prisma/schema.prisma's SharedEvent
 // comment) — reconciling Google's RRULE model against Keystone's own
 // custom recurrence rules two-way isn't attempted here.
-router.post('/calendar-sync', requireUser, async (req, res, next) => {
+router.post('/calendar-sync', requireUser, syncLimiter, async (req, res, next) => {
   try {
     if (!getOAuthConfig()) {
       return res.status(400).json({ error: 'Google sync is not configured on the server.' });

@@ -66,9 +66,13 @@ export function createApp() {
   // per-user limit on top of this once requireUser has run.
   app.use(apiLimiter);
 
-  // Higher than Express's 100kb default: the synced data blob can include
-  // contact/profile photos as inline data URLs.
-  app.use(express.json({ limit: '8mb' }));
+  // Request bodies are read only up to a small limit everywhere except the data
+  // sync route, which needs room for contact photos (inline data URLs) and reads
+  // its own larger body *after* the caller has signed in (see routes/data.js).
+  // Accepting 8 MB from anyone, before checking who they are, let an anonymous
+  // client tie up the process with junk.
+  const smallJson = express.json({ limit: '1mb' });
+  app.use((req, res, next) => (req.path.startsWith('/api/data') ? next() : smallJson(req, res, next)));
   app.use(clerkMiddleware());
 
   app.use('/api/me', meRoutes);
@@ -82,6 +86,9 @@ export function createApp() {
   app.use((req, res) => res.status(404).json({ error: 'Not found' }));
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
+    // A body over the limit is the caller's doing, not a server fault.
+    if (err?.type === 'entity.too.large') return res.status(413).json({ error: 'Request body is too large.' });
+    if (err?.type === 'entity.parse.failed') return res.status(400).json({ error: 'Request body is not valid JSON.' });
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   });

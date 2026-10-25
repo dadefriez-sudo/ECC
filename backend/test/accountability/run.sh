@@ -19,6 +19,6 @@ wait_for_port() {
 node db-server.mjs & DB=$!
 trap 'kill $DB $API 2>/dev/null' EXIT
 wait_for_port 5544
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5544/postgres node --import ./register.mjs run-backend.mjs & API=$!
+BETA_TESTER_EMAILS=syncpro@t.dev,bigpro@t.dev,newsyncpro@t.dev GOOGLE_CLIENT_ID=test-client GOOGLE_CLIENT_SECRET=test-secret GOOGLE_REDIRECT_URI=http://localhost:4100/api/google/callback FRONTEND_URL=http://localhost:5173 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5544/postgres node --import ./register.mjs run-backend.mjs & API=$!
 wait_for_port 4100
 node api-test.mjs

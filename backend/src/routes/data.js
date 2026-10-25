@@ -1,7 +1,8 @@
-import { Router } from 'express';
+import { Router, json } from 'express';
 import { requireUser } from '../middleware/requireUser.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 import { prisma } from '../db.js';
+import { isPro } from '../lib/entitlements.js';
 
 const router = Router();
 
@@ -12,10 +13,23 @@ const router = Router();
 // otherwise hammer Postgres with unlimited 8MB upserts.
 const putLimiter = perUserLimiter({ windowMs: 15 * 60 * 1000, limit: 400 });
 
+// Cloud sync is a Pro feature. The app already hides it for free accounts; this
+// makes the server agree, so a free account can't use the API directly.
+function requirePro(req, res, next) {
+  if (!isPro(req.dbUser)) {
+    return res.status(402).json({ error: 'Cloud sync is a Pro feature.', code: 'upgrade_required' });
+  }
+  next();
+}
+
+// Larger than the app-wide limit because the blob can carry contact photos. Read
+// only once the caller is signed in and known to be Pro (it runs after both).
+const bigJson = json({ limit: '8mb' });
+
 // Whole-blob sync: the frontend already keeps its entire app state as one
 // JSON object (localStorage key compass.data.v1), so this mirrors that
 // shape 1:1 rather than modeling nine entity types relationally.
-router.get('/', requireUser, async (req, res, next) => {
+router.get('/', requireUser, requirePro, async (req, res, next) => {
   try {
     const row = await prisma.userData.findUnique({ where: { userId: req.dbUser.id } });
     // `?since=<updatedAt>`: a poll that already holds this version does not
@@ -30,7 +44,7 @@ router.get('/', requireUser, async (req, res, next) => {
   }
 });
 
-router.put('/', requireUser, putLimiter, async (req, res, next) => {
+router.put('/', requireUser, requirePro, putLimiter, bigJson, async (req, res, next) => {
   const { data, baseUpdatedAt } = req.body || {};
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return res.status(400).json({ error: 'Request body must be { data: <object> }' });

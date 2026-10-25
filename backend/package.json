@@ -11,6 +11,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "postinstall": "npm run db:generate",
+    "test": "node --test test/unit/*.test.mjs",
+    "test:api": "bash test/accountability/run.sh",
     "db:generate": "prisma generate --config prisma.config.mjs",
     "db:migrate": "prisma migrate dev --config prisma.config.mjs",
     "db:deploy": "prisma migrate deploy --config prisma.config.mjs"

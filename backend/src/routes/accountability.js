@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireUser } from '../middleware/requireUser.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 import { prisma } from '../db.js';
+import { isPro } from '../lib/entitlements.js';
 import { isEmail, newInviteToken } from '../lib/validate.js';
 
 const router = Router();
@@ -12,24 +13,6 @@ const INVITE_TTL_DAYS = 7;
 // the invite, the accepter when they accept it — since either one could
 // already be at their own limit.
 const FREE_PARTNER_LIMIT = 1;
-// Same isPro computation as routes/me.js (duplicated rather than shared,
-// matching how routes/assistant.js and routes/calendars.js already do
-// their own copy) — Pro is a one-time purchase now; an active legacy
-// subscription and the beta-tester allowlist both still count.
-const PRO_STATUSES = new Set(['active', 'trialing']);
-const BETA_TESTER_EMAILS = new Set(
-  (process.env.BETA_TESTER_EMAILS || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-);
-function isPro(u) {
-  return (
-    !!u.lifetimePurchasedAt ||
-    PRO_STATUSES.has(u.subscriptionStatus) ||
-    BETA_TESTER_EMAILS.has((u.email || '').toLowerCase())
-  );
-}
 
 // Mirrors calendars.js's own limiter shape/reasoning: invites and the
 // snapshot push are the two things a client could otherwise flood.

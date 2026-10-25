@@ -8,6 +8,8 @@ import Anthropic, {
   APIError,
 } from '@anthropic-ai/sdk';
 import { requireUser } from '../middleware/requireUser.js';
+import { prisma } from '../db.js';
+import { hasPaidPro } from '../lib/entitlements.js';
 
 const router = Router();
 
@@ -59,8 +61,49 @@ function anthropic() {
   return client;
 }
 
-const PRO_STATUSES = new Set(['active', 'trialing']);
-const isPro = (u) => !!u.lifetimePurchasedAt || PRO_STATUSES.has(u.subscriptionStatus);
+// The assistant is for paying customers; beta testers don't get it (it costs
+// real money per message).
+const isPro = hasPaidPro;
+
+// A daily ceiling per account, kept in the database so it holds across restarts
+// and instances. Tokens (input + output) are what the bill is made of, so that's
+// what is counted; the request count is a second, blunter limit. Both are
+// adjustable from the environment without a deploy.
+const DAILY_TOKEN_BUDGET = Number(process.env.ASSISTANT_DAILY_TOKENS) || 150000;
+const DAILY_REQUESTS = Number(process.env.ASSISTANT_DAILY_REQUESTS) || 120;
+const utcDay = () => new Date().toISOString().slice(0, 10);
+
+async function overDailyBudget(userId) {
+  const row = await prisma.assistantUsage.findUnique({ where: { userId_day: { userId, day: utcDay() } } });
+  return !!row && (row.tokens >= DAILY_TOKEN_BUDGET || row.requests >= DAILY_REQUESTS);
+}
+
+async function recordUsage(userId, usage) {
+  const tokens = (usage?.input_tokens || 0) + (usage?.output_tokens || 0);
+  const day = utcDay();
+  await prisma.assistantUsage.upsert({
+    where: { userId_day: { userId, day } },
+    update: { requests: { increment: 1 }, tokens: { increment: tokens } },
+    create: { userId, day, requests: 1, tokens },
+  });
+}
+
+// What a client may send as a conversation: alternating plain user/assistant
+// turns whose content is text or the tool blocks this route itself returned.
+// Anything else (a "system" role, odd block types, huge single messages) is
+// refused instead of being forwarded to the model.
+const ALLOWED_ROLES = new Set(['user', 'assistant']);
+const ALLOWED_BLOCKS = new Set(['text', 'tool_use', 'tool_result', 'thinking', 'redacted_thinking']);
+const MAX_MESSAGE_CHARS = 60000;
+export function validMessages(messages) {
+  if (!Array.isArray(messages)) return false;
+  return messages.every((m) => {
+    if (!m || typeof m !== 'object' || !ALLOWED_ROLES.has(m.role)) return false;
+    if (typeof m.content === 'string') return m.content.length <= MAX_MESSAGE_CHARS;
+    if (!Array.isArray(m.content)) return false;
+    return m.content.every((b) => b && typeof b === 'object' && ALLOWED_BLOCKS.has(b.type));
+  });
+}
 
 // --- What the assistant can do ------------------------------------------
 //
@@ -296,7 +339,7 @@ router.post('/', requireUser, async (req, res, next) => {
   }
 
   const { messages, context } = req.body || {};
-  if (!Array.isArray(messages) || messages.length === 0) {
+  if (!Array.isArray(messages) || messages.length === 0 || !validMessages(messages)) {
     return res.status(400).json({ error: 'Request body must be { messages: [...] }' });
   }
   if (messages.length > MAX_MESSAGES) {
@@ -307,7 +350,17 @@ router.post('/', requireUser, async (req, res, next) => {
   }
 
   try {
-    res.json(await assistantTurn({ messages, context }));
+    if (await overDailyBudget(req.dbUser.id)) {
+      return res.status(429).json({
+        error: "You've reached today's assistant limit. It resets tomorrow.",
+        code: 'daily_limit',
+      });
+    }
+    const reply = await assistantTurn({ messages, context });
+    // Counted after the fact from what the API reports; a failure to record must
+    // never lose the answer the person is waiting for.
+    await recordUsage(req.dbUser.id, reply.usage).catch((e) => console.error('[assistant] usage not recorded', e.message));
+    res.json(reply);
   } catch (err) {
     // Most specific first — the useful distinction for the person holding
     // the phone is "wait a moment" vs "this is broken and you can stop

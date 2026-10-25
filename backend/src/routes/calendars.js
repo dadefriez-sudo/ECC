@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireUser } from '../middleware/requireUser.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 import { prisma } from '../db.js';
+import { isPro } from '../lib/entitlements.js';
 import { LIMITS, isColor, isDate, isTime, isEmail, withinLimit, newInviteToken } from '../lib/validate.js';
 
 const router = Router();
@@ -14,24 +15,6 @@ const EDIT_ROLES = new Set(['owner', 'editor']);
 // they're a member of — being invited onto someone else's calendar (free
 // or not) never counts against your own quota.
 const FREE_OWNED_CALENDAR_LIMIT = 3;
-// Same isPro computation as routes/me.js (duplicated rather than shared,
-// matching how routes/assistant.js already does its own copy) — Pro is a
-// one-time purchase now; an active legacy subscription and the beta-tester
-// allowlist both still count.
-const PRO_STATUSES = new Set(['active', 'trialing']);
-const BETA_TESTER_EMAILS = new Set(
-  (process.env.BETA_TESTER_EMAILS || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-);
-function isPro(u) {
-  return (
-    !!u.lifetimePurchasedAt ||
-    PRO_STATUSES.has(u.subscriptionStatus) ||
-    BETA_TESTER_EMAILS.has((u.email || '').toLowerCase())
-  );
-}
 
 // These three create rows an owner could otherwise script into a flood
 // (calendars, invites — which also spend an email address's goodwill if a
