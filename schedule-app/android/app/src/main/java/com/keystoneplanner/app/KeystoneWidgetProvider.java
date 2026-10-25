@@ -95,7 +95,7 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
                             color = 0xFFE0C15A;
                             label = "GOAL";
                         }
-                        views.setInt(markerIds[i], "setBackgroundResource", marker);
+                        views.setImageViewResource(markerIds[i], marker);
                         views.setTextViewText(timeIds[i], time.isEmpty() ? "Anytime" : time);
                         views.setTextViewText(titleIds[i], item.optString("n", ""));
                         views.setTextViewText(kindIds[i], label);
@@ -147,7 +147,7 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
     }
 
     private static void showMessage(RemoteViews views, int row, int marker, int time, int title, int kind, String text) {
-        views.setInt(marker, "setBackgroundResource", 0);
+        views.setImageViewResource(marker, android.R.color.transparent);
         views.setTextViewText(time, "");
         views.setTextViewText(title, text);
         views.setTextViewText(kind, "");

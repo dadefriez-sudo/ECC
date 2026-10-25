@@ -52,11 +52,14 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <View
+        <ImageView
             android:id="@+id/widget_marker_0"
             android:layout_width="14dp"
             android:layout_height="14dp"
-            android:layout_marginRight="9dp" />
+            android:layout_marginRight="9dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter" />
 
         <TextView
             android:id="@+id/widget_time_0"
@@ -94,11 +97,14 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <View
+        <ImageView
             android:id="@+id/widget_marker_1"
             android:layout_width="14dp"
             android:layout_height="14dp"
-            android:layout_marginRight="9dp" />
+            android:layout_marginRight="9dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter" />
 
         <TextView
             android:id="@+id/widget_time_1"
@@ -136,11 +142,14 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <View
+        <ImageView
             android:id="@+id/widget_marker_2"
             android:layout_width="14dp"
             android:layout_height="14dp"
-            android:layout_marginRight="9dp" />
+            android:layout_marginRight="9dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter" />
 
         <TextView
             android:id="@+id/widget_time_2"
@@ -178,11 +187,14 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <View
+        <ImageView
             android:id="@+id/widget_marker_3"
             android:layout_width="14dp"
             android:layout_height="14dp"
-            android:layout_marginRight="9dp" />
+            android:layout_marginRight="9dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter" />
 
         <TextView
             android:id="@+id/widget_time_3"
