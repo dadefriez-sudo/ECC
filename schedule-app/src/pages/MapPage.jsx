@@ -573,7 +573,7 @@ export default function MapPage() {
     if (!at) return;
     const icon = L.divIcon({
       className: 'pin-icon pin-icon--pick',
-      html: `<div class="pin-bubble pin-bubble--pick"><span>${moving ? moving.draft.emoji || '📍' : '📍'}</span></div>`,
+      html: `<div class="pin-bubble pin-bubble--pick"><span>${moving ? escapeHtml(moving.draft.emoji || '📍') : '📍'}</span></div>`,
       iconSize: [40, 46],
       iconAnchor: [20, 46],
     });

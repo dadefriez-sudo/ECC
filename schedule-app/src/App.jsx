@@ -11,7 +11,8 @@ import { SHARED_CALENDARS_ENABLED } from './data/features.js';
 import { recordOpen, withoutActivity } from './data/activityLog.js';
 import AssistantBubble from './components/AssistantBubble.jsx';
 import Modal from './components/Modal.jsx';
-import { maybeAutoBackup } from './data/backup.js';
+import { maybeAutoBackup, removeUnencryptedBackups } from './data/backup.js';
+import BackupPasswordModal from './components/BackupPasswordModal.jsx';
 import { checkForUpdate, completeUpdate } from './data/appUpdate.js';
 import { initIAP } from './data/iap.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
@@ -686,9 +687,26 @@ function BackupOptInPrompt() {
     state.settings?.legalAccepted === true &&
     state.settings?.autoBackupPromptSeen !== true;
 
+  const [choosing, setChoosing] = useState(false);
   const decide = (enabled) => {
     actions.setSettings({ autoBackupEnabled: enabled, autoBackupPromptSeen: true });
   };
+
+  // Backups are locked with a password, so turning them on means choosing one.
+  if (choosing) {
+    return (
+      <BackupPasswordModal
+        open={show}
+        mode="set"
+        onClose={() => setChoosing(false)}
+        onSubmit={async (password) => {
+          actions.setSettings({ backupPassphrase: password, autoBackupEnabled: true, autoBackupPromptSeen: true });
+          setChoosing(false);
+          removeUnencryptedBackups().catch(() => {});
+        }}
+      />
+    );
+  }
 
   return (
     <Modal
@@ -700,7 +718,7 @@ function BackupOptInPrompt() {
           <button className="btn btn-ghost" onClick={() => decide(false)}>
             Not now
           </button>
-          <button className="btn btn-primary" onClick={() => decide(true)}>
+          <button className="btn btn-primary" onClick={() => setChoosing(true)}>
             Turn on backups
           </button>
         </div>
@@ -708,8 +726,9 @@ function BackupOptInPrompt() {
     >
       <p>
         Keystone can save a backup file to this device once a day, on top of anything you've
-        already got. It's separate from Cloud Sync — it won't survive uninstalling the app, but it
-        protects against things like a bad update or corrupted app storage.
+        already got. It's separate from Cloud Sync. The file is locked with a password you choose,
+        so other apps can't read it, and it protects against things like a bad update or corrupted
+        app storage.
       </p>
       <p className="muted small">You can turn this on or off anytime from Settings → Your data.</p>
     </Modal>

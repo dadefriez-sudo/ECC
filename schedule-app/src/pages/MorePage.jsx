@@ -44,7 +44,9 @@ import {
 } from '../data/contactSwipe.js';
 import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disconnectGoogle } from '../data/api.js';
 import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
-import { backupSupported, writeBackupNow } from '../data/backup.js';
+import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBackups } from '../data/backup.js';
+import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
+import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
 import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js';
 import { useToast } from '../data/toast.jsx';
 import Icon from '../components/Icon.jsx';
@@ -275,6 +277,9 @@ export default function MorePage() {
     hidden: searching && !shown.has(id),
   });
   const fileRef = useRef(null);
+  // Backup password prompts: choose one ('set', then carry on with what was asked),
+  // or enter the one a file was made with ('enter').
+  const [pwModal, setPwModal] = useState(null); // { mode, then?, envelope? } | null
   const icsFileRef = useRef(null);
   const vcfFileRef = useRef(null);
 
@@ -411,6 +416,7 @@ export default function MorePage() {
     // which is why this button did nothing on Android/iOS — it only ever
     // worked on the actual web build. Native writes a real file instead.
     if (Capacitor.isNativePlatform()) {
+      if (!hasBackupPassword(state)) return setPwModal({ mode: 'set', then: 'export' });
       try {
         const filename = await writeBackupNow(state);
         showToast(filename ? `Saved ${filename} to Documents` : 'Backup saved to Documents');
@@ -428,6 +434,17 @@ export default function MorePage() {
     URL.revokeObjectURL(url);
   };
 
+  // Replaces everything with a parsed backup, keeping what's here so Undo puts it back.
+  const applyImport = (data) => {
+    if (!isBackupShape(data)) {
+      alert('That file is not a Keystone backup, so nothing was changed.');
+      return;
+    }
+    const previous = state;
+    actions.importData(data);
+    showToast('Backup imported.', 'Undo', () => actions.importData(previous));
+  };
+
   const importData = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -435,20 +452,38 @@ export default function MorePage() {
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
-        if (!isBackupShape(data)) {
-          alert('That file is not a Keystone backup, so nothing was changed.');
-          return;
-        }
-        // Importing replaces everything, so keep what's here: Undo puts it back.
-        const previous = state;
-        actions.importData(data);
-        showToast('Backup imported.', 'Undo', () => actions.importData(previous));
+        // A password-protected backup asks for its password first.
+        if (isEncryptedBackup(data)) return setPwModal({ mode: 'enter', envelope: data });
+        applyImport(data);
       } catch {
         alert('That file could not be read as a Keystone backup.');
       }
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const submitBackupPassword = async (password) => {
+    const m = pwModal;
+    if (m.mode === 'enter') {
+      const data = JSON.parse(await decryptBackup(m.envelope, password));
+      setPwModal(null);
+      applyImport(data);
+      return;
+    }
+    actions.setSettings({ backupPassphrase: password });
+    setPwModal(null);
+    const removed = await removeUnencryptedBackups().catch(() => 0);
+    if (removed) showToast(`Removed ${removed} old unprotected backup${removed === 1 ? '' : 's'}.`);
+    if (m.then === 'toggle') actions.setSettings({ autoBackupEnabled: true, autoBackupPromptSeen: true });
+    if (m.then === 'export') {
+      try {
+        const filename = await writeBackupNow({ ...state, settings: { ...state.settings, backupPassphrase: password } });
+        showToast(filename ? `Saved ${filename} to Documents` : 'Backup saved to Documents');
+      } catch (err) {
+        showToast(err.message || 'Could not save the backup.');
+      }
+    }
   };
 
   const saveStatus = () => {
@@ -1477,13 +1512,30 @@ export default function MorePage() {
               role="switch"
               aria-label="Automatic on-device backup"
               aria-checked={!!s.autoBackupEnabled}
-              onClick={() => actions.setSettings({ autoBackupEnabled: !s.autoBackupEnabled, autoBackupPromptSeen: true })}
+              onClick={() =>
+                s.autoBackupEnabled
+                  ? actions.setSettings({ autoBackupEnabled: false, autoBackupPromptSeen: true })
+                  : hasBackupPassword(state)
+                  ? actions.setSettings({ autoBackupEnabled: true, autoBackupPromptSeen: true })
+                  : setPwModal({ mode: 'set', then: 'toggle' })
+              }
             >
               <span className="toggle-knob" />
             </button>
           </div>
         )}
+        {backupSupported() && (
+          <p className="muted small">
+            Backups are locked with a password you choose, so other apps can't read them.
+            {hasBackupPassword(state) ? '' : ' Turn backups on or export once to set it.'}
+          </p>
+        )}
         <div className="stack-btns">
+          {backupSupported() && hasBackupPassword(state) && (
+            <button className="btn btn-ghost full" onClick={() => setPwModal({ mode: 'set' })}>
+              Change backup password
+            </button>
+          )}
           <button className="btn btn-ghost full" onClick={exportData}>
             Export backup (.json)
           </button>
@@ -1491,6 +1543,12 @@ export default function MorePage() {
             Import backup
           </button>
           <input ref={fileRef} type="file" accept="application/json" hidden onChange={importData} />
+          <BackupPasswordModal
+            open={!!pwModal}
+            mode={pwModal?.mode || 'set'}
+            onSubmit={submitBackupPassword}
+            onClose={() => setPwModal(null)}
+          />
           <button className="btn btn-ghost full" onClick={() => setConfirm('reset')}>
             Reset to sample data
           </button>

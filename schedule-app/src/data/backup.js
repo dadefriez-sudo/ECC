@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { encryptBackup, isEncryptedBackup, MIN_PASSWORD_LENGTH } from './backupCrypto.js';
 
 // On-device JSON backups, separate from (and in addition to) Cloud Sync.
 // Written to the Documents directory, which on Android is the public,
@@ -17,6 +18,11 @@ const isNative = Capacitor.isNativePlatform();
 export function backupSupported() {
   return isNative;
 }
+
+// A backup is only written once a password has been chosen (it is encrypted
+// with it). The password lives in this device's own settings and is never synced.
+export const hasBackupPassword = (state) =>
+  typeof state?.settings?.backupPassphrase === 'string' && state.settings.backupPassphrase.length >= MIN_PASSWORD_LENGTH;
 
 function backupFilename(date = new Date()) {
   return `keystone-backup-${date.toISOString().slice(0, 10)}-${date.getTime()}.json`;
@@ -47,17 +53,50 @@ async function pruneOldBackups() {
 // the manual "Export" button and the automatic daily check below.
 export async function writeBackupNow(state) {
   if (!isNative) return null;
-  const json = JSON.stringify(state, null, 2);
+  if (!hasBackupPassword(state)) throw new Error('Set a backup password first.');
+  // The password is for the file's lock; it doesn't go inside the file too.
+  const { backupPassphrase, ...settings } = state.settings || {};
+  const json = JSON.stringify({ ...state, settings }, null, 2);
   const filename = backupFilename();
   await Filesystem.writeFile({
     path: `${BACKUP_DIR}/${filename}`,
-    data: json,
+    data: await encryptBackup(json, backupPassphrase),
     directory: Directory.Documents,
     encoding: Encoding.UTF8,
     recursive: true,
   });
   await pruneOldBackups();
   return filename;
+}
+
+// Earlier versions wrote backups as plain readable text. Once a password is set
+// those are removed (they are our own files, in our own folder), so nothing
+// readable is left behind. Returns how many were deleted.
+export async function removeUnencryptedBackups() {
+  if (!isNative) return 0;
+  let removed = 0;
+  for (const f of await listBackups()) {
+    try {
+      const { data } = await Filesystem.readFile({
+        path: `${BACKUP_DIR}/${f.name}`,
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+      });
+      let encrypted = false;
+      try {
+        encrypted = isEncryptedBackup(JSON.parse(data));
+      } catch {
+        encrypted = false;
+      }
+      if (!encrypted) {
+        await Filesystem.deleteFile({ path: `${BACKUP_DIR}/${f.name}`, directory: Directory.Documents });
+        removed++;
+      }
+    } catch {
+      /* unreadable: leave it */
+    }
+  }
+  return removed;
 }
 
 // Called once on app start. Writes a fresh backup if it's been at least a
@@ -68,6 +107,7 @@ export async function writeBackupNow(state) {
 export async function maybeAutoBackup(state, actions) {
   if (!isNative) return;
   if (state.settings?.autoBackupEnabled !== true) return;
+  if (!hasBackupPassword(state)) return; // nothing is written unencrypted
   const last = state.settings?.lastAutoBackupAt ? new Date(state.settings.lastAutoBackupAt).getTime() : 0;
   if (Date.now() - last < AUTO_BACKUP_INTERVAL_MS) return;
   try {
