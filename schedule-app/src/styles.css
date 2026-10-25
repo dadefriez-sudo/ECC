@@ -8178,3 +8178,12 @@ body[data-assistant='on'] .conflict-list {
 .slide-card--done .slide-num strong {
   color: var(--good);
 }
+
+.task-notes {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+  text-align: left;
+}

@@ -313,6 +313,7 @@ export default function TasksPage() {
               {t.title}
               {t.repeat && t.repeat !== 'none' && <span className="repeat-glyph"> <Icon name="repeat" size={13} /></span>}
             </span>
+            {!t.done && t.notes?.trim() && <span className="task-notes muted small">{t.notes.trim()}</span>}
             {!t.done && [t.location, friendlyDue(t.dueDate, today)].some(Boolean) && (
               <span className={`task-meta muted small${t.dueDate && t.dueDate < today ? ' task-meta--late' : ''}`}>
                 {[t.location, friendlyDue(t.dueDate, today)].filter(Boolean).join(' · ')}

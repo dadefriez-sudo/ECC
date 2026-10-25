@@ -43,7 +43,12 @@ export default function ShareReceiver() {
   const close = () => setShared(null);
 
   const asTask = () => {
-    actions.addTask({ title: firstLine, notes: shared.text === firstLine ? '' : shared.text, createdAt: todayISO() });
+    // The title is the subject (Keep's note title) or the first line; the rest
+    // of the text is the task's notes, without repeating the title line.
+    const lines = shared.text.split('\n');
+    const body = (shared.subject ? shared.text : lines.slice(1).join('\n')).trim();
+    const notes = body === firstLine ? '' : body;
+    actions.addTask({ title: firstLine, notes, createdAt: todayISO() });
     showToast('Added to your tasks');
     close();
   };
