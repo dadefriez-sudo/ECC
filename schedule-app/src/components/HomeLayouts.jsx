@@ -32,7 +32,6 @@ export function MiniRing({ pct, label }) {
   );
 }
 
-const TIMELINE_LIMIT = 8;
 // Each layout has its own fixed order (hide/show from Customize still applies;
 // drag-to-reorder belongs to the Classic layout).
 // Used until the person reorders blocks themselves (Pro); after that their
@@ -82,110 +81,12 @@ export function UpNext({ h }) {
   );
 }
 
-function TimelineRow({ it, h, next, past }) {
-  return (
-    <li
-      className={`tl-row${it.done ? ' tl-row--done' : ''}${past ? ' tl-row--past' : ''}${next ? ' tl-row--next' : ''}`}
-    >
-      {it.kind === 'task' ? (
-        <button
-          className={`task-check task-check--sm${it.done ? ' task-check--on' : ''}`}
-          data-haptic={it.done ? 'tap' : 'confirm'}
-          onClick={() => h.toggleTaskDone(it.task)}
-          aria-label={it.done ? 'Mark not done' : 'Mark done'}
-        >
-          {it.done && <Icon name="check" size={12} />}
-        </button>
-      ) : (
-        <span className={`tl-dot${past ? ' tl-dot--past' : ''}${next ? ' tl-dot--next' : ''}`} aria-hidden="true" />
-      )}
-      <button className="tl-main" onClick={() => h.openItem(it)}>
-        <span className="tl-time">{it.time ? formatTime(it.time) : 'Anytime'}</span>
-        <span className="tl-label">{it.label}</span>
-      </button>
-      {next && <span className="tl-next-tag">Next</span>}
-      <span className={`reminder-kind reminder-kind--${it.kind}`}>{it.kind}</span>
-    </li>
-  );
-}
-
-// Earlier events are tucked behind one line, a "Now" marker sits where the
-// clock is, and everything after it is what's still to come.
-function Timeline({ h, items }) {
-  const [all, setAll] = useState(false);
-  const [showPast, setShowPast] = useState(false);
-  const n = new Date();
-  const nowKey = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
-  const past = items.filter((i) => i.time && i.time < nowKey);
-  const ahead = items.filter((i) => !i.time || i.time >= nowKey);
-  const shown = all ? ahead : ahead.slice(0, TIMELINE_LIMIT);
-  const nextId = ahead.find((i) => !i.done)?.id;
-  return (
-    <>
-      {past.length > 0 && (
-        <button className="tl-earlier" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast}>
-          Earlier today · {past.length}
-          <Icon name="chevronDown" size={14} />
-        </button>
-      )}
-      {showPast && (
-        <ul className="tl tl--past">
-          {past.map((it) => (
-            <TimelineRow key={`${it.kind}:${it.id}`} it={it} h={h} past />
-          ))}
-        </ul>
-      )}
-      <div className="tl-now" role="separator" aria-label={`Now, ${formatTime(nowKey)}`}>
-        <span>Now · {formatTime(nowKey)}</span>
-      </div>
-      {ahead.length === 0 ? (
-        <p className="muted small tl-clear">Nothing else today.</p>
-      ) : (
-        <ul className="tl">
-          {shown.map((it) => (
-            <TimelineRow key={`${it.kind}:${it.id}`} it={it} h={h} next={it.id === nextId} />
-          ))}
-        </ul>
-      )}
-      {ahead.length > TIMELINE_LIMIT && (
-        <button className="btn btn-ghost btn-sm tl-more" onClick={() => setAll((v) => !v)}>
-          {all ? 'Show less' : `Show all ${ahead.length}`}
-        </button>
-      )}
-    </>
-  );
-}
-
-function TimelineSection({ h, title = 'Today' }) {
-  if (h.timeline.length === 0) {
-    return (
-      <section className="detail-section">
-        <span className="detail-label"><Icon name="bell" /> {title}</span>
-        <p className="muted small">Nothing scheduled today.</p>
-      </section>
-    );
-  }
-  return (
-    <section className="detail-section">
-      <div className="section-head">
-        <span className="detail-label"><Icon name="bell" /> {title}</span>
-        <button className="btn btn-ghost btn-sm" onClick={() => h.navigate('/planner')}>
-          See planner
-        </button>
-      </div>
-      <Timeline h={h} items={h.timeline} />
-    </section>
-  );
-}
-
 // A. Today First — the day as a timeline, led by the one thing that's next.
 export function TodayView({ h }) {
   return (
     <>
       {orderFor(h, TODAY_DEFAULT).map((id) =>
-        id === 'reminders' ? (
-          <TimelineSection key="reminders" h={h} />
-        ) : id === 'upnext' ? (
+        id === 'upnext' ? (
           <UpNext key="upnext" h={h} />
         ) : (
           h.block(id)
@@ -342,7 +243,7 @@ export function CalmView({ h }) {
         for (const id of orderFor(h, CALM_DEFAULT)) {
           if (id === 'reminders') {
             flush();
-            out.push(<TimelineSection key="reminders" h={h} title="Focus today" />);
+            out.push(h.block('reminders'));
           } else if (id === 'upnext') {
             flush();
             out.push(<UpNext key="upnext" h={h} />);
