@@ -1295,32 +1295,6 @@ function DayView({
   const nowMins = useMinuteOfDay();
   const showNowLine = isToday(date) && nowMins >= dayStart * 60 && nowMins <= (dayEnd + 1) * 60;
 
-  // The first stretch of 3+ free hours (from now on today, from the start of
-  // the day otherwise), labelled "Free until 2 PM". Purely a hint: the
-  // label ignores taps, so tapping it still adds an event like any empty slot.
-  const freeGap = useMemo(() => {
-    const MIN_FREE = 180;
-    const from = isToday(date) ? Math.max(dayStart * 60, nowMins) : dayStart * 60;
-    const endMin = dayEnd * 60;
-    let at = from;
-    const busy = dayEvents.map((e) => [e.s, e.e2]).sort((a, b) => a[0] - b[0]);
-    for (const [bs, be] of busy) {
-      if (be <= at) continue;
-      if (bs - at >= MIN_FREE) return { start: at, end: bs, from };
-      at = Math.max(at, be);
-    }
-    return endMin - at >= MIN_FREE ? { start: at, end: endMin, from } : null;
-  }, [dayEvents, date, nowMins, dayStart, dayEnd]);
-  const freeGapLabel = freeGap
-    ? freeGap.end >= dayEnd * 60
-      ? freeGap.start === freeGap.from
-        ? 'Free for the rest of the day · tap to add'
-        : `Free after ${formatTime(minutesToTime(freeGap.start))} · tap to add`
-      : freeGap.start === freeGap.from
-      ? `Free until ${formatTime(minutesToTime(freeGap.end))} · tap to add`
-      : `Free ${formatTime(minutesToTime(freeGap.start))} – ${formatTime(minutesToTime(freeGap.end))} · tap to add`
-    : '';
-
   // Resolved against each occurrence's OWN recDate (not whatever `date` is
   // currently on screen) so the group-drag ghost below stays correct across
   // the live day-paging that happens while dragging past the timeline edge.
@@ -2056,16 +2030,6 @@ function DayView({
             >
               {formatTime(minutesToTime(nowMins))}
             </span>
-          )}
-
-          {freeGap && (
-            <div
-              className="free-gap"
-              style={{ top: (freeGap.start - dayStart * 60) * pxPerMin + 8 }}
-              aria-hidden="true"
-            >
-              {freeGapLabel}
-            </div>
           )}
 
           {tapFlash && (

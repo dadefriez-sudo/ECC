@@ -11,6 +11,7 @@ import { useTodayResync } from '../data/useTodayResync.js';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import MilestoneCelebration from '../components/MilestoneCelebration.jsx';
 import ObjectivesView from './ObjectivesView.jsx';
+import MilestonesDue from '../components/MilestonesDue.jsx';
 import { GOAL_TEMPLATES } from '../data/goalTemplates.js';
 import { CalmView, SlideView, StreakView } from '../components/GoalsLayouts.jsx';
 import {
@@ -70,7 +71,7 @@ export default function GoalsPage() {
   // rather than splitting into two bottom-nav entries — one is the cadence
   // that drives the other, and switching between them should be a tap, not
   // a whole navigation.
-  const [view, setView] = useState('habits');
+  const [view, setView] = useState(location.state?.view === 'objectives' ? 'objectives' : 'habits');
   const [period, setPeriod] = useState('daily');
   const [day, setDay] = useState(() => todayISO());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
@@ -405,6 +406,7 @@ export default function GoalsPage() {
             Objectives
           </button>
         </div>
+        {view === 'habits' && <MilestonesDue onOpen={() => setView('objectives')} />}
         {view === 'habits' && classic && (
           <>
             <div className="seg seg--full">

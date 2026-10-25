@@ -5,6 +5,7 @@ import EditorSheet from '../components/EditorSheet.jsx';
 import Checkbox from '../components/Checkbox.jsx';
 import SwipeToDelete from '../components/SwipeToDelete.jsx';
 import AddressField from '../components/AddressField.jsx';
+import MilestonesDue from '../components/MilestonesDue.jsx';
 import { Brand } from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
 import { useToast } from '../data/toast.jsx';
@@ -398,6 +399,8 @@ export default function TasksPage() {
           <Brand>Tasks</Brand>
         </div>
       </header>
+
+      <MilestonesDue onOpen={() => navigate('/goals', { state: { view: 'objectives' } })} />
 
       {dayTotal > 0 && (
         <section className={`detail-section task-progress${allClear ? ' task-progress--clear' : ''}`}>

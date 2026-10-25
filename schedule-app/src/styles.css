@@ -7488,20 +7488,6 @@ body[data-assistant='on'] .conflict-list {
   font-size: 10px;
   font-weight: 800;
 }
-.free-gap {
-  position: absolute;
-  left: 52px;
-  right: 4px;
-  height: 44px;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 13px;
-  pointer-events: none;
-}
 .agenda-day--empty {
   align-items: center;
   padding: 6px 10px;
@@ -8186,4 +8172,56 @@ body[data-assistant='on'] .conflict-list {
   overflow: hidden;
   white-space: pre-line;
   text-align: left;
+}
+
+/* Milestones due, shown on Goals and Tasks */
+.ms-due-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+.ms-due-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.ms-due-title {
+  font-weight: 700;
+}
+.ms-due-sub {
+  max-width: 100%;
+}
+.ms-due-ctl {
+  flex: none;
+  width: 36px;
+  display: grid;
+  place-items: center;
+}
+.page-head .ms-due {
+  margin-top: 12px;
+}
+.ms-due-sub--late {
+  color: var(--danger);
+  font-weight: 600;
+}
+.ms-due-step {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
 }

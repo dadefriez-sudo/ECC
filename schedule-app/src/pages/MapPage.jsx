@@ -51,6 +51,26 @@ const NO_CLUSTER_ZOOM = 18; // fully zoomed in: stacked pins stay separate
 const escapeHtml = (s = '') =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Where the map was left. Kept out of the app's saved data on purpose: writing
+// it there re-rendered the whole app, rewrote everything to storage and woke
+// cloud sync after every pan.
+const MAP_VIEW_KEY = 'compass.map.view';
+function loadMapView() {
+  try {
+    const v = JSON.parse(localStorage.getItem(MAP_VIEW_KEY) || 'null');
+    return v && typeof v.lat === 'number' && typeof v.lng === 'number' ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveMapView(v) {
+  try {
+    localStorage.setItem(MAP_VIEW_KEY, JSON.stringify(v));
+  } catch {
+    /* storage full or blocked: the view just isn't remembered */
+  }
+}
+
 export default function MapPage() {
   const { state } = useStore();
   const actions = useActions();
@@ -337,7 +357,7 @@ export default function MapPage() {
     // the tab), else wherever they last left the map, else centered on
     // whatever pins exist, else a reasonably zoomed-in default rather than
     // a whole-city view.
-    const lastView = state.settings?.mapLastView;
+    const lastView = loadMapView() || state.settings?.mapLastView;
     if (!pickModeRef.current) {
       if (lastView) {
         map.setView([lastView.lat, lastView.lng], lastView.zoom || 15);
@@ -387,7 +407,7 @@ export default function MapPage() {
       clearTimeout(saveViewTimer);
       saveViewTimer = setTimeout(() => {
         const c = map.getCenter();
-        actions.setSettings({ mapLastView: { lat: c.lat, lng: c.lng, zoom: map.getZoom() } });
+        saveMapView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() });
       }, 500);
     });
     mapRef.current = map;
@@ -426,6 +446,13 @@ export default function MapPage() {
     const layer = L.tileLayer(style.url, {
       maxZoom: style.maxZoom,
       attribution: style.attribution,
+      // Keep loading tiles while a pan is under way (Leaflet waits for the
+      // end of it on touch devices, which shows grey edges), hold a wider
+      // ring of them around the screen, and skip the in-between zoom levels
+      // during a pinch.
+      updateWhenIdle: false,
+      updateWhenZooming: false,
+      keepBuffer: 4,
     });
     layer.addTo(map);
     // Behind the pin layers, which were added first and would otherwise end

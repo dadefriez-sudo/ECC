@@ -56,7 +56,15 @@ const PlannerPage = lazy(() => import('./pages/PlannerPage.jsx'));
 const ContactsPage = lazy(() => import('./pages/ContactsPage.jsx'));
 const ContactDetailPage = lazy(() => import('./pages/ContactDetailPage.jsx'));
 const ContactTimelinePage = lazy(() => import('./pages/ContactTimelinePage.jsx'));
-const MapPage = lazy(() => import('./pages/MapPage.jsx'));
+const loadMapPage = () => import('./pages/MapPage.jsx');
+const MapPage = lazy(loadMapPage);
+// The map is the heaviest page (Leaflet and its tiles' worth of code), so
+// fetch it once the app has settled instead of on the first tap of the tab.
+if (typeof window !== 'undefined') {
+  const prefetch = () => loadMapPage().catch(() => {});
+  if ('requestIdleCallback' in window) window.requestIdleCallback(prefetch, { timeout: 8000 });
+  else setTimeout(prefetch, 4000);
+}
 const RoutePlannerPage = lazy(() => import('./pages/RoutePlannerPage.jsx'));
 const MorePage = lazy(() => import('./pages/MorePage.jsx'));
 const SharedCalendarsPage = lazy(() => import('./pages/SharedCalendarsPage.jsx'));
