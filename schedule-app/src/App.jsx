@@ -12,6 +12,7 @@ import { recordOpen, withoutActivity } from './data/activityLog.js';
 import AssistantBubble from './components/AssistantBubble.jsx';
 import Modal from './components/Modal.jsx';
 import { maybeAutoBackup, removeUnencryptedBackups } from './data/backup.js';
+import { maybeAutoSyncCanvas } from './data/canvasSync.js';
 import BackupPasswordModal from './components/BackupPasswordModal.jsx';
 import { checkForUpdate, completeUpdate } from './data/appUpdate.js';
 import { initIAP } from './data/iap.js';
@@ -785,6 +786,17 @@ export default function App() {
   // only ever runs once a day.
   useEffect(() => {
     maybeAutoBackup(stateRef.current, actions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Canvas calendar (opt-in, a link pasted in Settings): refreshed when the app
+  // opens and when it comes back to the foreground, at most every few hours.
+  useEffect(() => {
+    const run = () => maybeAutoSyncCanvas(stateRef.current, actions);
+    run();
+    const onVisible = () => document.visibilityState === 'visible' && run();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

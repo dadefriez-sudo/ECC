@@ -7,7 +7,7 @@ import LegalPage from '../components/LegalPage.jsx';
 // accurate to the current codebase as of the date below.
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 24, 2026">
+    <LegalPage title="Privacy Policy" updated="October 26, 2026">
       <p>
         Keystone is made by KeyStone Software and built around one idea: your calendar, your
         goals, and your people are your data, kept on your device by default. This page explains
@@ -126,6 +126,14 @@ export default function PrivacyPage() {
           , including the Limited Use requirements: that data is used only to show and sync your
           own events/contacts, is never used for advertising, and is never sold or shared with
           anyone other than you.
+        </li>
+        <li>
+          <b>Canvas calendar (optional).</b> If you paste your Canvas Calendar Feed link into
+          Settings → Canvas calendar, Keystone fetches it directly from your school's Canvas
+          site, from your phone, to show your assignments and class dates on your calendar. The
+          link stays on this device and is never sent to our server. The items it brings in become
+          ordinary events in your data, so they are included in a backup or Cloud Sync if you use
+          those. Disconnecting removes the link and the items it added.
         </li>
         <li>
           <b>Payment (Pro purchase).</b> Payment is handled entirely by the App Store or Google

@@ -46,6 +46,8 @@ import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disc
 import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
 import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBackups } from '../data/backup.js';
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
+import { validateFeedUrl } from '../data/canvasFeed.js';
+import { syncCanvas } from '../data/canvasSync.js';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
 import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js';
 import { useToast } from '../data/toast.jsx';
@@ -159,6 +161,7 @@ const SETTINGS_INDEX = [
       { id: 'g8', title: 'Calendar settings', keywords: 'day start end hour zoom week 24 templates duration reminder default' },
       { id: 'g15', title: 'Event types', keywords: 'call text in person travel email other category colour color custom add create new reorder remove drag' },
       { id: 'g3', title: 'Calendar import / export', keywords: 'ics subscribe google apple outlook download' },
+      { id: 'g24', title: 'Canvas calendar', keywords: 'canvas school class classes assignment assignments homework due dates student course lms instructure university college feed' },
     ],
   },
   {
@@ -277,6 +280,10 @@ export default function MorePage() {
     hidden: searching && !shown.has(id),
   });
   const fileRef = useRef(null);
+  // Canvas calendar link box (the saved link itself lives in settings, on this device only).
+  const [canvasLink, setCanvasLink] = useState('');
+  const [canvasBusy, setCanvasBusy] = useState(false);
+  const [canvasMsg, setCanvasMsg] = useState('');
   // Backup password prompts: choose one ('set', then carry on with what was asked),
   // or enter the one a file was made with ('enter').
   const [pwModal, setPwModal] = useState(null); // { mode, then?, envelope? } | null
@@ -425,7 +432,9 @@ export default function MorePage() {
       }
       return;
     }
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    // The Canvas link and backup password are private to this device, so they stay out of the file.
+    const { canvasFeedUrl, backupPassphrase, ...exportSettings } = state.settings || {};
+    const blob = new Blob([JSON.stringify({ ...state, settings: exportSettings }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1189,6 +1198,107 @@ export default function MorePage() {
           </button>
           <input ref={icsFileRef} type="file" accept=".ics,text/calendar" hidden onChange={importICS} />
         </div>
+      </SettingsGroup>
+
+      <SettingsGroup {...grp('g24')}>
+        <span className="detail-label">Canvas calendar</span>
+        <p className="muted small">
+          Show your assignments and class dates from Canvas on your Keystone calendar. In Canvas, open
+          Calendar, choose Calendar Feed, and copy the link. It is private to you, so it stays on this
+          phone and is never sent to Keystone's servers.
+        </p>
+        {s.canvasFeedUrl ? (
+          <>
+            <p className="muted small">
+              Connected.{' '}
+              {s.canvasLastSync ? `Last synced ${describeSyncedAt(new Date(s.canvasLastSync).getTime())}.` : 'Not synced yet.'}
+            </p>
+            {s.canvasLastError && <p className="partner-error" role="alert">{s.canvasLastError}</p>}
+            {canvasMsg && <p className="muted small" role="status">{canvasMsg}</p>}
+            <div className="stack-btns">
+              <button
+                className="btn btn-ghost full"
+                disabled={canvasBusy}
+                onClick={async () => {
+                  setCanvasBusy(true);
+                  setCanvasMsg('');
+                  try {
+                    const r = await syncCanvas(state, actions);
+                    actions.setSettings({ canvasLastSync: new Date().toISOString(), canvasLastError: '' });
+                    setCanvasMsg(`Synced: ${r.added} added, ${r.updated} updated, ${r.removed} removed.`);
+                  } catch (err) {
+                    actions.setSettings({ canvasLastError: err.message });
+                  } finally {
+                    setCanvasBusy(false);
+                  }
+                }}
+              >
+                {canvasBusy ? 'Syncing…' : 'Sync now'}
+              </button>
+              <button
+                className="btn btn-danger-ghost full"
+                onClick={() => {
+                  const imported = (state.events || []).filter((e) => e.source === 'canvas');
+                  imported.forEach((e) => actions.deleteEvent(e.id));
+                  actions.setSettings({ canvasFeedUrl: '', canvasLastSync: '', canvasLastError: '' });
+                  setCanvasMsg('');
+                  showToast('Canvas disconnected', imported.length ? 'Undo' : undefined, imported.length ? () => {
+                    imported.forEach((e) => actions.addEvent(e));
+                    actions.setSettings({ canvasFeedUrl: s.canvasFeedUrl });
+                  } : undefined);
+                }}
+              >
+                Disconnect and remove its events
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label className="field">
+              <span>Calendar Feed link</span>
+              <input
+                value={canvasLink}
+                onChange={(e) => {
+                  setCanvasLink(e.target.value);
+                  setCanvasMsg('');
+                }}
+                placeholder="https://yourschool.instructure.com/feeds/calendars/user_….ics"
+                inputMode="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                aria-label="Canvas calendar feed link"
+              />
+            </label>
+            {canvasMsg && <p className="partner-error" role="alert">{canvasMsg}</p>}
+            <button
+              className="btn btn-primary full"
+              disabled={canvasBusy || !canvasLink.trim()}
+              onClick={async () => {
+                const checked = validateFeedUrl(canvasLink);
+                if (!checked.ok) return setCanvasMsg(checked.error);
+                setCanvasBusy(true);
+                setCanvasMsg('');
+                try {
+                  const next = { ...state, settings: { ...state.settings, canvasFeedUrl: checked.url } };
+                  const r = await syncCanvas(next, actions);
+                  actions.setSettings({ canvasFeedUrl: checked.url, canvasLastSync: new Date().toISOString(), canvasLastError: '' });
+                  setCanvasLink('');
+                  showToast(`Canvas connected: ${r.added} item${r.added === 1 ? '' : 's'} added`);
+                } catch (err) {
+                  setCanvasMsg(err.message);
+                } finally {
+                  setCanvasBusy(false);
+                }
+              }}
+            >
+              {canvasBusy ? 'Connecting…' : 'Connect Canvas'}
+            </button>
+          </>
+        )}
+        <p className="muted small">
+          Items from Canvas show in orange and refresh about every three hours when you open the app. Changes
+          are one-way: edit them in Canvas. Items you delete here come back at the next sync.
+        </p>
       </SettingsGroup>
 
       <SettingsSection label="People" hidden={!sectionShown('People')} />

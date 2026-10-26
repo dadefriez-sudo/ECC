@@ -54,8 +54,9 @@ async function pruneOldBackups() {
 export async function writeBackupNow(state) {
   if (!isNative) return null;
   if (!hasBackupPassword(state)) throw new Error('Set a backup password first.');
-  // The password is for the file's lock; it doesn't go inside the file too.
-  const { backupPassphrase, ...settings } = state.settings || {};
+  // The password is for the file's lock, and the Canvas link is a private key to a
+  // calendar; neither goes inside the file.
+  const { backupPassphrase, canvasFeedUrl, ...settings } = state.settings || {};
   const json = JSON.stringify({ ...state, settings }, null, 2);
   const filename = backupFilename();
   await Filesystem.writeFile({
