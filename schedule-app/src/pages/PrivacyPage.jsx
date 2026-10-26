@@ -145,7 +145,7 @@ export default function PrivacyPage() {
           those.
         </li>
         <li>
-          <b>Canvas calendar (optional).</b> If you paste your Canvas Calendar Feed link into
+          <b>Canvas calendar (optional, Pro).</b> If you paste your Canvas Calendar Feed link into
           Settings → Canvas calendar, Keystone fetches it directly from your school's Canvas
           site, from your phone, to show your assignments and class dates on your calendar. The
           link stays on this device and is never sent to our server. The items it brings in become

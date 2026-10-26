@@ -790,9 +790,16 @@ export default function App() {
   }, []);
 
   // Canvas calendar (opt-in, a link pasted in Settings): refreshed when the app
-  // opens and when it comes back to the foreground, at most every few hours.
+  // opens and when it comes back to the foreground, at most once an hour. Pro.
   useEffect(() => {
-    const run = () => maybeAutoSyncCanvas(stateRef.current, actions);
+    const run = async () => {
+      const r = await maybeAutoSyncCanvas(stateRef.current, actions);
+      // New deadlines turning up on a later refresh are worth a line; the first
+      // sync after connecting already said what it added.
+      if (r && !r.first && r.added > 0) {
+        showToast(`${r.added} new Canvas deadline${r.added === 1 ? '' : 's'} added`);
+      }
+    };
     run();
     const onVisible = () => document.visibilityState === 'visible' && run();
     document.addEventListener('visibilitychange', onVisible);

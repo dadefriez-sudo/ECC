@@ -1218,13 +1218,17 @@ export default function MorePage() {
       </SettingsGroup>
 
       <SettingsGroup {...grp('g24')}>
-        <span className="detail-label">Canvas calendar</span>
+        <span className="detail-label">Canvas calendar {!isPro && '· Pro'}</span>
         <p className="muted small">
           Show your assignments and class dates from Canvas on your Keystone calendar. In Canvas, open
           Calendar, choose Calendar Feed, and copy the link. It is private to you, so it stays on this
           phone and is never sent to Keystone's servers.
         </p>
-        {s.canvasFeedUrl ? (
+        {!isPro ? (
+          <button className="btn btn-primary full" onClick={() => navigate('/pricing')}>
+            <Icon name="lock" size={14} /> Unlock Canvas calendar with Pro
+          </button>
+        ) : s.canvasFeedUrl ? (
           <>
             <p className="muted small">
               Connected.{' '}
@@ -1313,7 +1317,7 @@ export default function MorePage() {
           </>
         )}
         <p className="muted small">
-          Items from Canvas show in orange and refresh about every three hours when you open the app. Changes
+          Items from Canvas show in orange and refresh about once an hour while the app is open, and a toast tells you when new deadlines arrive. Changes
           are one-way: edit them in Canvas. Items you delete here come back at the next sync.
         </p>
       </SettingsGroup>

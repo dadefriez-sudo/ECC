@@ -2,7 +2,7 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { parseCanvasFeed, planCanvasSync, validateFeedUrl } from './canvasFeed.js';
 import { todayISO } from './helpers.js';
 
-const MIN_INTERVAL_MS = 3 * 60 * 60 * 1000; // automatic refresh at most every three hours
+const MIN_INTERVAL_MS = 60 * 60 * 1000; // automatic refresh at most hourly
 
 // On the phone the request goes out natively, so a school's server doesn't need
 // to allow our page to read it. In a browser it's an ordinary fetch, which many
@@ -26,6 +26,7 @@ async function fetchFeed(url) {
 // Pulls the feed and brings the Canvas events on the calendar in line with it.
 // Returns { added, updated, removed }. Throws a readable Error on failure.
 export async function syncCanvas(state, actions) {
+  if (!state.settings?.isPro) throw new Error('Canvas calendar is a Pro feature.');
   const checked = validateFeedUrl(state.settings?.canvasFeedUrl);
   if (!checked.ok) throw new Error(checked.error);
   const text = await fetchFeed(checked.url);
@@ -38,17 +39,21 @@ export async function syncCanvas(state, actions) {
 }
 
 // Called on app start and when the app comes back to the foreground. A no-op
-// without a link, or if it already ran recently.
+// without a link or Pro, or if it already ran recently. Resolves to
+// { added, updated, removed, first } when it ran, so the caller can tell the
+// person about new deadlines (first is true on the very first sync).
 export async function maybeAutoSyncCanvas(state, actions) {
   const s = state.settings || {};
-  if (!s.canvasFeedUrl) return;
+  if (!s.canvasFeedUrl || !s.isPro) return null;
   const last = s.canvasLastSync ? new Date(s.canvasLastSync).getTime() : 0;
-  if (Date.now() - last < MIN_INTERVAL_MS) return;
+  if (Date.now() - last < MIN_INTERVAL_MS) return null;
   try {
-    await syncCanvas(state, actions);
+    const result = await syncCanvas(state, actions);
     actions.setSettings({ canvasLastSync: new Date().toISOString(), canvasLastError: '' });
+    return { ...result, first: !last };
   } catch (err) {
     // Quiet by design: shown under the setting, not as an alert nobody asked for.
     actions.setSettings({ canvasLastError: err.message || 'Could not sync Canvas.' });
+    return null;
   }
 }
