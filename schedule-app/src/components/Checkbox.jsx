@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 // control. Bounces and throws a few green sparks the moment it's checked —
 // gated behind a short-lived "just checked" flag (not simply :checked) so
 // items that are already done on mount don't replay the celebration.
-export default function Checkbox({ checked, onChange, id, ariaLabel }) {
+export default function Checkbox({ checked, onChange, id, ariaLabel, disabled = false }) {
   const [justChecked, setJustChecked] = useState(false);
   const timerRef = useRef(null);
 
@@ -33,6 +33,7 @@ export default function Checkbox({ checked, onChange, id, ariaLabel }) {
         className="theme-checkbox-input"
         checked={!!checked}
         onChange={handleChange}
+        disabled={disabled}
         id={id}
         aria-label={ariaLabel}
         data-haptic={checked ? 'tap' : 'confirm'}

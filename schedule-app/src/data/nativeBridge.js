@@ -84,3 +84,14 @@ export function listenForNativeEvents({ onShare, onAction }) {
     handles.forEach((h) => h.remove());
   };
 }
+
+// The phone's own contacts, for "Import from phone". Android only; rejects with
+// code "denied" if the person says no to the permission.
+export const phoneContactsAvailable = () => !!Bridge || typeof window.__KS_PHONE_CONTACTS__ === 'function';
+export async function readPhoneContacts() {
+  // The seam lets tests (and nothing else) supply a list where there's no phone.
+  if (!Bridge && typeof window.__KS_PHONE_CONTACTS__ === 'function') return window.__KS_PHONE_CONTACTS__();
+  if (!Bridge) throw new Error('Importing from the phone is only available in the Android app.');
+  const { contacts } = await Bridge.readContacts();
+  return contacts || [];
+}

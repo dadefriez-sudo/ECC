@@ -20,7 +20,7 @@ Everything below is optional: it only happens if the person signs in, buys Pro, 
 | Personal info: Email address | Yes (account, via Clerk) | No | Account management | Yes |
 | Personal info: User IDs | Yes (account id) | No | Account management | Yes |
 | Calendar: Calendar events | Yes (cloud sync, shared calendars, Google Calendar sync) | No | App functionality | Yes |
-| Contacts | Yes (cloud sync; Google Contacts import is read-only) | No | App functionality | Yes |
+| Contacts | Yes (cloud sync; Google Contacts import is read-only; the phone's contacts are read only when you tap Import from phone, and only the ones you pick are copied into the app) | No | App functionality | Yes |
 | Photos and videos | Yes (contact photos inside cloud sync) | No | App functionality | Yes |
 | App activity: Other user-generated content | Yes (goals, tasks, notes inside cloud sync; goal progress sent to an accountability partner) | No | App functionality | Yes |
 | Location: Precise location | Yes (saved pins and contact addresses inside cloud sync). The phone's own GPS position is used on the device and is not sent. | No | App functionality | Yes |

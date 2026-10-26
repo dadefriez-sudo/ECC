@@ -28,6 +28,9 @@ import {
 import Icon from '../components/Icon.jsx';
 import GroupPicker from '../components/GroupPicker.jsx';
 import ImportAddressReview from '../components/ImportAddressReview.jsx';
+import PhoneContactsPicker from '../components/PhoneContactsPicker.jsx';
+import { findExistingContact } from '../data/contactMatch.js';
+import { phoneContactsAvailable } from '../data/nativeBridge.js';
 
 // Sort comparators for the list — dates compare fine as their own ISO
 // strings, so "missing" just needs a fallback that sorts to the right end
@@ -307,6 +310,82 @@ export default function ContactsPage() {
   const isPro = !!state.settings?.isPro;
 
   const vcfFileRef = useRef(null);
+  const [phonePickerOpen, setPhonePickerOpen] = useState(false);
+  const [importMenuOpen, setImportMenuOpen] = useState(false);
+  const phoneImportOk = phoneContactsAvailable();
+
+  // Opened from Settings → Contact import → "Import from phone".
+  useEffect(() => {
+    if (location.state?.importFromPhone) {
+      setPhonePickerOpen(true);
+      window.history.replaceState({}, '');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Brings a list of { name, phone, email, address, notes? } into the app: skips
+  // anyone already here, then offers a group (Pro) and pins their addresses.
+  // Shared by the .vcf file import and the phone's own contacts.
+  const finishImport = (imported) => {
+    const fresh = imported.filter((c) => !findExistingContact(state.contacts, c));
+    const skipped = imported.length - fresh.length;
+    if (fresh.length === 0) {
+      alert(
+        skipped
+          ? `Everyone in that list is already in Keystone (${skipped} skipped).`
+          : 'No contacts found.'
+      );
+      return;
+    }
+    const newContacts = fresh.map((c) => ({
+      id: uid('c'),
+      name: c.name,
+      phone: c.phone,
+      email: c.email,
+      address: c.address,
+      photo: '',
+      statusId: state.statuses[0]?.id || '',
+      tags: [],
+      notes: c.notes || '',
+      lastContacted: '',
+      createdAt: todayISO(),
+    }));
+    newContacts.forEach((contact) => actions.addContact(contact));
+    const skippedNote = skipped ? ` ${skipped} already in Keystone ${skipped === 1 ? 'was' : 'were'} skipped.` : '';
+    // Groups are a Pro feature — offering to sort into one that can't
+    // be seen or used afterward would just be confusing, so non-Pro
+    // (or nothing to sort into yet) falls back to the plain count.
+    if (isPro && state.statuses.length > 0) {
+      setImportGroupChoice('');
+      setImportGroupPrompt({ contactIds: newContacts.map((c) => c.id), count: newContacts.length });
+    } else {
+      alert(`Imported ${newContacts.length} contact${newContacts.length === 1 ? '' : 's'}.${skippedNote}`);
+    }
+    // Geocoding pins one at a time in the background, a beat apart —
+    // Nominatim's public endpoint enforces roughly one request per
+    // second, and firing every contact's lookup at once (the previous
+    // behaviour) meant only the first one or two ever got served; the
+    // rest were silently rate-limited. Every contact with an address
+    // gets a real attempt this way, sequenced rather than all at once,
+    // and anyone who came out the other side without a pin — no address
+    // on the card, or one that didn't geocode — is queued for a quick
+    // manual review instead of just staying silently unpinned.
+    (async () => {
+      const needsReview = [];
+      for (const contact of newContacts) {
+        if (!contact.address) {
+          needsReview.push({ id: contact.id, name: contact.name, address: '', reason: 'missing' });
+          continue;
+        }
+        const loc = await syncContactAddressPin(contact, state, actions);
+        if (!loc) {
+          needsReview.push({ id: contact.id, name: contact.name, address: contact.address, reason: 'unresolved' });
+        }
+        await new Promise((r) => setTimeout(r, 1100));
+      }
+      if (needsReview.length) setAddressReview(needsReview);
+    })();
+  };
+
   const importVCard = (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -316,53 +395,7 @@ export default function ContactsPage() {
       try {
         const imported = parseVCard(reader.result);
         if (imported.length === 0) return alert('No contacts found in that file.');
-        const newContacts = imported.map((c) => ({
-          id: uid('c'),
-          name: c.name,
-          phone: c.phone,
-          email: c.email,
-          address: c.address,
-          photo: '',
-          statusId: state.statuses[0]?.id || '',
-          tags: [],
-          notes: c.notes,
-          lastContacted: '',
-          createdAt: todayISO(),
-        }));
-        newContacts.forEach((contact) => actions.addContact(contact));
-        // Groups are a Pro feature — offering to sort into one that can't
-        // be seen or used afterward would just be confusing, so non-Pro
-        // (or nothing to sort into yet) falls back to the plain count.
-        if (isPro && state.statuses.length > 0) {
-          setImportGroupChoice('');
-          setImportGroupPrompt({ contactIds: newContacts.map((c) => c.id), count: newContacts.length });
-        } else {
-          alert(`Imported ${newContacts.length} contact${newContacts.length === 1 ? '' : 's'}.`);
-        }
-        // Geocoding pins one at a time in the background, a beat apart —
-        // Nominatim's public endpoint enforces roughly one request per
-        // second, and firing every contact's lookup at once (the previous
-        // behaviour) meant only the first one or two ever got served; the
-        // rest were silently rate-limited. Every contact with an address
-        // gets a real attempt this way, sequenced rather than all at once,
-        // and anyone who came out the other side without a pin — no address
-        // on the card, or one that didn't geocode — is queued for a quick
-        // manual review instead of just staying silently unpinned.
-        (async () => {
-          const needsReview = [];
-          for (const contact of newContacts) {
-            if (!contact.address) {
-              needsReview.push({ id: contact.id, name: contact.name, address: '', reason: 'missing' });
-              continue;
-            }
-            const loc = await syncContactAddressPin(contact, state, actions);
-            if (!loc) {
-              needsReview.push({ id: contact.id, name: contact.name, address: contact.address, reason: 'unresolved' });
-            }
-            await new Promise((r) => setTimeout(r, 1100));
-          }
-          if (needsReview.length) setAddressReview(needsReview);
-        })();
+        finishImport(imported);
       } catch {
         alert('That file could not be read as a vCard (.vcf) file.');
       }
@@ -468,7 +501,12 @@ export default function ContactsPage() {
         <div className="page-head-row">
           <Brand>People</Brand>
           <div className="page-head-actions">
-            <button className="icon-btn" onClick={() => vcfFileRef.current?.click()} aria-label="Import contacts (.vcf)" title="Import contacts (.vcf)">
+            <button
+              className="icon-btn"
+              onClick={() => (phoneImportOk ? setImportMenuOpen(true) : vcfFileRef.current?.click())}
+              aria-label="Import contacts"
+              title="Import contacts"
+            >
               <ImportIcon />
             </button>
           </div>
@@ -749,6 +787,40 @@ export default function ContactsPage() {
           </div>
         )}
       </Modal>
+
+      <Modal
+        open={importMenuOpen}
+        title="Import contacts"
+        onClose={() => setImportMenuOpen(false)}
+      >
+        <div className="stack-btns">
+          <button
+            className="btn btn-primary full"
+            onClick={() => {
+              setImportMenuOpen(false);
+              setPhonePickerOpen(true);
+            }}
+          >
+            From this phone
+          </button>
+          <button
+            className="btn btn-ghost full"
+            onClick={() => {
+              setImportMenuOpen(false);
+              vcfFileRef.current?.click();
+            }}
+          >
+            From a .vcf file
+          </button>
+        </div>
+      </Modal>
+
+      <PhoneContactsPicker
+        open={phonePickerOpen}
+        existingContacts={state.contacts}
+        onImport={finishImport}
+        onClose={() => setPhonePickerOpen(false)}
+      />
 
       {addressReview.length > 0 && (
         <ImportAddressReview

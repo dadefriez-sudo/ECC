@@ -58,6 +58,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Read-only, and only asked for when someone taps "Import from phone". -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <!-- @capacitor/geolocation requests these at runtime via its
          @CapacitorPlugin permissions annotation, but Capacitor plugins using
          that mechanism don't auto-merge the underlying manifest permission —

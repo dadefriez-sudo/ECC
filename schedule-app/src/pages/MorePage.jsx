@@ -48,6 +48,7 @@ import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBa
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
 import { validateFeedUrl } from '../data/canvasFeed.js';
 import { syncCanvas } from '../data/canvasSync.js';
+import { phoneContactsAvailable } from '../data/nativeBridge.js';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
 import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js';
 import { useToast } from '../data/toast.jsx';
@@ -1349,8 +1350,13 @@ export default function MorePage() {
       </SettingsGroup>
       <SettingsGroup {...grp('g19')}>
         <span className="detail-label">Contact import / export</span>
-        <p className="muted small">Move people to or from other address book apps using the .vcf format.</p>
+        <p className="muted small">Bring people in straight from your phone, or move them to or from other address book apps using the .vcf format.</p>
         <div className="stack-btns">
+          {phoneContactsAvailable() && (
+            <button className="btn btn-primary full" onClick={() => navigate('/contacts', { state: { importFromPhone: true } })}>
+              Import from phone
+            </button>
+          )}
           <button className="btn btn-ghost full" onClick={exportContactsVCF}>
             Export contacts (.vcf)
           </button>

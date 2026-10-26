@@ -128,6 +128,14 @@ export default function PrivacyPage() {
           anyone other than you.
         </li>
         <li>
+          <b>Your phone's contacts (optional).</b> If you tap Import from phone, Android asks for
+          permission to read your contacts. Keystone reads them on the device only to show you a
+          list, and copies just the ones you tick (name, phone number, email and address) into
+          your Keystone data. It never writes to your phone's contacts, and the permission is not
+          used for anything else. What you import is then part of your data like any other
+          contact, including in a backup or Cloud Sync if you use those.
+        </li>
+        <li>
           <b>Canvas calendar (optional).</b> If you paste your Canvas Calendar Feed link into
           Settings → Canvas calendar, Keystone fetches it directly from your school's Canvas
           site, from your phone, to show your assignments and class dates on your calendar. The
