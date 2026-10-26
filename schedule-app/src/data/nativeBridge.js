@@ -95,3 +95,19 @@ export async function readPhoneContacts() {
   const { contacts } = await Bridge.readContacts();
   return contacts || [];
 }
+
+// The phone's calendar (read only). Same seam as the contacts above, for tests.
+const calendarSeam = () => (typeof window !== 'undefined' ? window.__KS_PHONE_CALENDAR__ : undefined);
+export const phoneCalendarAvailable = () => !!Bridge || !!calendarSeam();
+export async function readPhoneCalendars() {
+  if (!Bridge && calendarSeam()) return calendarSeam().calendars();
+  if (!Bridge) throw new Error('Importing from the phone calendar is only available in the Android app.');
+  const { calendars } = await Bridge.readCalendars();
+  return calendars || [];
+}
+export async function readPhoneCalendarEvents({ calendarIds, startMs, endMs }) {
+  if (!Bridge && calendarSeam()) return calendarSeam().events({ calendarIds, startMs, endMs });
+  if (!Bridge) throw new Error('Importing from the phone calendar is only available in the Android app.');
+  const { events } = await Bridge.readCalendarEvents({ calendarIds, startMs, endMs });
+  return events || [];
+}

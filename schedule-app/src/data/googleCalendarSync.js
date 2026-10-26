@@ -64,7 +64,7 @@ export async function runGoogleCalendarSync(getToken, state, actions) {
 
   for (const ev of state.events) {
     if ((ev.repeat || 'none') !== 'none') continue; // no Google equivalent — left alone
-    if (ev.source === 'canvas') continue; // school items belong to Canvas, not to the person's Google calendar
+    if (ev.source === 'canvas' || ev.source === 'phone') continue; // imported from elsewhere: not pushed back to Google
     const prev = snapshot[ev.id];
     const hash = hashEvent(ev);
     if (!prev) {

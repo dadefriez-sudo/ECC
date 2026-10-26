@@ -2,8 +2,11 @@ package com.keystoneplanner.app;
 
 import android.Manifest;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
+import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 
 import com.getcapacitor.JSObject;
@@ -30,7 +33,10 @@ import java.util.Map;
     name = "KeystoneBridge",
     // Read access only. (The community contacts plugin asks for write access as
     // well, which Keystone has no use for.)
-    permissions = { @Permission(strings = { Manifest.permission.READ_CONTACTS }, alias = "contacts") }
+    permissions = {
+        @Permission(strings = { Manifest.permission.READ_CONTACTS }, alias = "contacts"),
+        @Permission(strings = { Manifest.permission.READ_CALENDAR }, alias = "calendar")
+    }
 )
 public class KeystoneBridgePlugin extends Plugin {
 
@@ -149,6 +155,120 @@ public class KeystoneBridgePlugin extends Plugin {
             call.resolve(result);
         } catch (Exception e) {
             call.reject("Could not read contacts: " + e.getMessage());
+        }
+    }
+
+    // --- The phone's calendar (read only) -------------------------------------
+
+    /** Which calendars are on the phone, so the person can choose what to import. */
+    @PluginMethod
+    public void readCalendars(PluginCall call) {
+        if (getPermissionState("calendar") != PermissionState.GRANTED) {
+            requestPermissionForAlias("calendar", call, "calendarPermissionCallback");
+            return;
+        }
+        loadCalendars(call);
+    }
+
+    /** Events between startMs and endMs (recurring ones already expanded) from the chosen calendars. */
+    @PluginMethod
+    public void readCalendarEvents(PluginCall call) {
+        if (getPermissionState("calendar") != PermissionState.GRANTED) {
+            requestPermissionForAlias("calendar", call, "calendarPermissionCallback");
+            return;
+        }
+        loadCalendarEvents(call);
+    }
+
+    @PermissionCallback
+    private void calendarPermissionCallback(PluginCall call) {
+        if (getPermissionState("calendar") != PermissionState.GRANTED) {
+            call.reject("Calendar permission was not granted.", "denied");
+        } else if ("readCalendars".equals(call.getMethodName())) {
+            loadCalendars(call);
+        } else {
+            loadCalendarEvents(call);
+        }
+    }
+
+    private void loadCalendars(PluginCall call) {
+        ContentResolver resolver = getContext().getContentResolver();
+        String[] projection = {
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+            CalendarContract.Calendars.ACCOUNT_NAME,
+            CalendarContract.Calendars.CALENDAR_COLOR,
+            CalendarContract.Calendars.VISIBLE
+        };
+        JSONArray list = new JSONArray();
+        try (Cursor cursor = resolver.query(CalendarContract.Calendars.CONTENT_URI, projection, null, null, null)) {
+            while (cursor != null && cursor.moveToNext()) {
+                JSObject cal = new JSObject();
+                cal.put("id", String.valueOf(cursor.getLong(0)));
+                cal.put("name", cursor.getString(1) == null ? "" : cursor.getString(1));
+                cal.put("account", cursor.getString(2) == null ? "" : cursor.getString(2));
+                cal.put("color", cursor.getInt(3));
+                cal.put("visible", cursor.getInt(4) != 0);
+                list.put(cal);
+            }
+            JSObject result = new JSObject();
+            result.put("calendars", list);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Could not read calendars: " + e.getMessage());
+        }
+    }
+
+    private void loadCalendarEvents(PluginCall call) {
+        try {
+            JSONArray ids = call.getArray("calendarIds");
+            long start = call.getData().getLong("startMs");
+            long end = call.getData().getLong("endMs");
+            if (ids == null || ids.length() == 0 || end <= start) {
+                call.reject("Choose at least one calendar and a date range.");
+                return;
+            }
+            StringBuilder marks = new StringBuilder();
+            String[] args = new String[ids.length()];
+            for (int i = 0; i < ids.length(); i++) {
+                marks.append(i == 0 ? "?" : ",?");
+                args[i] = String.valueOf(ids.getString(i));
+            }
+            Uri.Builder builder = CalendarContract.Instances.CONTENT_URI.buildUpon();
+            ContentUris.appendId(builder, start);
+            ContentUris.appendId(builder, end);
+            String[] projection = {
+                CalendarContract.Instances.EVENT_ID,
+                CalendarContract.Instances.BEGIN,
+                CalendarContract.Instances.END,
+                CalendarContract.Instances.TITLE,
+                CalendarContract.Instances.EVENT_LOCATION,
+                CalendarContract.Instances.DESCRIPTION,
+                CalendarContract.Instances.ALL_DAY,
+                CalendarContract.Instances.CALENDAR_ID
+            };
+            String selection = CalendarContract.Instances.CALENDAR_ID + " IN (" + marks + ")";
+            JSONArray list = new JSONArray();
+            try (Cursor cursor = getContext().getContentResolver().query(
+                builder.build(), projection, selection, args, CalendarContract.Instances.BEGIN + " ASC")) {
+                while (cursor != null && cursor.moveToNext() && list.length() < 3000) {
+                    JSObject ev = new JSObject();
+                    ev.put("eventId", String.valueOf(cursor.getLong(0)));
+                    ev.put("begin", cursor.getLong(1));
+                    ev.put("end", cursor.getLong(2));
+                    ev.put("title", cursor.getString(3) == null ? "" : cursor.getString(3));
+                    ev.put("location", cursor.getString(4) == null ? "" : cursor.getString(4));
+                    ev.put("description", cursor.getString(5) == null ? "" : cursor.getString(5));
+                    ev.put("allDay", cursor.getInt(6) != 0);
+                    ev.put("calendarId", String.valueOf(cursor.getLong(7)));
+                    list.put(ev);
+                }
+            }
+            JSObject result = new JSObject();
+            result.put("events", list);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Could not read events: " + e.getMessage());
         }
     }
 }

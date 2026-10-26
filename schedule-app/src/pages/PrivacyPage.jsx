@@ -136,6 +136,15 @@ export default function PrivacyPage() {
           contact, including in a backup or Cloud Sync if you use those.
         </li>
         <li>
+          <b>Your phone's calendar (optional).</b> If you tap Import from phone calendar in
+          Settings, Android asks for permission to read your calendar. Keystone reads it on the
+          device, lists your calendars, and copies the events from the ones you choose (title,
+          date and time, location and notes) into your Keystone calendar. It never changes your
+          phone's calendar, and the permission isn't used for anything else. Imported events are
+          then part of your data like any other, including in a backup or Cloud Sync if you use
+          those.
+        </li>
+        <li>
           <b>Canvas calendar (optional).</b> If you paste your Canvas Calendar Feed link into
           Settings → Canvas calendar, Keystone fetches it directly from your school's Canvas
           site, from your phone, to show your assignments and class dates on your calendar. The

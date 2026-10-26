@@ -48,7 +48,8 @@ import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBa
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
 import { validateFeedUrl } from '../data/canvasFeed.js';
 import { syncCanvas } from '../data/canvasSync.js';
-import { phoneContactsAvailable } from '../data/nativeBridge.js';
+import { phoneContactsAvailable, phoneCalendarAvailable } from '../data/nativeBridge.js';
+import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
 import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js';
 import { useToast } from '../data/toast.jsx';
@@ -282,6 +283,7 @@ export default function MorePage() {
   });
   const fileRef = useRef(null);
   // Canvas calendar link box (the saved link itself lives in settings, on this device only).
+  const [phoneCalOpen, setPhoneCalOpen] = useState(false);
   const [canvasLink, setCanvasLink] = useState('');
   const [canvasBusy, setCanvasBusy] = useState(false);
   const [canvasMsg, setCanvasMsg] = useState('');
@@ -1189,8 +1191,22 @@ export default function MorePage() {
       </SettingsGroup>
       <SettingsGroup {...grp('g3')}>
         <span className="detail-label">Calendar import / export</span>
-        <p className="muted small">Move events to or from other calendar apps using the .ics format.</p>
+        <p className="muted small">Bring events in from your phone's calendar, or move them to or from other calendar apps using the .ics format.</p>
         <div className="stack-btns">
+          {phoneCalendarAvailable() && (
+            <button className="btn btn-primary full" onClick={() => setPhoneCalOpen(true)}>
+              Import from phone calendar
+            </button>
+          )}
+          <PhoneCalendarImport
+            open={phoneCalOpen}
+            existingEvents={state.events || []}
+            onApply={(plan) => {
+              plan.add.forEach((ev) => actions.addEvent(ev));
+              plan.update.forEach((ev) => actions.updateEvent(ev));
+            }}
+            onClose={() => setPhoneCalOpen(false)}
+          />
           <button className="btn btn-ghost full" onClick={() => requirePro(exportICS)}>
             Export calendar (.ics) {!isPro && '· Pro'}
           </button>
