@@ -1220,9 +1220,18 @@ export default function MorePage() {
       <SettingsGroup {...grp('g24')}>
         <span className="detail-label">Canvas calendar {!isPro && '· Pro'}</span>
         <p className="muted small">
-          Show your assignments and class dates from Canvas on your Keystone calendar. In Canvas, open
-          Calendar, choose Calendar Feed, and copy the link. It is private to you, so it stays on this
-          phone and is never sent to Keystone's servers.
+          Show your assignments and class dates from Canvas on your Keystone calendar.
+        </p>
+        <p className="muted small">
+          <strong>How it works:</strong> Canvas gives you a private calendar link. It already holds the
+          key to your calendar, so Keystone doesn't need your school login or password, and you sign in
+          to Canvas the usual way only to copy it. In Canvas, open Calendar, choose Calendar Feed, and
+          copy the link. Paste it below.
+        </p>
+        <p className="muted small">
+          <strong>Keep it private:</strong> anyone with the link can see your Canvas calendar, so
+          Keystone keeps it on this phone only. It is never sent to Keystone's servers or included in
+          backups or sync.
         </p>
         {!isPro ? (
           <button className="btn btn-primary full" onClick={() => navigate('/pricing')}>
