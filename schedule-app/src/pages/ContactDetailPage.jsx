@@ -10,7 +10,7 @@ import { syncContactAddressPin } from '../data/geocode.js';
 import { useDeleteContactWithUndo } from '../data/useDeleteContact.js';
 import { useToast } from '../data/toast.jsx';
 import { confirmTick } from '../data/haptics.js';
-import AddressField from '../components/AddressField.jsx';
+import AddressPinField from '../components/AddressPinField.jsx';
 import { addressTarget, mapsLinkProps } from '../data/maps.js';
 import {
   todayISO,
@@ -143,7 +143,7 @@ export default function ContactDetailPage() {
         .filter(Boolean),
     };
     actions.updateContact(updated);
-    if (address !== (contact.address || '')) syncContactAddressPin(updated, state, actions);
+    if (address !== (contact.address || '') || (updated.addressLat ?? null) !== (contact.addressLat ?? null) || (updated.addressLng ?? null) !== (contact.addressLng ?? null)) syncContactAddressPin(updated, state, actions);
     setEditing(null);
   };
 
@@ -431,8 +431,10 @@ export default function ContactDetailPage() {
             </div>
             <label className="field">
               <span>Address</span>
-              <AddressField
+              <AddressPinField
                 value={editing.address || ''}
+                lat={editing.addressLat}
+                lng={editing.addressLng}
                 onChange={(address, coords) =>
                   setEditing({
                     ...editing,

@@ -8519,3 +8519,6 @@ body[data-assistant='on'] .conflict-list {
   display: block;
   padding: 12px 0 2px;
 }
+
+.address-pin-field { display: flex; flex-direction: column; gap: 8px; }
+.address-pin-actions { display: flex; flex-wrap: wrap; gap: 8px; }

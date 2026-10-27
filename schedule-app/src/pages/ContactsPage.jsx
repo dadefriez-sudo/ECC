@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore, useActions } from '../data/store.jsx';
-import AddressField from '../components/AddressField.jsx';
+import AddressPinField from '../components/AddressPinField.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import Select from '../components/Select.jsx';
 import Modal from '../components/Modal.jsx';
@@ -260,6 +260,10 @@ export default function ContactsPage() {
       statusId: state.statuses[0]?.id || '',
       tagsText: '',
       notes: '',
+      favorite: false,
+      birthday: '',
+      anniversary: '',
+      cadenceText: '',
     };
     setAdding(d);
     initialAddJsonRef.current = JSON.stringify(d);
@@ -300,10 +304,13 @@ export default function ContactsPage() {
       notes: adding.notes.trim(),
       lastContacted: '',
       createdAt: new Date().toISOString().slice(0, 10),
-      favorite: false,
+      favorite: !!adding.favorite,
+      birthday: adding.birthday || '',
+      anniversary: adding.anniversary || '',
+      cadenceDays: Number(adding.cadenceText) || 0,
     };
     actions.addContact(contact);
-    if (address) syncContactAddressPin(contact, state, actions);
+    if (address || contact.addressLat != null) syncContactAddressPin(contact, state, actions);
     setAdding(null);
   };
 
@@ -834,6 +841,15 @@ export default function ContactsPage() {
       <EditorSheet open={!!adding} title="Add person" dirty={addDirty} onSave={saveNew} onDiscard={() => setAdding(null)}>
         {adding && (
           <div className="form">
+            <button
+              type="button"
+              className={`contact-fav-field${adding.favorite ? ' contact-fav-field--on' : ''}`}
+              onClick={() => setAdding({ ...adding, favorite: !adding.favorite })}
+              aria-pressed={!!adding.favorite}
+            >
+              <Icon name="star" size={18} />
+              <span>{adding.favorite ? 'Favorite' : 'Mark as favorite'}</span>
+            </button>
             <AvatarPicker
               name={adding.name || '?'}
               photo={adding.photo}
@@ -873,8 +889,10 @@ export default function ContactsPage() {
             </div>
             <label className="field">
               <span>Address</span>
-              <AddressField
+              <AddressPinField
                 value={adding.address}
+                lat={adding.addressLat}
+                lng={adding.addressLng}
                 onChange={(address, coords) =>
                   setAdding({
                     ...adding,
@@ -886,6 +904,24 @@ export default function ContactsPage() {
                 placeholder="Optional, drops a map pin automatically"
               />
             </label>
+            <div className="field-row">
+              <label className="field">
+                <span>Birthday (optional)</span>
+                <input
+                  type="date"
+                  value={adding.birthday}
+                  onChange={(e) => setAdding({ ...adding, birthday: e.target.value })}
+                />
+              </label>
+              <label className="field">
+                <span>Anniversary (optional)</span>
+                <input
+                  type="date"
+                  value={adding.anniversary}
+                  onChange={(e) => setAdding({ ...adding, anniversary: e.target.value })}
+                />
+              </label>
+            </div>
             <label className="field">
               <span>Tags</span>
               <input
@@ -893,6 +929,21 @@ export default function ContactsPage() {
                 onChange={(e) => setAdding({ ...adding, tagsText: e.target.value })}
                 placeholder="family, work (comma separated)"
               />
+            </label>
+            <label className="field">
+              <span>Remind me to reconnect every</span>
+              <div className="cadence-row">
+                <input
+                  type="number"
+                  min="0"
+                  value={adding.cadenceText}
+                  onChange={(e) => setAdding({ ...adding, cadenceText: e.target.value })}
+                  placeholder={String(state.settings?.reconnectDays ?? 30)}
+                />
+                <span className="muted">
+                  days {adding.cadenceText ? '' : `(default ${state.settings?.reconnectDays ?? 30})`}
+                </span>
+              </div>
             </label>
             <label className="field">
               <span>Notes</span>

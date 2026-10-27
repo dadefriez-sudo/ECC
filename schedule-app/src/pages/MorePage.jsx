@@ -1490,6 +1490,19 @@ export default function MorePage() {
             <span className="toggle-knob" />
           </button>
         </div>
+        <div className="section-head">
+          <span>Show pin names</span>
+          <button
+            className={`toggle${s.mapShowPinNames ?? false ? ' toggle--on' : ''}`}
+            role="switch"
+            aria-label="Show pin names"
+            aria-checked={s.mapShowPinNames ?? false}
+            onClick={() => actions.setSettings({ mapShowPinNames: !(s.mapShowPinNames ?? false) })}
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
+        <p className="muted small">Off shows a name only when you tap a pin.</p>
         <p className="muted small">Pin emoji size</p>
         <input
           type="range"

@@ -78,6 +78,7 @@ export default function MapPage() {
   const isPro = !!state.settings?.isPro;
   const emojiSizePct = state.settings?.mapEmojiSize ?? 100;
   const mapStyleSetting = state.settings?.mapStyle || 'auto';
+  const showPinNames = state.settings?.mapShowPinNames ?? false;
   // Whether the app is painting its dark palette right now — App.jsx has
   // already resolved system-vs-explicit onto the root element, so read that
   // rather than re-deriving it here and risking the two disagreeing.
@@ -516,7 +517,8 @@ export default function MapPage() {
       const sel = p.id === selectedId;
       const caption = p.isEvent && p.start ? `${formatTime(p.start)} · ${p.label}` : p.label;
       let showCaption = false;
-      if (caption) {
+      // Names only appear on the tapped pin unless the user turned them on in Settings → Map.
+      if (caption && (sel || showPinNames)) {
         const cp = map.latLngToContainerPoint([p.lat, p.lng]);
         const w = Math.min(170, caption.length * 6.5 + 16);
         const rect = { x1: cp.x - w / 2, x2: cp.x + w / 2, y1: cp.y - 4, y2: cp.y + 22 };
@@ -546,7 +548,7 @@ export default function MapPage() {
           setSelectedId(p.id);
         });
     }
-  }, [pins, selectedId, emojiSizePct, pickMode, mapZoom]);
+  }, [pins, selectedId, emojiSizePct, pickMode, mapZoom, showPinNames]);
 
   // Render the temporary long-press marker (a dashed, pulsing pin distinct
   // from saved pins) whenever it changes.
@@ -954,7 +956,7 @@ export default function MapPage() {
           </div>
           <div className="map-pick-footer">
             <p className="muted small map-pick-hint">
-              {pickLatLng ? 'Drag the pin, or tap elsewhere to move it.' : 'Tap the map to drop a pin, or search above.'}
+              {pickLatLng ? 'Tap the map to move the pin.' : 'Tap the map to drop a pin, or search above.'}
             </p>
             <button className="btn btn-primary full" disabled={!pickLatLng} onClick={confirmPick}>
               Use this location
@@ -995,7 +997,7 @@ export default function MapPage() {
             </button>
           </div>
           <div className="map-pick-footer">
-            <p className="muted small map-pick-hint">Drag the pin, or tap elsewhere to move it.</p>
+            <p className="muted small map-pick-hint">Tap the map to move the pin.</p>
             <button className="btn btn-primary full" onClick={() => endMove(true)}>
               Move pin here
             </button>
