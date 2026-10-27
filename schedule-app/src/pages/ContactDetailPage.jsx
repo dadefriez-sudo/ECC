@@ -10,6 +10,7 @@ import { syncContactAddressPin } from '../data/geocode.js';
 import { useDeleteContactWithUndo } from '../data/useDeleteContact.js';
 import { useToast } from '../data/toast.jsx';
 import { confirmTick } from '../data/haptics.js';
+import LinkedText from '../components/LinkedText.jsx';
 import AddressPinField from '../components/AddressPinField.jsx';
 import { addressTarget, mapsLinkProps } from '../data/maps.js';
 import {
@@ -312,7 +313,7 @@ export default function ContactDetailPage() {
       {contact.notes && (
         <section className="detail-section">
           <span className="detail-label">Notes</span>
-          <p className="notes-text">{contact.notes}</p>
+          <p className="notes-text"><LinkedText text={contact.notes} /></p>
         </section>
       )}
 

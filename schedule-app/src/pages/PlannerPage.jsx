@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore, useActions } from '../data/store.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
 import { createPortal } from 'react-dom';
+import LinkedText from '../components/LinkedText.jsx';
 import ExpandableFab from '../components/ExpandableFab.jsx';
 import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
 import { phoneCalendarAvailable } from '../data/nativeBridge.js';
@@ -3031,7 +3032,7 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindL
         {occ.notes && (
           <section className="detail-section">
             <span className="detail-label">Notes</span>
-            <p className="notes-text">{occ.notes}</p>
+            <p className="notes-text"><LinkedText text={occ.notes} /></p>
           </section>
         )}
 
