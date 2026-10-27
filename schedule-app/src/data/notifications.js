@@ -18,7 +18,7 @@
 // it runs.
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { todayISO, timeToMinutes, matchesRule, formatTime, addDays, toISODate, formatShortDate, startOfWeek } from './helpers.js';
+import { todayISO, timeToMinutes, goalRemindsOn, matchesRule, formatTime, addDays, toISODate, formatShortDate, startOfWeek } from './helpers.js';
 import { contactDatesOn, contactDateLabel } from './contactDates.js';
 import { REVIEW_FROM_HOUR } from './weeklyReview.js';
 import { ACTION_TYPE } from './notificationActions.js';
@@ -210,7 +210,7 @@ export function runReminderScan(state) {
   // Goal reminders: each selected time of day fires its own nudge, if the
   // goal isn't already met.
   for (const g of state.goals || []) {
-    if (g.period === 'daily' && (g.progress?.[today] || 0) >= g.target) continue; // met
+    if (!goalRemindsOn(g, today)) continue; // not due today, or already met
     for (const time of g.reminder?.times || []) {
       const due = timeToMinutes(time);
       if (nowMin >= due && nowMin - due <= 30) {
@@ -341,7 +341,7 @@ export async function scheduleNativeReminders(state) {
   const upcoming = [];
 
   for (const g of state.goals || []) {
-    if (g.period === 'daily' && (g.progress?.[today] || 0) >= g.target) continue;
+    if (!goalRemindsOn(g, today)) continue;
     for (const time of g.reminder?.times || []) {
       const due = timeToMinutes(time);
       if (due < nowMin) continue;

@@ -356,6 +356,23 @@ export function dailyGoalsOn(goals, date) {
   });
 }
 
+// Whether a goal's reminders should fire on a given day. The same rules the
+// Goals page uses to decide what is "due today": a daily goal only reminds on
+// the weekdays it repeats on (and not before it was created), and neither a
+// daily goal already met today nor a weekly goal already met this week reminds.
+export function goalRemindsOn(goal, date) {
+  const d = date instanceof Date ? date : fromISODate(date);
+  const target = goal.target || 0;
+  if (target <= 0) return false;
+  const iso = toISODate(d);
+  if ((goal.period || 'weekly') === 'daily') {
+    if (goal.repeatDays?.length && !goal.repeatDays.includes(d.getDay())) return false;
+    if (typeof goal.createdAt === 'string' && goal.createdAt.slice(0, 10) > iso) return false;
+    return (goal.progress?.[iso] || 0) < target && !(goal.frozenKeys || []).includes(iso);
+  }
+  return (goal.progress?.[weekKey(d)] || 0) < target;
+}
+
 // 'none' (nothing was due), 'met', 'partial' (some done) or 'missed'. `rule`
 // is how a day counts: 'all' goals met, or 'any' one goal met.
 export function dayStatus(goals, date, rule = 'all') {
