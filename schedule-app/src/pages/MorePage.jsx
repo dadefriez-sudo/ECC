@@ -1632,6 +1632,16 @@ export default function MorePage() {
               both the first run and this replay, so there's one code path. */}
           <button
             className="btn btn-ghost full"
+            onClick={() => {
+              // Clearing the "seen" mark brings the What's new card back on Home.
+              actions.setSettings({ whatsNewSeen: '' });
+              navigate('/');
+            }}
+          >
+            <Icon name="sparkle" /> See what's new
+          </button>
+          <button
+            className="btn btn-ghost full"
             onClick={() => navigate('/', { state: { replayTour: true } })}
           >
             <Icon name="play" /> Replay the tour
