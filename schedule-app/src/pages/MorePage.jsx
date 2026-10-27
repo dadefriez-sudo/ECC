@@ -1198,15 +1198,7 @@ export default function MorePage() {
               Import from phone calendar
             </button>
           )}
-          <PhoneCalendarImport
-            open={phoneCalOpen}
-            existingEvents={state.events || []}
-            onApply={(plan) => {
-              plan.add.forEach((ev) => actions.addEvent(ev));
-              plan.update.forEach((ev) => actions.updateEvent(ev));
-            }}
-            onClose={() => setPhoneCalOpen(false)}
-          />
+          <PhoneCalendarImport open={phoneCalOpen} onClose={() => setPhoneCalOpen(false)} />
           <button className="btn btn-ghost full" onClick={() => requirePro(exportICS)}>
             Export calendar (.ics) {!isPro && '· Pro'}
           </button>

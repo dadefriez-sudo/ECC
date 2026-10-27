@@ -43,6 +43,8 @@ export function isBackupShape(data) {
 // data that arrives from outside gets the same cleanup as data already here.
 const ENTITLEMENT_SETTINGS = ['isPro', 'isLifetime', 'isBetaTester', 'googleConnected'];
 const DEVICE_SETTINGS = [
+  'phoneCalendarIds',
+  'phoneCalendarDays',
   'canvasFeedUrl',
   'canvasLastSync',
   'canvasLastError',

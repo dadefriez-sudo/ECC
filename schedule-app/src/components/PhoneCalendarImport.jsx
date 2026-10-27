@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal.jsx';
 import Checkbox from './Checkbox.jsx';
+import { useStore, useActions } from '../data/store.jsx';
 import { readPhoneCalendars, readPhoneCalendarEvents } from '../data/nativeBridge.js';
 import { normalizePhoneEvents, planPhoneCalendarImport, colorFromInt } from '../data/phoneCalendar.js';
 
@@ -12,8 +13,12 @@ const RANGES = [
 
 // "Import from phone calendar": pick which of the phone's calendars to bring in
 // and how far ahead. Read only, nothing leaves the phone, and importing again
-// updates what's already there instead of adding it twice.
-export default function PhoneCalendarImport({ open, existingEvents, onApply, onClose }) {
+// updates what's already there instead of adding it twice. The calendars and
+// range chosen last time are remembered on this phone and ticked next time.
+export default function PhoneCalendarImport({ open, onClose }) {
+  const { state } = useStore();
+  const actions = useActions();
+  const existingEvents = state.events || [];
   const [status, setStatus] = useState('loading'); // loading | pick | working | done | denied | error
   const [calendars, setCalendars] = useState([]);
   const [picked, setPicked] = useState(() => new Set());
@@ -35,11 +40,15 @@ export default function PhoneCalendarImport({ open, existingEvents, onApply, onC
           (a, b) => Number(!!b.google) - Number(!!a.google) || `${a.account} ${a.name}`.localeCompare(`${b.account} ${b.name}`)
         );
         setCalendars(sorted);
-        // Android has no "default calendar" an app can read, so start with the Google
-        // calendars you can see; if there are none, every visible calendar.
+        // What was ticked last time, if those calendars are still on the phone.
+        const remembered = (state.settings?.phoneCalendarIds || []).filter((id) => sorted.some((c) => c.id === id));
+        // Otherwise (Android has no "default calendar" an app can read): the Google
+        // calendars you can see, or if there are none, every visible calendar.
         const visible = sorted.filter((c) => c.visible);
         const google = visible.filter((c) => c.google);
-        setPicked(new Set((google.length ? google : visible).map((c) => c.id)));
+        setPicked(new Set(remembered.length ? remembered : (google.length ? google : visible).map((c) => c.id)));
+        const savedDays = state.settings?.phoneCalendarDays;
+        if (RANGES.some((r) => r.days === savedDays)) setDays(savedDays);
         setStatus('pick');
       })
       .catch((err) => {
@@ -70,7 +79,9 @@ export default function PhoneCalendarImport({ open, existingEvents, onApply, onC
       const raw = await readPhoneCalendarEvents({ calendarIds: [...picked], startMs, endMs });
       const colors = Object.fromEntries(calendars.map((c) => [c.id, colorFromInt(c.color)]));
       const plan = planPhoneCalendarImport(existingEvents, normalizePhoneEvents(raw, colors));
-      onApply(plan);
+      plan.add.forEach((ev) => actions.addEvent(ev));
+      plan.update.forEach((ev) => actions.updateEvent(ev));
+      actions.setSettings({ phoneCalendarIds: [...picked], phoneCalendarDays: days });
       setResult({ added: plan.add.length, updated: plan.update.length, total: raw.length });
       setStatus('done');
     } catch (err) {
@@ -119,8 +130,9 @@ export default function PhoneCalendarImport({ open, existingEvents, onApply, onC
           ) : (
             <>
               <p className="muted small">
-                Choose which calendars to bring in. Keystone only reads them. Repeating events come in as
-                separate events, and importing again updates them instead of adding them twice.
+                Choose which calendars to bring in. Keystone only reads them and remembers your choice for
+                next time. Repeating events come in as separate events, and importing again updates them
+                instead of adding them twice.
               </p>
               <ul className="phone-import-list">
                 {calendars.map((c, i) => (

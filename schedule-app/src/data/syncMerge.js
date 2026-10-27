@@ -21,6 +21,8 @@
 // Settings that describe this device or this account, never taken from the
 // cloud (see DEVICE_SETTINGS in store.jsx), plus a few that are per device.
 export const LOCAL_ONLY_SETTINGS = [
+  'phoneCalendarIds',
+  'phoneCalendarDays',
   'canvasFeedUrl',
   'canvasLastSync',
   'canvasLastError',

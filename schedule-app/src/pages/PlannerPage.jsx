@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore, useActions } from '../data/store.jsx';
 import EditorSheet from '../components/EditorSheet.jsx';
+import { createPortal } from 'react-dom';
 import ExpandableFab from '../components/ExpandableFab.jsx';
+import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
+import { phoneCalendarAvailable } from '../data/nativeBridge.js';
 import Select from '../components/Select.jsx';
 import MiniMapPicker from '../components/MiniMapPicker.jsx';
 import Checkbox from '../components/Checkbox.jsx';
@@ -174,6 +177,7 @@ export default function PlannerPage() {
   }, [mode]);
   const [smartAddOpen, setSmartAddOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [phoneCalOpen, setPhoneCalOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [dismissedConflicts, setDismissedConflicts] = useState(() => new Set());
 
@@ -897,11 +901,19 @@ export default function PlannerPage() {
               Templates {!isPro && <Icon name="lock" size={14} />}
             </button>
           )}
+          {phoneCalendarAvailable() && (
+            <button className="btn btn-sm btn-ghost" onClick={() => setPhoneCalOpen(true)}>
+              Import
+            </button>
+          )}
           <button className="today-btn" onClick={tapToday} aria-label="Jump to today" title="Jump to today (double-tap for Day view)">
             <TodayIcon />
           </button>
         </div>
       </header>
+      {/* In <body>, not here: this page is a fixed, clipped shell (see .page--locked), and a
+          sheet rendered inside it ends up behind the tab bar. */}
+      {createPortal(<PhoneCalendarImport open={phoneCalOpen} onClose={() => setPhoneCalOpen(false)} />, document.body)}
 
       {/* Conflicts for the day on screen. Sits above the timeline rather than
           on the blocks themselves so a clash is visible without hunting for
