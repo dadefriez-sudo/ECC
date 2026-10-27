@@ -92,3 +92,9 @@ test('items from long ago are neither imported nor removed', () => {
   assert.equal(plan.add.length, 1);
   assert.deepEqual(plan.remove, []);
 });
+
+test('a webcal:// link is accepted as the same https link', () => {
+  const r = validateFeedUrl('webcal://school.instructure.com/feeds/calendars/user_abc.ics');
+  assert.equal(r.ok, true);
+  assert.match(r.url, /^https:\/\/school\.instructure\.com\/feeds\/calendars\/user_abc\.ics/);
+});

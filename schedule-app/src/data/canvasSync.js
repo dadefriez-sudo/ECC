@@ -4,13 +4,22 @@ import { todayISO } from './helpers.js';
 
 const MIN_INTERVAL_MS = 60 * 60 * 1000; // automatic refresh at most hourly
 
+// What to tell someone when Canvas turns the link down. Both mean Canvas itself
+// answered, so the request got through and the link is the problem.
+function statusMessage(status) {
+  if (status === 404 || status === 403 || status === 401) {
+    return `Canvas didn't accept that link (${status}). It may be cut off, out of date, or not the Calendar Feed link. In Canvas, open Calendar, choose Calendar Feed, copy the whole link again and paste it here.`;
+  }
+  return `Canvas answered with an error (${status}). Try again in a little while.`;
+}
+
 // On the phone the request goes out natively, so a school's server doesn't need
 // to allow our page to read it. In a browser it's an ordinary fetch, which many
 // Canvas sites block; the message says so rather than failing silently.
 async function fetchFeed(url) {
   if (Capacitor.isNativePlatform()) {
     const res = await CapacitorHttp.get({ url, headers: { Accept: 'text/calendar' }, responseType: 'text' });
-    if (res.status < 200 || res.status >= 300) throw new Error(`Canvas answered with an error (${res.status}). Check the link is current.`);
+    if (res.status < 200 || res.status >= 300) throw new Error(statusMessage(res.status));
     return typeof res.data === 'string' ? res.data : String(res.data ?? '');
   }
   let res;
@@ -19,7 +28,7 @@ async function fetchFeed(url) {
   } catch {
     throw new Error("A browser can't read Canvas directly. Use the Keystone app on your phone to sync.");
   }
-  if (!res.ok) throw new Error(`Canvas answered with an error (${res.status}). Check the link is current.`);
+  if (!res.ok) throw new Error(statusMessage(res.status));
   return res.text();
 }
 

@@ -15,7 +15,8 @@ const pad = (n) => String(n).padStart(2, '0');
 export function validateFeedUrl(raw) {
   let u;
   try {
-    u = new URL(String(raw || '').trim());
+    // Calendar apps hand these links out as webcal://, which is the same link over https.
+    u = new URL(String(raw || '').trim().replace(/^webcal:\/\//i, 'https://'));
   } catch {
     return { ok: false, error: "That doesn't look like a link." };
   }
