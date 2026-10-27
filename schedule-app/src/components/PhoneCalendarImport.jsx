@@ -30,9 +30,16 @@ export default function PhoneCalendarImport({ open, existingEvents, onApply, onC
     readPhoneCalendars()
       .then((list) => {
         if (cancelled) return;
-        const sorted = [...list].sort((a, b) => `${a.account} ${a.name}`.localeCompare(`${b.account} ${b.name}`));
+        // Google accounts first, then by account and name.
+        const sorted = [...list].sort(
+          (a, b) => Number(!!b.google) - Number(!!a.google) || `${a.account} ${a.name}`.localeCompare(`${b.account} ${b.name}`)
+        );
         setCalendars(sorted);
-        setPicked(new Set(sorted.filter((c) => c.visible).map((c) => c.id)));
+        // Android has no "default calendar" an app can read, so start with the Google
+        // calendars you can see; if there are none, every visible calendar.
+        const visible = sorted.filter((c) => c.visible);
+        const google = visible.filter((c) => c.google);
+        setPicked(new Set((google.length ? google : visible).map((c) => c.id)));
         setStatus('pick');
       })
       .catch((err) => {
@@ -116,15 +123,20 @@ export default function PhoneCalendarImport({ open, existingEvents, onApply, onC
                 separate events, and importing again updates them instead of adding them twice.
               </p>
               <ul className="phone-import-list">
-                {calendars.map((c) => (
+                {calendars.map((c, i) => (
                   <li key={c.id} className="phone-import-row">
+                    {(i === 0 || calendars[i - 1].account !== c.account) && (
+                      <span className="detail-label phone-import-account">
+                        {c.google ? 'Google · ' : ''}
+                        {c.account || 'On this phone'}
+                      </span>
+                    )}
                     <label className="check-row">
                       <Checkbox checked={picked.has(c.id)} onChange={() => toggle(c.id)} ariaLabel={`Import ${c.name}`} />
                       <span className="phone-import-text">
                         <strong>
                           <i className="cal-dot" style={{ background: colorFromInt(c.color) || 'var(--accent)' }} /> {c.name}
                         </strong>
-                        <span className="muted small">{c.account}</span>
                       </span>
                     </label>
                   </li>

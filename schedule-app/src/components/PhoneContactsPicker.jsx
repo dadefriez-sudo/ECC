@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Modal from './Modal.jsx';
 import Checkbox from './Checkbox.jsx';
 import { readPhoneContacts } from '../data/nativeBridge.js';
-import { normalizePhoneContacts } from '../data/phoneContacts.js';
+import { normalizePhoneContacts, contactAccounts, inAccount } from '../data/phoneContacts.js';
 
 // "Import from phone": lists the phone's contacts and brings in only the ones
 // ticked. Nothing leaves the phone and nothing is imported without a tick.
@@ -12,6 +12,7 @@ export default function PhoneContactsPicker({ open, existingContacts, onImport, 
   const [state, setState] = useState({ status: 'loading', list: [], error: '' });
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState(() => new Set());
+  const [account, setAccount] = useState(''); // '' = every account
 
   useEffect(() => {
     if (!open) return undefined;
@@ -21,7 +22,11 @@ export default function PhoneContactsPicker({ open, existingContacts, onImport, 
     setPicked(new Set());
     readPhoneContacts()
       .then((raw) => {
-        if (!cancelled) setState({ status: 'ready', list: normalizePhoneContacts(raw, existingContacts), error: '' });
+        if (cancelled) return;
+        const list = normalizePhoneContacts(raw, existingContacts);
+        setState({ status: 'ready', list, error: '' });
+        // Start on the Google account when there is one: that is where most people keep their contacts.
+        setAccount(contactAccounts(list).find((a) => a.google)?.name || '');
       })
       .catch((err) => {
         if (cancelled) return;
@@ -37,11 +42,13 @@ export default function PhoneContactsPicker({ open, existingContacts, onImport, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  const accounts = useMemo(() => contactAccounts(state.list), [state.list]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return state.list;
-    return state.list.filter((c) => `${c.name} ${c.phone} ${c.email}`.toLowerCase().includes(q));
-  }, [state.list, query]);
+    const inScope = account ? state.list.filter((c) => inAccount(c, account)) : state.list;
+    if (!q) return inScope;
+    return inScope.filter((c) => `${c.name} ${c.phone} ${c.email}`.toLowerCase().includes(q));
+  }, [state.list, query, account]);
   const selectable = shown.filter((c) => !c.existing);
   const allShownPicked = selectable.length > 0 && selectable.every((c) => picked.has(c.id));
 
@@ -106,6 +113,28 @@ export default function PhoneContactsPicker({ open, existingContacts, onImport, 
           </p>
           {state.list.length > 0 && (
             <>
+              {accounts.length > 1 && (
+                <div className="chips phone-import-accounts" role="group" aria-label="Show contacts from">
+                  <button
+                    type="button"
+                    className={`chip${account === '' ? ' chip--on' : ''}`}
+                    onClick={() => setAccount('')}
+                  >
+                    All
+                  </button>
+                  {accounts.map((a) => (
+                    <button
+                      key={a.name}
+                      type="button"
+                      className={`chip${account === a.name ? ' chip--on' : ''}`}
+                      onClick={() => setAccount(a.name)}
+                    >
+                      {a.google ? 'Google · ' : ''}
+                      {a.name} ({a.count})
+                    </button>
+                  ))}
+                </div>
+              )}
               <input
                 type="search"
                 value={query}

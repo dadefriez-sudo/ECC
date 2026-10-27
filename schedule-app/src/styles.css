@@ -8512,3 +8512,10 @@ body[data-assistant='on'] .conflict-list {
   border-radius: 50%;
   margin-right: 4px;
 }
+.phone-import-accounts {
+  margin: 4px 0;
+}
+.phone-import-account {
+  display: block;
+  padding: 12px 0 2px;
+}

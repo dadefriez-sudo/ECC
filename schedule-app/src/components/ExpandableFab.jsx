@@ -5,7 +5,8 @@ import { QUICK_ADD_TYPES, normalizeQuickAdd } from '../data/quickAdd.js';
 import Icon from './Icon.jsx';
 
 // Floating "+" that expands into a stack of labeled pills (one per enabled
-// quick-add action, in the user's configured order) instead of jumping
+// quick-add action, shown top to bottom in the user's configured order, the
+// same as the list in Settings) instead of jumping
 // straight to a single action. The trigger rotates into an "x" while open.
 // `onAction(id)` is called with the tapped action's id ('event' | 'task' |
 // 'contact' | 'note'); the menu closes itself first. Haptics on the trigger
@@ -43,8 +44,10 @@ export default function ExpandableFab({ onAction }) {
         >
           <Icon name="plus" size={26} />
         </button>
+        {/* The stack grows upward (column-reverse), so the list goes in reversed to
+            read top to bottom in the same order as Settings → Quick add. */}
         {open &&
-          items.map((it, i) => {
+          [...items].reverse().map((it, i) => {
             const type = QUICK_ADD_TYPES.find((t) => t.id === it.id);
             const locked = !!type?.pro && !isPro;
             return (

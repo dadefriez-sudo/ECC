@@ -33,3 +33,21 @@ test('garbage input gives an empty list', () => {
   assert.deepEqual(normalizePhoneContacts(null, []), []);
   assert.deepEqual(normalizePhoneContacts([null, 5, {}], []), []);
 });
+
+import { contactAccounts, inAccount } from '../src/data/phoneContacts.js';
+
+test('accounts are listed with Google ones first, and filtering by account works', () => {
+  const list = normalizePhoneContacts(
+    [
+      { id: '1', name: 'Ann', phones: ['1'], accounts: ['me@gmail.com'], google: true },
+      { id: '2', name: 'Bob', phones: ['2'], accounts: ['me@gmail.com', 'Phone'], google: true },
+      { id: '3', name: 'Cy', phones: ['3'], accounts: [], google: false },
+    ],
+    []
+  );
+  const accounts = contactAccounts(list);
+  assert.equal(accounts[0].name, 'me@gmail.com');
+  assert.equal(accounts[0].google, true);
+  assert.equal(accounts[0].count, 2);
+  assert.deepEqual(list.filter((c) => inAccount(c, 'On this phone')).map((c) => c.name), ['Cy']);
+});

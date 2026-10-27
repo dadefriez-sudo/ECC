@@ -102,7 +102,9 @@ public class KeystoneBridgePlugin extends Plugin {
             ContactsContract.Data.CONTACT_ID,
             ContactsContract.Data.MIMETYPE,
             ContactsContract.Data.DISPLAY_NAME,
-            ContactsContract.Data.DATA1
+            ContactsContract.Data.DATA1,
+            ContactsContract.RawContacts.ACCOUNT_NAME,
+            ContactsContract.RawContacts.ACCOUNT_TYPE
         };
         String selection = ContactsContract.Data.MIMETYPE + " IN (?,?,?,?)";
         String[] args = {
@@ -120,6 +122,8 @@ public class KeystoneBridgePlugin extends Plugin {
                     String mime = cursor.getString(1);
                     String display = cursor.getString(2);
                     String value = cursor.getString(3);
+                    String accountName = cursor.getString(4);
+                    String accountType = cursor.getString(5);
                     JSObject contact = byId.get(id);
                     if (contact == null) {
                         contact = new JSObject();
@@ -128,7 +132,27 @@ public class KeystoneBridgePlugin extends Plugin {
                         contact.put("phones", new JSONArray());
                         contact.put("emails", new JSONArray());
                         contact.put("addresses", new JSONArray());
+                        contact.put("accounts", new JSONArray());
+                        contact.put("google", false);
                         byId.put(id, contact);
+                    }
+                    // Which account(s) this person is saved under (a Google account, the
+                    // phone itself, a SIM...), so the picker can narrow to one of them.
+                    if (accountName != null && !accountName.isEmpty()) {
+                        JSONArray accounts = contact.getJSONArray("accounts");
+                        boolean known = false;
+                        for (int i = 0; i < accounts.length(); i++) {
+                            if (accountName.equals(accounts.getString(i))) {
+                                known = true;
+                                break;
+                            }
+                        }
+                        if (!known) {
+                            accounts.put(accountName);
+                        }
+                    }
+                    if ("com.google".equals(accountType)) {
+                        contact.put("google", true);
                     }
                     if (value == null || value.trim().isEmpty()) {
                         continue;
@@ -198,7 +222,8 @@ public class KeystoneBridgePlugin extends Plugin {
             CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
             CalendarContract.Calendars.ACCOUNT_NAME,
             CalendarContract.Calendars.CALENDAR_COLOR,
-            CalendarContract.Calendars.VISIBLE
+            CalendarContract.Calendars.VISIBLE,
+            CalendarContract.Calendars.ACCOUNT_TYPE
         };
         JSONArray list = new JSONArray();
         try (Cursor cursor = resolver.query(CalendarContract.Calendars.CONTENT_URI, projection, null, null, null)) {
@@ -209,6 +234,7 @@ public class KeystoneBridgePlugin extends Plugin {
                 cal.put("account", cursor.getString(2) == null ? "" : cursor.getString(2));
                 cal.put("color", cursor.getInt(3));
                 cal.put("visible", cursor.getInt(4) != 0);
+                cal.put("google", "com.google".equals(cursor.getString(5)));
                 list.put(cal);
             }
             JSObject result = new JSObject();
