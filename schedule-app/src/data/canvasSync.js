@@ -18,13 +18,20 @@ function statusMessage(status) {
 // Canvas sites block; the message says so rather than failing silently.
 async function fetchFeed(url) {
   if (Capacitor.isNativePlatform()) {
-    const res = await CapacitorHttp.get({ url, headers: { Accept: 'text/calendar' }, responseType: 'text' });
+    let res;
+    try {
+      // No Accept header: some Canvas sites answer an unusual one with an error page.
+      res = await CapacitorHttp.get({ url, responseType: 'text' });
+    } catch (err) {
+      throw new Error(`Couldn't reach Canvas (${err?.message || 'network error'}). Check your connection and try again.`);
+    }
     if (res.status < 200 || res.status >= 300) throw new Error(statusMessage(res.status));
-    return typeof res.data === 'string' ? res.data : String(res.data ?? '');
+    // A calendar can come back already parsed into an object; fall back to its text.
+    return typeof res.data === 'string' ? res.data : JSON.stringify(res.data ?? '');
   }
   let res;
   try {
-    res = await fetch(url, { headers: { Accept: 'text/calendar' } });
+    res = await fetch(url);
   } catch {
     throw new Error("A browser can't read Canvas directly. Use the Keystone app on your phone to sync.");
   }
@@ -39,7 +46,10 @@ export async function syncCanvas(state, actions) {
   const checked = validateFeedUrl(state.settings?.canvasFeedUrl);
   if (!checked.ok) throw new Error(checked.error);
   const text = await fetchFeed(checked.url);
-  if (!/BEGIN:VCALENDAR/i.test(text)) throw new Error("That link didn't return a Canvas calendar. Copy the Calendar Feed link again.");
+  if (!/BEGIN:VCALENDAR/i.test(text)) {
+    const peek = String(text).replace(/\s+/g, ' ').trim().slice(0, 80);
+    throw new Error(`That link didn't return a calendar${peek ? ` (it returned: "${peek}")` : ''}. Copy the Calendar Feed link again, or use Import calendar (.ics) with the downloaded file.`);
+  }
   const plan = planCanvasSync(state.events || [], parseCanvasFeed(text), todayISO());
   for (const ev of plan.add) actions.addEvent(ev);
   for (const ev of plan.update) actions.updateEvent(ev);
