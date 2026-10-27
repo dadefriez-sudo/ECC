@@ -3663,6 +3663,9 @@ textarea {
   margin: 8px 0 0;
   line-height: 1.5;
   white-space: pre-wrap;
+  /* Long unbroken links (Canvas notes) used to run off the right edge. */
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 .mini-events {
   list-style: none;
