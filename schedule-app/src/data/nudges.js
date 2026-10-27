@@ -1,4 +1,4 @@
-import { computeGoalStreak, daysSince, todayISO, fromISODate } from './helpers.js';
+import { computeGoalStreak, daysSince, todayISO, fromISODate, goalRemindsOn } from './helpers.js';
 import { contactDatesWithin, contactDateLabel } from './contactDates.js';
 
 const MILESTONES = [7, 30, 100];
@@ -51,11 +51,9 @@ export function computeNudges(state) {
   let atRiskStreak = 0;
   for (const g of state.goals || []) {
     if ((g.period || 'weekly') !== 'daily') continue;
-    const target = g.target || 0;
-    if (target <= 0) continue;
-    const value = g.progress?.[today] || 0;
-    const frozenToday = (g.frozenKeys || []).includes(today);
-    if (value >= target || frozenToday) continue;
+    // Same "due today" rules as the Goals page: skips repeat-day gaps, goals
+    // not started yet, ones already met and ones protected by a freeze.
+    if (!goalRemindsOn(g, today)) continue;
     const streak = computeGoalStreak(g);
     if (streak >= 2 && streak > atRiskStreak) {
       atRisk = g;
