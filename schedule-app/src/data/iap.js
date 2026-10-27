@@ -144,37 +144,52 @@ export async function restorePurchases() {
   await new Promise((r) => setTimeout(r, 1500));
   await Promise.allSettled([...inflight]);
 
-  // A purchase that was already finished (acknowledged) on the device is NOT
-  // re-announced through `approved`, so the loop above finds nothing for it —
-  // which is exactly the "bought it, restore says nothing" case (a purchase the
-  // server never recorded, or recorded against another sign-in). If the store
-  // says it's owned, send its token to the server directly.
-  if (!lastVerifyError && inflight.size === 0 && savedGetToken) {
-    const { store, Platform } = await loadPurchasePlugin();
-    const nativePlatform = Capacitor.getPlatform() === 'ios' ? Platform.APPLE_APPSTORE : Platform.GOOGLE_PLAY;
-    const owned = store.owned(PRO_PRODUCT_ID);
-    if (owned) {
-      const tx = (store.localTransactions || []).find(
-        (t) => t.platform === nativePlatform && (t.products || []).some((p) => p.id === PRO_PRODUCT_ID)
-      );
-      const receipt =
-        nativePlatform === Platform.APPLE_APPSTORE ? tx?.jwsRepresentation : tx?.nativePurchase?.purchaseToken;
-      if (tx && receipt) {
-        try {
-          await verifyPurchase(savedGetToken, {
-            platform: nativePlatform === Platform.APPLE_APPSTORE ? 'ios' : 'android',
-            productId: PRO_PRODUCT_ID,
-            transactionId: tx.transactionId,
-            receipt,
-          });
-          savedOnVerified?.();
-        } catch (err) {
-          lastVerifyError = err;
-        }
-      } else {
-        lastVerifyError = new Error('Google Play says you own Pro, but the purchase details could not be read on this device.');
-      }
-    }
-  }
+  await verifyOwnedPurchase();
   return lastVerifyError;
+}
+
+// A purchase that was already finished (acknowledged) on the device is NOT
+// re-announced through `approved`, so restorePurchases() alone finds nothing
+// for it — which is exactly the "bought it, but the account says free" case (a
+// purchase the server never recorded, or recorded against another sign-in). If
+// the store says it's owned, send its token to the server, which checks it with
+// Google or Apple itself before granting anything. Records any refusal in
+// lastVerifyError. Resolves to true if the store reports the purchase as owned.
+async function verifyOwnedPurchase() {
+  if (lastVerifyError || inflight.size !== 0 || !savedGetToken) return false;
+  const { store, Platform } = await loadPurchasePlugin();
+  const nativePlatform = Capacitor.getPlatform() === 'ios' ? Platform.APPLE_APPSTORE : Platform.GOOGLE_PLAY;
+  if (!store.owned(PRO_PRODUCT_ID)) return false;
+  const tx = (store.localTransactions || []).find(
+    (t) => t.platform === nativePlatform && (t.products || []).some((p) => p.id === PRO_PRODUCT_ID)
+  );
+  const receipt = nativePlatform === Platform.APPLE_APPSTORE ? tx?.jwsRepresentation : tx?.nativePurchase?.purchaseToken;
+  if (!tx || !receipt) {
+    lastVerifyError = new Error('Google Play says you own Pro, but the purchase details could not be read on this device.');
+    return true;
+  }
+  try {
+    await verifyPurchase(savedGetToken, {
+      platform: nativePlatform === Platform.APPLE_APPSTORE ? 'ios' : 'android',
+      productId: PRO_PRODUCT_ID,
+      transactionId: tx.transactionId,
+      receipt,
+    });
+    savedOnVerified?.();
+  } catch (err) {
+    lastVerifyError = err;
+  }
+  return true;
+}
+
+// Run automatically for a signed-in account that isn't Pro yet: if the store
+// already shows Keystone Pro as owned, activate it without anyone having to find
+// the Restore button. Resolves { owned, error }; owned is false when the store
+// has nothing, and error is the server's reason if it refused.
+export async function recoverOwnedPro() {
+  if (!isNative || !savedGetToken) return { owned: false, error: null };
+  if (initPromise) await initPromise.catch(() => {});
+  lastVerifyError = null;
+  const owned = await verifyOwnedPurchase();
+  return { owned, error: owned ? lastVerifyError : null };
 }

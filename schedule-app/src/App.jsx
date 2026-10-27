@@ -15,7 +15,7 @@ import { maybeAutoBackup, removeUnencryptedBackups } from './data/backup.js';
 import { maybeAutoSyncCanvas } from './data/canvasSync.js';
 import BackupPasswordModal from './components/BackupPasswordModal.jsx';
 import { checkForUpdate, completeUpdate } from './data/appUpdate.js';
-import { initIAP } from './data/iap.js';
+import { initIAP, recoverOwnedPro } from './data/iap.js';
 import { runReminderScan, notify, notificationPermission, scheduleNativeReminders } from './data/notifications.js';
 import { registerNotificationActions, listenForNotificationActions } from './data/notificationActions.js';
 import { pushWidget } from './data/nativeBridge.js';
@@ -102,6 +102,7 @@ function SubscriptionSync() {
   // getToken — a ref keeps them pointing at the current one.
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
+  const autoRecoverRef = useRef(false);
 
   // Start listening for purchases as soon as someone's signed in, not only
   // once they open the Pricing screen. A purchase that went through on Google
@@ -125,7 +126,21 @@ function SubscriptionSync() {
           )
           .catch(() => {}),
       (err) => showToast(`Couldn't verify your purchase: ${err?.message || 'unknown error'}`)
-    ).catch((err) => console.warn('IAP init failed:', err?.message || err));
+    )
+      .then(async () => {
+        // Google Play (or the App Store) may already show Pro as owned while this
+        // account is still free, such as after a reinstall or signing in on a new
+        // phone. Activate it on its own once per session; the server still checks
+        // the purchase with the store before it grants anything.
+        if (autoRecoverRef.current) return;
+        autoRecoverRef.current = true;
+        const me = await fetchMe(() => getTokenRef.current?.()).catch(() => null);
+        if (!me || me.isPro) return;
+        const { owned, error } = await recoverOwnedPro();
+        if (owned && error) showToast(`Google Play shows you own Pro, but it couldn't be linked: ${error.message}`);
+        else if (owned) showToast('Pro restored from Google Play.');
+      })
+      .catch((err) => console.warn('IAP init failed:', err?.message || err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
