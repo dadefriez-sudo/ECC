@@ -81,7 +81,7 @@ test('a sync adds new items, updates changed ones, keeps the person\'s own marks
 });
 
 test('an unchanged feed changes nothing, and an empty feed removes nothing', () => {
-  const existing = [{ id: 'e1', source: 'canvas', externalId: externalIdFor('a'), ...p('a') }];
+  const existing = [{ id: 'e1', source: 'canvas', externalId: externalIdFor('a'), color: '#d9552b', canvasCourse: '', ...p('a') }];
   const same = planCanvasSync(existing, [p('a')], '2026-10-26');
   assert.deepEqual([same.add.length, same.update.length, same.remove.length], [0, 0, 0]);
   assert.deepEqual(planCanvasSync(existing, [], '2026-10-26').remove, []);
@@ -112,4 +112,49 @@ test('a deadline near midnight keeps its due time instead of being moved earlier
   const normal = at('20261105T113000');
   assert.equal(normal.start, '11:30');
   assert.equal(normal.end, '12:00');
+});
+
+import { courseOf, assignCourseColors } from '../src/data/canvasFeed.js';
+
+test('the class is the full code in the last square brackets of the title', () => {
+  assert.equal(courseOf('6. T-Joint Multi-Pass [WELD 243L]'), 'WELD 243L');
+  assert.equal(courseOf('Essay [bus  200]'), 'BUS 200');
+  assert.equal(courseOf('Reading [see ch. 2] [BUS 210]'), 'BUS 210');
+  assert.equal(courseOf('No class here'), '');
+});
+
+test('every class gets its own colour, and BUS 200 and BUS 210 are different classes', () => {
+  const colors = assignCourseColors({}, ['BUS 200', 'BUS 210', 'WELD 243L', 'BUS 200', '']);
+  assert.deepEqual(Object.keys(colors).sort(), ['BUS 200', 'BUS 210', 'WELD 243L']);
+  assert.equal(new Set(Object.values(colors)).size, 3);
+});
+
+test('chosen colours are kept and new classes avoid colours already in use', () => {
+  const first = assignCourseColors({}, ['A 1']);
+  const chosen = { ...first, 'A 1': '#123456' };
+  const next = assignCourseColors(chosen, ['A 1', 'B 2']);
+  assert.equal(next['A 1'], '#123456');
+  assert.notEqual(next['B 2'], '#123456');
+  assert.equal(assignCourseColors(next, ['A 1', 'B 2']), next);
+});
+
+test('with many classes, colours stay unique', () => {
+  const courses = Array.from({ length: 30 }, (_, i) => `C ${i}`);
+  const colors = assignCourseColors({}, courses);
+  assert.equal(new Set(Object.values(colors)).size, 30);
+});
+
+test('a sync colours events by class and recolours them when the colour changes', () => {
+  const parsed = [
+    { uid: '1', title: 'A [BUS 200]', course: 'BUS 200', date: '2026-11-05', start: '10:00', end: '10:30', location: '', notes: '' },
+    { uid: '2', title: 'B', course: '', date: '2026-11-05', start: '11:00', end: '11:30', location: '', notes: '' },
+  ];
+  const plan = planCanvasSync([], parsed, '2026-11-01', { 'BUS 200': '#2f7fd1' });
+  assert.equal(plan.add[0].color, '#2f7fd1');
+  assert.equal(plan.add[0].canvasCourse, 'BUS 200');
+  assert.equal(plan.add[1].color, '#d9552b');
+  const existing = plan.add.map((e, i) => ({ ...e, id: 'e' + i }));
+  const again = planCanvasSync(existing, parsed, '2026-11-01', { 'BUS 200': '#8a5cd6' });
+  assert.equal(again.update.length, 1);
+  assert.equal(again.update[0].color, '#8a5cd6');
 });

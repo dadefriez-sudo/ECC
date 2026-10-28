@@ -135,7 +135,48 @@ function finish(c) {
   }
   const notes = [c.description, c.url && !c.description.includes(c.url) ? c.url : ''].filter(Boolean).join('\n\n');
   const uid = c.uid || `${c.title}|${start.date}|${startTime}`;
-  return { uid, title: c.title || 'Canvas item', date: start.date, start: startTime, end: endTime, location: c.location, notes };
+  return { uid, title: c.title || 'Canvas item', course: courseOf(c.title), date: start.date, start: startTime, end: endTime, location: c.location, notes };
+}
+
+// Canvas ends an assignment's title with its class in square brackets, e.g.
+// "6. T-Joint Multi-Pass [WELD 243L]". The whole code is the class, so BUS 200
+// and BUS 210 are different classes.
+export function courseOf(title) {
+  const m = String(title || '').match(/\[([^\[\]]+)\]\s*$/);
+  return m ? m[1].replace(/\s+/g, ' ').trim().toUpperCase() : '';
+}
+
+// Colours given to classes automatically, in order, so the first classes look clearly different.
+const CLASS_COLORS = ['#2f7fd1', '#2a9d6f', '#8a5cd6', '#d94f86', '#14a3b8', '#c99a06', '#4c5bd4', '#d1384a', '#6aa11f', '#a8642a', '#5d7389'];
+
+function hslToHex(h, s, l) {
+  s /= 100;
+  l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))))).toString(16).padStart(2, '0');
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+// A colour for every class in `courses`, keeping the ones already chosen (by the
+// app or by the person) and giving each new class a colour no other class uses.
+// Returns the same object when nothing was added.
+export function assignCourseColors(known, courses) {
+  const out = { ...known };
+  const used = new Set(Object.values(out).map((c) => String(c).toLowerCase()));
+  let changed = false;
+  for (const course of [...new Set(courses)].filter(Boolean).sort()) {
+    if (out[course]) continue;
+    let color = CLASS_COLORS.find((c) => !used.has(c));
+    for (let i = 0; !color; i++) {
+      const candidate = hslToHex((i * 137.5 + 20) % 360, 62, 48);
+      if (!used.has(candidate)) color = candidate;
+    }
+    out[course] = color;
+    used.add(color);
+    changed = true;
+  }
+  return changed ? out : known;
 }
 
 // --- Merging into the calendar ----------------------------------------------
@@ -146,7 +187,7 @@ export const externalIdFor = (uid) => `canvas:${uid}`;
 // What to add, change and remove so the Canvas-sourced events match the feed.
 // Anything the person did to an event themselves (marking it done, adding a
 // reminder) is kept; only the fields Canvas owns are refreshed.
-export function planCanvasSync(existingEvents, parsed, todayISO) {
+export function planCanvasSync(existingEvents, parsed, todayISO, courseColors = {}) {
   const cutoff = (() => {
     const d = new Date(`${todayISO}T12:00:00`);
     d.setDate(d.getDate() - KEEP_PAST_DAYS);
@@ -162,9 +203,11 @@ export function planCanvasSync(existingEvents, parsed, todayISO) {
     const ext = externalIdFor(p.uid);
     seen.add(ext);
     const cur = byExt.get(ext);
-    if (!cur) add.push({ ...Object.fromEntries(FIELDS.map((k) => [k, p[k] || ''])), source: 'canvas', externalId: ext, color: CANVAS_COLOR });
-    else if (FIELDS.some((k) => (cur[k] || '') !== (p[k] || ''))) {
-      update.push({ ...cur, ...Object.fromEntries(FIELDS.map((k) => [k, p[k] || ''])) });
+    const color = (p.course && courseColors[p.course]) || CANVAS_COLOR;
+    const fields = { ...Object.fromEntries(FIELDS.map((k) => [k, p[k] || ''])), canvasCourse: p.course || '', color };
+    if (!cur) add.push({ ...fields, source: 'canvas', externalId: ext });
+    else if ([...FIELDS, 'canvasCourse', 'color'].some((k) => (cur[k] || '') !== (fields[k] || ''))) {
+      update.push({ ...cur, ...fields });
     }
   }
   // An empty feed is far more likely a bad response than a cleared semester, so

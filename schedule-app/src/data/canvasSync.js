@@ -1,5 +1,5 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
-import { parseCanvasFeed, planCanvasSync, validateFeedUrl } from './canvasFeed.js';
+import { parseCanvasFeed, planCanvasSync, validateFeedUrl, assignCourseColors } from './canvasFeed.js';
 import { todayISO } from './helpers.js';
 
 const MIN_INTERVAL_MS = 60 * 60 * 1000; // automatic refresh at most hourly
@@ -50,7 +50,11 @@ export async function syncCanvas(state, actions) {
     const peek = String(text).replace(/\s+/g, ' ').trim().slice(0, 80);
     throw new Error(`That link didn't return a calendar${peek ? ` (it returned: "${peek}")` : ''}. Copy the Calendar Feed link again, or use Import calendar (.ics) with the downloaded file.`);
   }
-  const plan = planCanvasSync(state.events || [], parseCanvasFeed(text), todayISO());
+  const parsed = parseCanvasFeed(text);
+  const known = state.settings?.canvasCourseColors || {};
+  const courseColors = assignCourseColors(known, parsed.map((p) => p.course));
+  if (courseColors !== known) actions.setSettings({ canvasCourseColors: courseColors });
+  const plan = planCanvasSync(state.events || [], parsed, todayISO(), courseColors);
   for (const ev of plan.add) actions.addEvent(ev);
   for (const ev of plan.update) actions.updateEvent(ev);
   for (const id of plan.remove) actions.deleteEvent(id);
@@ -74,5 +78,14 @@ export async function maybeAutoSyncCanvas(state, actions) {
     // Quiet by design: shown under the setting, not as an alert nobody asked for.
     actions.setSettings({ canvasLastError: err.message || 'Could not sync Canvas.' });
     return null;
+  }
+}
+
+// A new colour for one class: remembered for future syncs and applied to the
+// class's events already on the calendar.
+export function recolorCanvasCourse(state, actions, course, color) {
+  actions.setSettings({ canvasCourseColors: { ...(state.settings?.canvasCourseColors || {}), [course]: color } });
+  for (const e of state.events || []) {
+    if (e.source === 'canvas' && e.canvasCourse === course && e.color !== color) actions.updateEvent({ ...e, color });
   }
 }

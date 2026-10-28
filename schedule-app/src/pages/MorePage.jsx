@@ -47,7 +47,7 @@ import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
 import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBackups } from '../data/backup.js';
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
 import { validateFeedUrl } from '../data/canvasFeed.js';
-import { syncCanvas } from '../data/canvasSync.js';
+import { syncCanvas, recolorCanvasCourse } from '../data/canvasSync.js';
 import { phoneContactsAvailable, phoneCalendarAvailable } from '../data/nativeBridge.js';
 import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
@@ -1237,6 +1237,25 @@ export default function MorePage() {
             </p>
             {s.canvasLastError && <p className="partner-error" role="alert">{s.canvasLastError}</p>}
             {canvasMsg && <p className="muted small" role="status">{canvasMsg}</p>}
+            {Object.keys(s.canvasCourseColors || {}).length > 0 && (
+              <div className="canvas-classes">
+                <span className="detail-label">Class colors</span>
+                {Object.entries(s.canvasCourseColors)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([course, color]) => (
+                    <label className="canvas-class-row" key={course}>
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => recolorCanvasCourse(state, actions, course, e.target.value)}
+                        aria-label={`Color for ${course}`}
+                      />
+                      <span>{course}</span>
+                    </label>
+                  ))}
+                <p className="muted small">Each class gets its own color automatically. Tap a color to change it.</p>
+              </div>
+            )}
             <div className="stack-btns">
               <button
                 className="btn btn-ghost full"
