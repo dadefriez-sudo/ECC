@@ -27,6 +27,7 @@ const FEATURES = [
   { label: 'Accountability partners (1 free, more with Pro)', free: true, pro: true },
   { label: 'Google account sync', free: false, pro: true },
   { label: 'Import/export to other calendars', free: false, pro: true },
+  { label: 'Canvas calendar (assignments and class dates)', free: false, pro: true },
   { label: 'Cloud backup across devices', free: false, pro: true },
 ];
 
