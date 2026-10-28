@@ -111,3 +111,24 @@ export async function readPhoneCalendarEvents({ calendarIds, startMs, endMs }) {
   const { events } = await Bridge.readCalendarEvents({ calendarIds, startMs, endMs });
   return events || [];
 }
+
+// Canvas Student, the Android app for Canvas. A Canvas link goes there when it is
+// installed (and handles that school's address); otherwise it opens as usual.
+const CANVAS_APPS = ['com.instructure.candroid'];
+const openSeam = () => (typeof window !== 'undefined' ? window.__KS_OPEN_LINK__ : undefined);
+
+// Resolves true when this handled the link (native app or the test seam) and
+// false when the caller should just let the link open normally.
+export async function openCanvasLink(url) {
+  if (!Bridge && openSeam()) {
+    openSeam()(url, CANVAS_APPS);
+    return true;
+  }
+  if (!Bridge) return false;
+  try {
+    await Bridge.openLink({ url, packages: CANVAS_APPS });
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -22,3 +22,15 @@ export function splitLinks(text) {
   if (last < src.length) parts.push({ text: src.slice(last) });
   return parts;
 }
+
+// A Canvas address: *.instructure.com, or the same site as the person's own
+// Calendar Feed link (some schools use their own domain).
+export function isCanvasLink(href, feedUrl) {
+  try {
+    const host = new URL(href).hostname.toLowerCase();
+    if (host === 'instructure.com' || host.endsWith('.instructure.com')) return true;
+    return !!feedUrl && host === new URL(feedUrl).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+}

@@ -2,13 +2,16 @@ package com.keystoneplanner.app;
 
 import android.Manifest;
 import android.content.ContentResolver;
+import android.content.ActivityNotFoundException;
 import android.content.ContentUris;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
 import android.provider.ContactsContract;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -49,6 +52,53 @@ public class KeystoneBridgePlugin extends Plugin {
         }
         KeystoneWidgetProvider.refreshAll(context);
         call.resolve();
+    }
+
+    /**
+     * Opens a web link in a specific app when one of the given apps is installed and
+     * handles that address (Canvas Student for a Canvas link), and otherwise in
+     * whatever normally opens it. Resolves with the package that opened it, or ""
+     * for the default.
+     */
+    @PluginMethod
+    public void openLink(PluginCall call) {
+        String url = call.getString("url");
+        Uri uri = url == null ? null : Uri.parse(url);
+        String scheme = uri == null ? null : uri.getScheme();
+        if (scheme == null || !(scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("http"))) {
+            call.reject("Only web links can be opened.");
+            return;
+        }
+        Context context = getContext();
+        JSArray packages = call.getArray("packages");
+        if (packages != null) {
+            for (int i = 0; i < packages.length(); i++) {
+                String pkg = packages.optString(i, "");
+                if (pkg.isEmpty()) continue;
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                    intent.setPackage(pkg);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(intent);
+                    JSObject result = new JSObject();
+                    result.put("app", pkg);
+                    call.resolve(result);
+                    return;
+                } catch (ActivityNotFoundException ignored) {
+                    // not installed, or it doesn't handle this address: try the next one
+                }
+            }
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            JSObject result = new JSObject();
+            result.put("app", "");
+            call.resolve(result);
+        } catch (ActivityNotFoundException e) {
+            call.reject("Nothing on this phone can open that link.");
+        }
     }
 
     /** Text shared into Keystone from another app. */

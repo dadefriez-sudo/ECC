@@ -18,3 +18,14 @@ test('plain text and non-http links are left alone', () => {
   assert.deepEqual(splitLinks('[x](javascript:alert(1))'), [{ text: '[x](javascript:alert(1))' }]);
   assert.deepEqual(splitLinks(''), []);
 });
+
+import { isCanvasLink } from '../src/data/linkify.js';
+
+test('Canvas links are recognised, including a school with its own domain', () => {
+  assert.equal(isCanvasLink('https://byui.instructure.com/courses/1/assignments/2'), true);
+  assert.equal(isCanvasLink('https://example.com/a'), false);
+  assert.equal(isCanvasLink('https://evilinstructure.com/a'), false);
+  assert.equal(isCanvasLink('https://canvas.school.edu/courses/1', 'https://canvas.school.edu/feeds/calendars/user_x.ics'), true);
+  assert.equal(isCanvasLink('https://canvas.school.edu/courses/1'), false);
+  assert.equal(isCanvasLink('not a link'), false);
+});
