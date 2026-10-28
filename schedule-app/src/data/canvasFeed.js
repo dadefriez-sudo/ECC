@@ -124,13 +124,14 @@ export function parseCanvasFeed(text) {
 
 function finish(c) {
   const { start, end } = c;
-  let startTime = start.allDay ? '09:00' : start.time;
+  const startTime = start.allDay ? '09:00' : start.time;
   let endTime;
   if (end && !end.allDay && end.date === start.date && toMinutes(end.time) > toMinutes(startTime)) {
     endTime = end.time;
   } else {
+    // The block starts at the due time. Near midnight it is cut short at 23:59 rather
+    // than moved earlier, so a 11:59 PM deadline still shows as 11:59 PM.
     endTime = fromMinutes(Math.min(toMinutes(startTime) + DEFAULT_MINUTES, 23 * 60 + 59));
-    if (toMinutes(endTime) <= toMinutes(startTime)) startTime = fromMinutes(23 * 60 + 29), (endTime = '23:59');
   }
   const notes = [c.description, c.url && !c.description.includes(c.url) ? c.url : ''].filter(Boolean).join('\n\n');
   const uid = c.uid || `${c.title}|${start.date}|${startTime}`;

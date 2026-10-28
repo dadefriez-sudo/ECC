@@ -70,6 +70,10 @@ import {
   templateSummary,
 } from '../data/templates.js';
 
+// An item with no length doesn't get a timeline block, except a Canvas deadline:
+// those are a single moment (11:59 PM) and must still appear at that time.
+const hasTimelineSpan = (e) => e.e2 > e.s || e.source === 'canvas';
+
 const DAY_START = 6;
 const DAY_END = 23;
 const PX_PER_HOUR = 56;
@@ -1299,7 +1303,7 @@ function DayView({
   useEffect(() => {
     // Open an hour before the day's first event (rather than at the very
     // top of an empty morning); a day with no events starts at the top.
-    const starts = occurrencesFor(events, date).filter((e) => e.e2 > e.s).map((e) => e.s);
+    const starts = occurrencesFor(events, date).filter(hasTimelineSpan).map((e) => e.s);
     const first = starts.length ? Math.min(...starts) : null;
     const target = first == null ? 0 : Math.max(0, (first - 60 - dayStart * 60) * pxPerMin);
     getScrollEl()?.scrollTo(0, target);
@@ -1330,7 +1334,7 @@ function DayView({
   const pxPerHour = PX_PER_HOUR * zoom;
   const pxPerMin = pxPerHour / 60;
 
-  const dayEvents = useMemo(() => occurrencesFor(events, date).filter((e) => e.e2 > e.s), [events, date]);
+  const dayEvents = useMemo(() => occurrencesFor(events, date).filter(hasTimelineSpan), [events, date]);
   const laid = useMemo(() => layout(dayEvents), [dayEvents]);
   const whoFor = (occ) => contactNames(eventContactIds(occ), contacts);
   const contactColor = useMemo(() => makeContactColor(contacts, statuses), [contacts, statuses]);
@@ -2095,8 +2099,11 @@ function DayView({
             // ghost below instead (the group ghost is keyed to each
             // occurrence's own recDate, so it survives live day-paging).
             if (armedKey === key || isGroupDragging) return null;
-            const top = (ev.s - dayStart * 60) * pxPerMin;
             const height = Math.max(24, (ev.e2 - ev.s) * pxPerMin - 3);
+            // A late item (a 11:59 PM deadline) would otherwise hang off the
+            // bottom of the timeline; keep the block inside it. The label still
+            // shows the real time.
+            const top = Math.min((ev.s - dayStart * 60) * pxPerMin, (dayEnd - dayStart + 1) * 60 * pxPerMin - height - 2);
             const short = ev.e2 - ev.s < 55;
             const who = whoFor(ev);
             const kindLabel = kindLabels[ev.kind];
@@ -2157,7 +2164,7 @@ function DayView({
                 {short ? (
                   <span className="event-title">
                     <span className="event-time-inline">
-                      {formatTime(minutesToTime(displayStartMin))} – {formatTime(minutesToTime(displayEndMin))}
+                      {formatTime(minutesToTime(displayStartMin))}{displayEndMin > displayStartMin && ` – ${formatTime(minutesToTime(displayEndMin))}`}
                     </span>{' '}
                     {ev.title || 'Untitled'}
                     {recurring && <span className="repeat-glyph"> <Icon name={ev.isException ? 'pencil' : 'repeat'} size={13} /></span>}
@@ -2165,7 +2172,7 @@ function DayView({
                 ) : (
                   <>
                     <span className="event-time">
-                      {formatTime(minutesToTime(displayStartMin))} – {formatTime(minutesToTime(displayEndMin))}
+                      {formatTime(minutesToTime(displayStartMin))}{displayEndMin > displayStartMin && ` – ${formatTime(minutesToTime(displayEndMin))}`}
                       {recurring && <span className="repeat-glyph"> <Icon name={ev.isException ? 'pencil' : 'repeat'} size={13} /></span>}
                       {ev.reminder?.length > 0 && <span className="repeat-glyph"> <Icon name="bell" size={13} /></span>}
                     </span>
@@ -2930,7 +2937,7 @@ function EventDetailView({ occ, contacts, goals, tasks, isPro, kindColors, kindL
           <div className="detail-field">
             <span className="detail-label">Time</span>
             <span className="detail-value">
-              {formatTime(occ.start)} – {formatTime(occ.end)}
+              {formatTime(occ.start)}{occ.end > occ.start && ` – ${formatTime(occ.end)}`}
             </span>
           </div>
           {recurring && (
@@ -3815,8 +3822,12 @@ function ScheduleCalendarView({ draft, setDraft, events, settings, customEventTy
 
 // --- Layout helper -----------------------------------------------------------
 
+// A zero-length item (a Canvas deadline) takes up half an hour for placement, so several
+// due at the same minute sit side by side instead of stacking on top of each other.
+const spanEnd = (e) => (e.e2 > e.s ? e.e2 : e.s + 30);
+
 function layout(events) {
-  const sorted = [...events].sort((a, b) => a.s - b.s || a.e2 - b.e2);
+  const sorted = [...events].sort((a, b) => a.s - b.s || spanEnd(a) - spanEnd(b));
   const out = [];
   let cluster = [];
   let clusterEnd = -1;
@@ -3825,7 +3836,7 @@ function layout(events) {
     for (const ev of cluster) {
       let placed = false;
       for (let i = 0; i < cols.length; i++) {
-        if (cols[i][cols[i].length - 1].e2 <= ev.s) {
+        if (spanEnd(cols[i][cols[i].length - 1]) <= ev.s) {
           cols[i].push(ev);
           ev.col = i;
           placed = true;
@@ -3849,7 +3860,7 @@ function layout(events) {
       clusterEnd = -1;
     }
     cluster.push(ev);
-    clusterEnd = Math.max(clusterEnd, ev.e2);
+    clusterEnd = Math.max(clusterEnd, spanEnd(ev));
   }
   if (cluster.length) flush();
   return out;

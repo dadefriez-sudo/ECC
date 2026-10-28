@@ -98,3 +98,18 @@ test('a webcal:// link is accepted as the same https link', () => {
   assert.equal(r.ok, true);
   assert.match(r.url, /^https:\/\/school\.instructure\.com\/feeds\/calendars\/user_abc\.ics/);
 });
+
+test('a deadline near midnight keeps its due time instead of being moved earlier', () => {
+  const at = (stamp) =>
+    parseCanvasFeed(feed([vevent(['UID:x' + stamp, 'DTSTART:' + stamp, 'DTEND:' + stamp, 'SUMMARY:Quiz'])]))[0];
+  // No Z and no TZID is a floating local time, so these don't depend on the machine's zone.
+  const late = at('20261105T235900');
+  assert.equal(late.start, '23:59');
+  assert.equal(late.end, '23:59');
+  const nearly = at('20261105T234500');
+  assert.equal(nearly.start, '23:45');
+  assert.equal(nearly.end, '23:59');
+  const normal = at('20261105T113000');
+  assert.equal(normal.start, '11:30');
+  assert.equal(normal.end, '12:00');
+});
