@@ -1,72 +1,112 @@
 import LegalPage from '../components/LegalPage.jsx';
 
-// Standard terms scoped to what Keystone actually is and sells — a local-
-// first personal productivity app with an optional one-time Pro purchase,
-// not a subscription or a platform with user-to-user commerce. Worth a
-// lawyer's pass before publishing, same as the privacy policy.
+// Generated from docs/legal/terms-of-service.md, the same text as the website. Edit that
+// file and regenerate rather than editing this one, so the two never drift apart.
+// Worth a lawyer's pass before launch.
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="October 5, 2026">
+    <LegalPage title="Terms of Service" updated="October 28, 2026">
       <p>
-        Keystone is made by KeyStone Software. These terms cover your use of Keystone. By using
-        the app, you agree to them. If you don't agree, please don't use Keystone.
+        Keystone is made by KeyStone Software ("we", "us"). These terms cover your use of the
+        Keystone app and its website. By using Keystone you agree to them. If you do not agree,
+        please do not use Keystone.
       </p>
-
       <h2>The service</h2>
       <p>
-        Keystone is a personal calendar, goals, and contacts app. Core features are free. Pro is
-        an optional one-time purchase that unlocks additional features listed on the pricing
-        page. It is not a subscription, and there's nothing to cancel once purchased.
+        Keystone is a personal calendar, goals and people app. The core features are free. Pro
+        is an optional one-time purchase that unlocks the extra features listed on the pricing
+        page. It is not a subscription, and there is nothing to cancel.
       </p>
-
+      <p>
+        Keystone may be offered in test or pre-release versions, which can have bugs or change
+        quickly. Features can be added, changed or removed over time, and some features need an
+        internet connection or an account.
+      </p>
+      <h2>Who can use it</h2>
+      <p>
+        You must be at least 13 years old to use Keystone. If your local law sets an older age
+        for using online services, you must meet that age.
+      </p>
       <h2>Accounts</h2>
       <p>
-        An account is only required for cloud sync, shared calendars, and buying Pro. You're
-        responsible for keeping your sign-in credentials secure, and for anything that happens
-        under your account.
+        An account is only needed for cloud sync, shared calendars, accountability partners and
+        buying Pro. You are responsible for keeping your sign-in details secure and for what
+        happens under your account. Tell us promptly if you think someone else has used it.
       </p>
-
       <h2>Purchases</h2>
       <p>
-        Pro is billed once, through the App Store or Google Play depending on where you bought
-        it. Refunds are handled according to that platform's own refund policy: Apple's or
-        Google's store policies, depending on where you purchased.
+        Pro is billed once, through Google Play or the App Store, depending on where you bought
+        it. It unlocks the Pro features for you for as long as Keystone is offered. Refunds
+        follow the policy of that store. If a purchase fails or is reversed by the store, Pro
+        may be switched off for your account.
       </p>
-
       <h2>Your content</h2>
       <p>
-        You own what you put into Keystone: your events, goals, notes, and contacts. You're
-        responsible for the accuracy of anything you enter, including information about other
-        people (for example, a contact's phone number or address). Don't use shared calendars or
-        invites to spam, harass, or contact someone who hasn't agreed to it.
+        You own what you put into Keystone: your events, goals, notes and contacts. You are
+        responsible for it, including information about other people, such as a contact's phone
+        number or address. Only add information you have the right to keep. We do not claim
+        ownership of your content, and you give us only the limited permission needed to store
+        and sync it for you when you use the optional server features.
       </p>
-
-      <h2>Termination</h2>
+      <h2>Acceptable use</h2>
       <p>
-        You can delete your account at any time from Settings → Account. We may suspend or
-        terminate access for use that violates these terms, such as abusing the sharing or
-        invite features.
+        Do not use Keystone, including shared calendars, accountability invites and other
+        sharing features, to harass, spam or contact anyone who has not agreed to it. Do not try
+        to break, overload or gain unauthorized access to Keystone or its servers, copy or
+        resell it, or use it to break the law or other people's rights.
       </p>
-
+      <h2>Other services</h2>
+      <p>
+        Keystone can connect to services we do not run, such as Google, Canvas, OpenStreetMap,
+        Esri and your phone's calendar and contacts. Your use of them is governed by their own
+        terms. Keystone is not made by, endorsed by or affiliated with Google, Instructure
+        (Canvas), Apple, any school or any other company named in the app. Names and marks
+        belong to their owners.
+      </p>
+      <h2>Reminders and information are estimates</h2>
+      <p>
+        Reminders, travel-time warnings, route suggestions, streaks and other prompts are there
+        to help you plan. They are not guarantees. Notifications can be delayed or blocked by
+        your phone's settings. Check anything time-sensitive, safety-related, medical, legal or
+        financial yourself. Keep your own copy of anything important, and use the backup
+        feature.
+      </p>
+      <h2>Ending your use</h2>
+      <p>
+        You can stop using Keystone at any time and delete your account from Settings → Account.
+        We may suspend or end access for use that breaks these terms, such as abusing the
+        sharing or invite features, or if we need to for security or legal reasons. If we
+        discontinue Keystone, we will give reasonable notice where we can.
+      </p>
       <h2>Disclaimer</h2>
       <p>
-        Keystone is provided "as is." Reminders, travel-time warnings, and route suggestions are
-        estimates meant to help you plan. They're not guarantees, and you're responsible for
-        confirming anything time-sensitive or safety-related yourself. To the extent the law
-        allows, we aren't liable for indirect or consequential damages arising from your use of
-        the app.
+        Keystone is provided "as is" and "as available". To the fullest extent the law allows,
+        we do not promise that it will be error-free, always available or free from data loss,
+        and we disclaim all other warranties, including fitness for a particular purpose.
       </p>
-
+      <h2>Limit of liability</h2>
+      <p>
+        To the fullest extent the law allows, we are not liable for indirect, incidental,
+        special or consequential damages, or for lost data, profits or opportunities, arising
+        from your use of Keystone. Our total liability to you for any claim is limited to the
+        amount you paid us for Keystone in the 12 months before the claim, or $10 if you paid
+        nothing. Some places do not allow these limits, so they may not apply to you. Nothing in
+        these terms limits rights you have under the law that cannot be waived.
+      </p>
+      <h2>Governing law</h2>
+      <p>
+        These terms are governed by the laws that apply where KeyStone Software is based,
+        without regard to conflict-of-laws rules.
+      </p>
       <h2>Changes to these terms</h2>
       <p>
-        If these terms change materially, we'll update the date above and let you know in the
-        app.
+        If these terms change in a material way, we will update the date above and tell you in
+        the app. Using Keystone after a change means you accept the new terms.
       </p>
-
       <h2>Contact</h2>
       <p>
-        Questions about these terms can go to{' '}
-        <a href="mailto:keystone.planner@gmail.com">keystone.planner@gmail.com</a>.
+        Questions about these terms can go to <a
+        href="mailto:keystone.planner@gmail.com">keystone.planner@gmail.com</a>.
       </p>
     </LegalPage>
   );

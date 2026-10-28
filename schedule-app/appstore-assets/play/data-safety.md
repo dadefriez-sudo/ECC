@@ -1,6 +1,6 @@
 # Play Console: Data safety form (draft to check against the real form)
 
-Matches the privacy policy dated October 24, 2026. Play's wording changes, so read each
+Matches the privacy policy dated October 28, 2026 (docs/legal/privacy-policy.md). Play's wording changes, so read each
 question as you fill it in. Not legal advice.
 
 ## Overview questions
@@ -28,7 +28,7 @@ Everything below is optional: it only happens if the person signs in, buys Pro, 
 
 ## Things to decide or double check
 
-- **"Shared":** answer No for Clerk, Google, and the hosting provider, because they process data for you as service providers. Map searches and address lookups go from the phone to OpenStreetMap; if the form asks about third parties receiving location-related text, say it is the search text the person typed, sent at their request.
+- **"Shared":** answer No for Clerk, Google, and the hosting provider, because they process data for you as service providers. Map pictures come from OpenStreetMap and Esri, and address lookups go from the phone to OpenStreetMap; if the form asks about third parties receiving location-related text, say it is the search text the person typed, sent at their request.
 - **Accountability partners:** goal titles and progress go to the one person the user invited. That is user-directed, but read Play's current definition of "sharing" and answer the way it says.
 - **Not collected:** advertising IDs, device IDs, usage analytics, crash logs (until crash reporting is added; when it is, add Crash logs and Diagnostics here).
 - **Data deletion URL:** Play asks for a web page. The in-app Delete account screen is the real action; if you want a public page for the form, point it at your site's delete-account route.
