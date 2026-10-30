@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 import AnimatedNumber from './AnimatedNumber.jsx';
-import { formatTime } from '../data/helpers.js';
+import { Avatar } from './Avatar.jsx';
+import { formatTime, daysAgoLabel, formatShortDate } from '../data/helpers.js';
 import { useCountUp } from '../data/useCountUp.js';
 
 // The three non-classic Home layouts (Settings -> Home screen layout).
@@ -266,5 +267,85 @@ export function CalmView({ h }) {
         return out;
       })()}
     </div>
+  );
+}
+
+// D. Tracker — a counts-first Home. A grid of goal tiles (count out of target,
+// with + and − on each), then the people most worth a message, then the rest of
+// the day. It is the same data as the other layouts, laid out as a dashboard.
+const TILE_ICONS = { Health: 'heart', Growth: 'trending', Work: 'check', Relationships: 'users', Spiritual: 'compass', Faith: 'compass' };
+const TRACKER_REST = ['upnext', 'reminders', 'nudges', 'tasks', 'notes', 'recap'];
+
+export function TrackerView({ h }) {
+  const tiles = h.trackerGoals;
+  const people = h.trackerPeople;
+  return (
+    <>
+      {h.enabled('goals') && (
+        <section className="detail-section tracker-card">
+          <div className="tracker-head">
+            <span className="detail-label">Key goals</span>
+            <button className="tracker-viewall" onClick={() => h.navigate('/goals')}>View all</button>
+          </div>
+          {tiles.length === 0 ? (
+            <p className="muted small">No goals in play. Tap View all to add one.</p>
+          ) : (
+            <div className="tracker-grid">
+              {tiles.map(({ goal, value, done }) => (
+                <div key={goal.id} className={`tracker-tile${done ? ' tracker-tile--done' : ''}`}>
+                  <button className="tracker-tile-main" onClick={() => h.openItem({ kind: 'goal', goalId: goal.id })}>
+                    <span className="tracker-tile-icon">
+                      <Icon name={done ? 'check' : TILE_ICONS[goal.category] || 'target'} size={18} />
+                    </span>
+                    <span className="tracker-tile-label">{goal.title}</span>
+                    <strong className="tracker-tile-count">
+                      {value}
+                      <span>/{goal.target}</span>
+                    </strong>
+                  </button>
+                  <div className="tracker-tile-step">
+                    <button aria-label={`Remove one from ${goal.title}`} onClick={() => h.stepGoal(goal, -1)} disabled={value <= 0}>
+                      <Icon name="minus" size={14} />
+                    </button>
+                    <button aria-label={`Add one to ${goal.title}`} onClick={() => h.stepGoal(goal, 1)} disabled={done}>
+                      <Icon name="plus" size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="detail-section tracker-card">
+        <div className="tracker-head">
+          <span className="detail-label">People to follow up</span>
+          <button className="tracker-viewall" onClick={() => h.navigate('/contacts')}>View all</button>
+        </div>
+        {people.length === 0 ? (
+          <p className="muted small">Nobody is waiting on you right now.</p>
+        ) : (
+          <ul className="tracker-people">
+            {people.map((c) => (
+              <li key={c.id}>
+                <button className="tracker-person" onClick={() => h.navigate(`/contacts/${c.id}`)}>
+                  <Avatar name={c.name} photo={c.photo} color={c.color} size="sm" />
+                  <span className="tracker-person-body">
+                    <strong>{c.name}</strong>
+                    <span className="muted small">
+                      {c.followUp?.date ? `Follow up ${formatShortDate(c.followUp.date)}` : c.lastContacted ? `Last contact ${daysAgoLabel(c.lastContacted)}` : 'Not contacted yet'}
+                    </span>
+                  </span>
+                  <Icon name="chevronRight" size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {orderFor(h, TRACKER_REST).filter((id) => TRACKER_REST.includes(id)).map((id) => (id === 'upnext' ? <UpNext key="upnext" h={h} /> : h.block(id)))}
+    </>
   );
 }

@@ -771,6 +771,7 @@ export default function MorePage() {
         <div className="seg seg--full">
           {[
             { value: 'today', label: 'Today' },
+            { value: 'tracker', label: 'Tracker' },
             { value: 'bento', label: 'Bento', pro: true },
             { value: 'calm', label: 'Calm' },
             { value: 'classic', label: 'Classic' },
@@ -789,6 +790,8 @@ export default function MorePage() {
             ? 'Classic: the original stack of cards.'
             : (s.homeStyle || 'today') === 'bento' && isPro
             ? 'Bento: a tile grid with your goals ring, what is next, and the week at a glance.'
+            : (s.homeStyle || 'today') === 'tracker'
+            ? 'Tracker: a grid of your goals with counts and + / −, then the people to follow up, then the rest of your day.'
             : (s.homeStyle || 'today') === 'calm'
             ? 'Calm: a quiet summary and one list for today, with everything else folded away.'
             : 'Today: your day as a timeline, led by what is next.'}

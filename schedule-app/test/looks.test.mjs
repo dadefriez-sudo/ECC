@@ -29,7 +29,7 @@ test('the picker selects the right card', () => {
 test('four looks: two free, two Pro, and picking one changes the right settings', () => {
   assert.deepEqual(LOOKS.map((l) => l.pro), [false, false, true, true]);
   assert.deepEqual(settingsForLook(LOOKS[1]), { skin: 'default', theme: 'dark' });
-  assert.deepEqual(settingsForLook(LOOKS[2]), { skin: 'heritage' });
+  assert.deepEqual(settingsForLook(LOOKS[2]), { skin: 'heritage', homeStyle: 'tracker' });
   assert.equal(chromeColor({ skin: 'heritage', isPro: true }), '#7a1c24');
   assert.equal(chromeColor({ theme: 'light' }), '#eef1f4');
 });

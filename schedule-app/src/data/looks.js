@@ -77,6 +77,8 @@ export function chromeColor(settings, systemDark = false) {
 }
 
 // The settings change that picks a look.
+// The two Pro looks also switch Home to the Tracker layout, so they come as a
+// complete style. The layout can be changed again from Home or Settings.
 export function settingsForLook(look) {
-  return look.skin === 'default' ? { skin: 'default', theme: look.theme } : { skin: look.skin };
+  return look.skin === 'default' ? { skin: 'default', theme: look.theme } : { skin: look.skin, homeStyle: 'tracker' };
 }

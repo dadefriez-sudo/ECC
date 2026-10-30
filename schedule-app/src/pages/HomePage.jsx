@@ -31,7 +31,8 @@ import { useSmartAdd } from '../data/useSmartAdd.js';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import Icon from '../components/Icon.jsx';
 import AddressField from '../components/AddressField.jsx';
-import { MiniRing, TodayView, BentoView, CalmView, UpNext } from '../components/HomeLayouts.jsx';
+import { MiniRing, TodayView, BentoView, CalmView, TrackerView, UpNext } from '../components/HomeLayouts.jsx';
+import { makeOverdueCheck } from '../data/reconnect.js';
 import WeeklyReviewCard from '../components/WeeklyReviewCard.jsx';
 import WhatsNewCard from '../components/WhatsNewCard.jsx';
 import FollowUpCard from '../components/FollowUpCard.jsx';
@@ -70,6 +71,7 @@ const NOTE_COLORS = [
 ];
 const HOME_STYLES = [
   { value: 'today', label: 'Today' },
+  { value: 'tracker', label: 'Tracker' },
   { value: 'bento', label: 'Bento' },
   { value: 'calm', label: 'Calm' },
   { value: 'classic', label: 'Classic' },
@@ -649,6 +651,41 @@ export default function HomePage() {
     }
     return { item, inMins };
   })();
+  // Tracker layout: up to six goals in play (the person's own order), each with
+  // what's done out of its target, and the people most worth a message.
+  const trackerGoals = (() => {
+    const inPlay = new Set([...dailyGoals, ...weeklyGoals]);
+    const weekStartKey = weekKey(new Date());
+    return state.goals
+      .filter((g) => inPlay.has(g) && (g.target || 0) > 0)
+      .map((g) => {
+        const value = g.progress?.[(g.period || 'weekly') === 'daily' ? dailyKey : weekStartKey] || 0;
+        return { goal: g, value, done: value >= g.target };
+      })
+      .slice(0, 6);
+  })();
+  const stepGoal = (g, delta) => {
+    const key = (g.period || 'weekly') === 'daily' ? dailyKey : weekKey(new Date());
+    const value = g.progress?.[key] || 0;
+    const next = Math.max(0, Math.min(g.target, value + delta));
+    if (next === value) return;
+    actions.setGoalProgress(g.id, key, next);
+    selectTick();
+  };
+  const trackerPeople = (() => {
+    const overdue = makeOverdueCheck(state);
+    const statusColor = Object.fromEntries((state.statuses || []).map((st) => [st.id, st.color]));
+    const rank = (c) => {
+      if (c.followUp?.date && c.followUp.date <= today) return 0; // promised and due
+      if (overdue(c)) return 1; // past their reconnect time
+      return 2;
+    };
+    return [...(state.contacts || [])]
+      .map((c) => ({ ...c, color: statusColor[c.statusId] }))
+      .sort((a, b) => rank(a) - rank(b) || (a.lastContacted || '').localeCompare(b.lastContacted || ''))
+      .filter((c) => rank(c) < 2 || c.lastContacted)
+      .slice(0, 4);
+  })();
   const nowKeyForCounts = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
   const layoutProps = {
     navigate,
@@ -658,6 +695,9 @@ export default function HomePage() {
     block: (id) => (visibleBlocks.some((b) => b.id === id) ? renderBlock(id) : null),
     timeline,
     upNext,
+    trackerGoals,
+    trackerPeople,
+    stepGoal,
     openItem,
     toggleTaskDone,
     recap,
@@ -1022,6 +1062,8 @@ export default function HomePage() {
       ) : (
         homeStyle === 'today' ? (
           <TodayView h={layoutProps} />
+        ) : homeStyle === 'tracker' ? (
+          <TrackerView h={layoutProps} />
         ) : homeStyle === 'bento' ? (
           <BentoView h={layoutProps} />
         ) : homeStyle === 'calm' ? (
