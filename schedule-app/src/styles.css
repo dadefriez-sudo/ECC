@@ -8560,3 +8560,274 @@ body[data-assistant='on'] .conflict-list {
 .canvas-classes { display: flex; flex-direction: column; gap: 8px; }
 .canvas-class-row { display: flex; align-items: center; gap: 12px; font-weight: 700; }
 .canvas-class-row input[type='color'] { width: 40px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: none; cursor: pointer; }
+
+/* --- Looks (Pro): Heritage Crimson and Midnight Navy --------------------
+   A look is a full re-skin: its own surfaces, text, accent, serif headings,
+   a solid header band and a top-bar tab indicator. It sets its own light or
+   dark mode (see data/looks.js), so each palette is only defined once.
+   Fonts are the open-source Lora and Inter, bundled for offline use. */
+@font-face {
+  font-family: 'Lora';
+  src: url('./fonts/lora-latin-wght-normal.woff2') format('woff2-variations'), url('./fonts/lora-latin-wght-normal.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Lora';
+  src: url('./fonts/lora-latin-wght-italic.woff2') format('woff2-variations'), url('./fonts/lora-latin-wght-italic.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2-variations'), url('./fonts/inter-latin-wght-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root[data-skin='heritage'][data-theme='light'] {
+  --bg: #fbf9f6;
+  --surface: #ffffff;
+  --surface-2: #f4efea;
+  --text: #1a202c;
+  --muted: #5a6578;
+  --border: #e2d9cf;
+  --accent: #7a1c24;
+  --accent-soft: #f4e4e5;
+  --accent-ink: #ffffff;
+  --accent-2: #1a365d;
+  --accent-2-soft: #f0f4f8;
+  --track: #e8dfd5;
+  --danger: #b42318;
+  --good: #2f7a4f;
+  --warn: #c26a12;
+  --warn-ink: #8a4a0a;
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  --head-bg: #7a1c24;
+  --head-fg: #ffffff;
+  --head-line: #591319;
+}
+:root[data-skin='midnight'][data-theme='dark'] {
+  --bg: #0e1a2e;
+  --surface: #16243b;
+  --surface-2: #1d2e4a;
+  --text: #edf1f7;
+  --muted: #9aa9bf;
+  --border: #27395a;
+  --accent: #d4a93a;
+  --accent-soft: #2e2a17;
+  --accent-ink: #0e1a2e;
+  --accent-2: #8fb0e0;
+  --accent-2-soft: #1b2c48;
+  --track: #27395a;
+  --danger: #f08a8a;
+  --good: #6fcf97;
+  --warn: #e0a13e;
+  --warn-ink: #f0c078;
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --head-bg: #0a1424;
+  --head-fg: #edf1f7;
+  --head-line: #27395a;
+}
+:root[data-skin='heritage'],
+:root[data-skin='midnight'] {
+  --radius: 12px;
+  --font-head: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+:root[data-skin='heritage'] body,
+:root[data-skin='midnight'] body,
+:root[data-skin='heritage'] .page textarea,
+:root[data-skin='midnight'] .page textarea,
+:root[data-skin='heritage'] .page input,
+:root[data-skin='midnight'] .page input,
+:root[data-skin='heritage'] :is(.note-card, .note-card *, .note-title, .note-body, .note-checklist, .notes-text),
+:root[data-skin='midnight'] :is(.note-card, .note-card *, .note-title, .note-body, .note-checklist, .notes-text) {
+  font-family: var(--font-body);
+}
+:root[data-skin='heritage'] :is(h1, h2, h3),
+:root[data-skin='midnight'] :is(h1, h2, h3) {
+  font-family: var(--font-head);
+  letter-spacing: 0;
+}
+:root[data-skin='heritage'] .page-head h1,
+:root[data-skin='midnight'] .page-head h1 {
+  font-weight: 700;
+  font-size: 25px;
+}
+
+/* Header: a solid band behind the title row at the top of each page. Pages
+   that keep controls in the header (tabs, search, filters) show them on the
+   normal page color just below the band. */
+:root[data-skin='heritage'] .page-head::after,
+:root[data-skin='midnight'] .page-head::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -16px;
+  right: -16px;
+  height: calc(max(12px, var(--sait)) + 52px);
+  background: var(--head-bg);
+  border-bottom: 1px solid var(--head-line);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  z-index: -1;
+}
+:root[data-skin='heritage'] .page-head,
+:root[data-skin='midnight'] .page-head {
+  padding-bottom: 10px;
+}
+:root[data-skin='heritage'] .page-head > .page-head-row:first-child :is(h1, .back-btn, .icon-btn, .brand-home),
+:root[data-skin='midnight'] .page-head > .page-head-row:first-child :is(h1, .back-btn, .icon-btn, .brand-home) {
+  color: var(--head-fg);
+}
+
+/* Tab bar: a bar above the current tab instead of a pill behind it. */
+:root[data-skin='heritage'] .tab::before,
+:root[data-skin='midnight'] .tab::before {
+  top: 0;
+  left: 28%;
+  width: 44%;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--accent);
+  transform: scaleX(0.3);
+  opacity: 0;
+}
+:root[data-skin='heritage'] .tab--active::before,
+:root[data-skin='midnight'] .tab--active::before {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+/* Quotation-style callouts: notes sit on the sand card with a bold left edge,
+   and prompts (nudges, the daily challenge) take the navy tint. */
+:root[data-skin='heritage'] .note-card,
+:root[data-skin='midnight'] .note-card {
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+}
+:root[data-skin='heritage'] :is(.nudge-row, .challenge-block),
+:root[data-skin='midnight'] :is(.nudge-row, .challenge-block) {
+  background: var(--accent-2-soft);
+  border-left: 3px solid var(--accent-2);
+}
+:root[data-skin='heritage'] .challenge-block,
+:root[data-skin='midnight'] .challenge-block {
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+/* --- Look picker (Settings → Theme & colors) ----------------------------- */
+.look-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.look-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 8px;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.look-card--on {
+  border-color: var(--accent);
+}
+.look-card strong {
+  font-size: 14px;
+  margin-top: 4px;
+}
+.look-card-art {
+  position: relative;
+  display: block;
+}
+.look-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 108px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+}
+.look-preview-head {
+  padding: 8px 8px 6px;
+}
+.look-preview-card {
+  margin: 0 8px;
+  padding: 7px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.look-preview-tabs {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 20px;
+}
+.look-pro-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: #d97706;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.look-check {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.premium-points {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.premium-points li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.premium-points li svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.premium-upgrade {
+  background: #7a1c24;
+  border-color: #7a1c24;
+  color: #fff;
+}
+.premium-dismiss {
+  border: 0;
+  background: none;
+  color: var(--muted);
+}

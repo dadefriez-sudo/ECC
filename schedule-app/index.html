@@ -33,22 +33,31 @@
       (function () {
         var root = document.documentElement;
         var theme = 'system';
+        var skin = 'default';
         try {
           var raw = localStorage.getItem('compass.data.v1');
-          if (raw) theme = JSON.parse(raw).settings?.theme || 'system';
+          if (raw) {
+            var st = JSON.parse(raw).settings || {};
+            theme = st.theme || 'system';
+            // A Pro look only counts while Pro is active (see src/data/looks.js).
+            if (st.isPro && (st.skin === 'heritage' || st.skin === 'midnight')) skin = st.skin;
+          }
         } catch (e) {
           /* unreadable storage — fall through to the system preference */
         }
         var dark =
-          theme === 'dark' ||
-          (theme === 'system' &&
-            window.matchMedia &&
-            window.matchMedia('(prefers-color-scheme: dark)').matches);
+          skin === 'midnight' ||
+          (skin === 'default' &&
+            (theme === 'dark' ||
+              (theme === 'system' &&
+                window.matchMedia &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches)));
         root.dataset.theme = dark ? 'dark' : 'light';
+        root.dataset.skin = skin;
         // Keep the browser/OS chrome in step with the app on the first paint
         // too, rather than being pinned to the dark value in the tag above.
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', dark ? '#0f141a' : '#eef1f4');
+        if (meta) meta.setAttribute('content', skin === 'heritage' ? '#7a1c24' : skin === 'midnight' ? '#0a1424' : dark ? '#0f141a' : '#eef1f4');
         // Arm the theme crossfade only once the correct theme is already
         // painted, so it animates real theme *changes* and never the boot.
         requestAnimationFrame(function () {

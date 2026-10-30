@@ -10,6 +10,7 @@ import Onboarding from './components/Onboarding.jsx';
 import { SHARED_CALENDARS_ENABLED } from './data/features.js';
 import { recordOpen, withoutActivity } from './data/activityLog.js';
 import AssistantBubble from './components/AssistantBubble.jsx';
+import { activeSkin, effectiveTheme, chromeColor } from './data/looks.js';
 import Modal from './components/Modal.jsx';
 import { maybeAutoBackup, removeUnencryptedBackups } from './data/backup.js';
 import { maybeAutoSyncCanvas } from './data/canvasSync.js';
@@ -1101,42 +1102,48 @@ export default function App() {
     if (showTour && location.pathname !== '/') navigate('/', { replace: true });
   }, [showTour, location.pathname, navigate]);
 
-  // Apply the selected theme to the document root.
+  // Apply the selected theme and look to the document root. A Pro look (see
+  // data/looks.js) decides light or dark for itself; otherwise the person's
+  // Light / Dark / System choice does.
+  const skin = activeSkin(state.settings);
   useEffect(() => {
     const root = document.documentElement;
     const apply = () => {
-      const dark =
-        theme === 'dark' ||
-        (theme === 'system' &&
-          window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const dark = effectiveTheme(state.settings, systemDark) === 'dark';
+      const chrome = chromeColor(state.settings, systemDark);
       root.dataset.theme = dark ? 'dark' : 'light';
+      root.dataset.skin = skin;
       // Matches the pre-paint boot script in index.html, which sets this for
       // the first frame; this keeps it right when the theme changes later.
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', dark ? '#0f141a' : '#eef1f4');
+      if (meta) meta.setAttribute('content', chrome);
       // The native status bar has no equivalent of a <meta theme-color> tag
       // to fall back on, so it needs the same dark/light decision pushed to
       // it explicitly. Style.Light means light (white) status bar content —
       // for a dark background — which reads backwards from the theme name
       // it's paired with; Style.Dark is dark content, for the light theme.
+      // Both Pro looks have a dark status bar area, so they use light content.
       if (Capacitor.isNativePlatform()) {
-        StatusBar.setStyle({ style: dark ? Style.Light : Style.Dark }).catch(() => {});
-        StatusBar.setBackgroundColor({ color: dark ? '#0f141a' : '#eef1f4' }).catch(() => {});
+        const lightContent = dark || skin === 'heritage';
+        StatusBar.setStyle({ style: lightContent ? Style.Light : Style.Dark }).catch(() => {});
+        StatusBar.setBackgroundColor({ color: chrome }).catch(() => {});
       }
     };
     apply();
-    if (theme === 'system') {
+    if (theme === 'system' && skin === 'default') {
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
       mq.addEventListener('change', apply);
       return () => mq.removeEventListener('change', apply);
     }
-  }, [theme]);
+  }, [theme, skin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply the chosen color scheme (Pro feature; 'default' needs no override).
+  // A look brings its own palette, so the scheme steps aside while one is on.
   const colorScheme = state.settings?.colorScheme || 'default';
   useEffect(() => {
-    document.documentElement.dataset.scheme = colorScheme;
-  }, [colorScheme]);
+    document.documentElement.dataset.scheme = skin === 'default' ? colorScheme : 'default';
+  }, [colorScheme, skin]);
 
   // Keep the time/week-start display prefs (More → Calendar settings) in
   // sync with the small set of pure helpers that format times and compute

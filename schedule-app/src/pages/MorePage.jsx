@@ -48,6 +48,7 @@ import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBa
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
 import { validateFeedUrl } from '../data/canvasFeed.js';
 import { syncCanvas, recolorCanvasCourse } from '../data/canvasSync.js';
+import LookPicker from '../components/LookPicker.jsx';
 import { phoneContactsAvailable, phoneCalendarAvailable } from '../data/nativeBridge.js';
 import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
@@ -706,6 +707,7 @@ export default function MorePage() {
             </button>
           ))}
         </div>
+        <LookPicker settings={state.settings} isPro={isPro} onPick={(changes) => actions.setSettings(changes)} />
         <p className="muted small color-scheme-label">Color theme {!isPro && '· Pro'}</p>
         <SchemeRow
           schemes={COLOR_SCHEMES}
