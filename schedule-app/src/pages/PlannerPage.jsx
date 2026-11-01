@@ -874,7 +874,13 @@ export default function PlannerPage() {
           <button className="icon-btn" onClick={() => step(-1)} aria-label="Previous">
             <Chevron dir="left" />
           </button>
-          <button className="week-label" onClick={tapToday} title="Jump to today">
+          {/* In Day view the title opens the month it sits in (tap a day there to come
+              back); the today button on the right still jumps to today. */}
+          <button
+            className="week-label"
+            onClick={() => (mode === 'day' ? setMode('month') : tapToday())}
+            title={mode === 'day' ? 'Open month view' : 'Jump to today'}
+          >
             {headerLabel}
             <span className="week-sub">{headerSub}</span>
           </button>
