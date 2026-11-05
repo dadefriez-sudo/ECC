@@ -5,7 +5,7 @@ import { BACKGROUNDS, activeBackground, effectiveTheme, chromeColor } from '../s
 test('seven Pro backgrounds plus the standard one', () => {
   assert.equal(BACKGROUNDS.length, 8);
   assert.equal(BACKGROUNDS[0].value, 'default');
-  for (const v of ['cream', 'navy', 'maroon', 'plum', 'forest', 'graphite', 'espresso']) {
+  for (const v of ['cream', 'navy', 'maroon', 'plum', 'forest', 'graphite', 'cocoa']) {
     assert.ok(BACKGROUNDS.some((b) => b.value === v), v);
   }
 });

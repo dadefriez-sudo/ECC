@@ -12,7 +12,7 @@ export const BACKGROUNDS = [
   { value: 'plum', label: 'Midnight purple', bg: '#0d0b17', surface: '#151226', mode: 'dark' },
   { value: 'forest', label: 'Forest', bg: '#0a1812', surface: '#10241b', mode: 'dark' },
   { value: 'graphite', label: 'Graphite', bg: '#141414', surface: '#1f1f1f', mode: 'dark' },
-  { value: 'espresso', label: 'Espresso', bg: '#17100c', surface: '#221812', mode: 'dark' },
+  { value: 'cocoa', label: 'Cocoa', bg: '#17100c', surface: '#221812', mode: 'dark' },
 ];
 
 const KNOWN = new Set(BACKGROUNDS.map((b) => b.value));

@@ -114,16 +114,20 @@ const COLOR_SCHEMES = [
   { value: 'sky', label: 'Sky', swatch: '#4f8bb5' },
   { value: 'apricot', label: 'Apricot', swatch: '#b8703c' },
   { value: 'seafoam', label: 'Seafoam', swatch: '#4e938c' },
+  { value: 'amethyst', label: 'Amethyst', swatch: '#8e44ad' },
+  { value: 'stone', label: 'Stone', swatch: '#6e6a64' },
+  { value: 'taupe', label: 'Taupe', swatch: '#86705f' },
 ];
 
-// The color themes by family, one column each, so similar colors sit together.
+// The color themes by family, one column each, four to a column. Blush and Seafoam
+// are no longer offered but still work for anyone who already picked them.
 const SCHEME_GROUPS = [
   { label: 'Gold & orange', values: ['default', 'apricot', 'sunset', 'clay'] },
-  { label: 'Red & pink', values: ['crimson', 'wine', 'rose', 'berry', 'blush'] },
-  { label: 'Green', values: ['emerald', 'forest', 'olive', 'sage', 'seafoam'] },
+  { label: 'Red & pink', values: ['crimson', 'wine', 'rose', 'berry'] },
+  { label: 'Green', values: ['emerald', 'forest', 'olive', 'sage'] },
   { label: 'Blue & teal', values: ['teal', 'sky', 'ocean', 'indigo'] },
-  { label: 'Purple', values: ['lavender', 'grape', 'plum'] },
-  { label: 'Neutral', values: ['slate', 'charcoal'] },
+  { label: 'Purple', values: ['lavender', 'grape', 'amethyst', 'plum'] },
+  { label: 'Neutral', values: ['slate', 'charcoal', 'stone', 'taupe'] },
 ].map((g) => ({ label: g.label, schemes: g.values.map((v) => COLOR_SCHEMES.find((c) => c.value === v)) }));
 
 const PRESET_COLORS = [
