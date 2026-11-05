@@ -1,6 +1,7 @@
 import { Router, raw } from 'express';
 import { verifyWebhook } from '@clerk/express/webhooks';
 import { prisma } from '../db.js';
+import { verifiedPrimaryEmail } from '../lib/validate.js';
 
 const router = Router();
 
@@ -18,9 +19,7 @@ router.post('/', raw({ type: 'application/json' }), async (req, res) => {
   try {
     switch (evt.type) {
       case 'user.created': {
-        const email =
-          evt.data.email_addresses?.find((e) => e.id === evt.data.primary_email_address_id)
-            ?.email_address ?? evt.data.email_addresses?.[0]?.email_address;
+        const email = verifiedPrimaryEmail(evt.data.email_addresses, evt.data.primary_email_address_id);
         if (email) {
           await prisma.user.upsert({
             where: { clerkId: evt.data.id },
@@ -41,7 +40,7 @@ router.post('/', raw({ type: 'application/json' }), async (req, res) => {
     }
     res.json({ received: true });
   } catch (err) {
-    console.error('[clerk webhook] handler error:', err);
+    console.error('[clerk webhook] handler error:', err?.name, err?.code || '');
     res.status(500).send('Webhook handler error');
   }
 });

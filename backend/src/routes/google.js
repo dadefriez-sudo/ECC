@@ -172,7 +172,7 @@ router.get('/callback', async (req, res) => {
   try {
     userId = await consumeState(req.query.state);
   } catch (err) {
-    console.error('Google OAuth state lookup failed:', err);
+    console.error('Google OAuth state lookup failed:', err?.name, err?.code || '');
     return fail('exchange_failed');
   }
   if (!userId) return fail('bad_state');
@@ -196,7 +196,7 @@ router.get('/callback', async (req, res) => {
     });
     res.type('html').send(landingPage(true, `${frontend}/#/more?google=connected`));
   } catch (err) {
-    console.error('Google OAuth callback failed:', err);
+    console.error('Google OAuth callback failed:', err?.name, err?.code || '');
     fail('exchange_failed');
   }
 });

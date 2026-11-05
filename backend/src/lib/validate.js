@@ -16,3 +16,13 @@ export const withinLimit = (v, max) => typeof v === 'string' && v.length <= max;
 // be unique, not secret; an invite link is a bearer credential, so use real
 // randomness (192 bits).
 export const newInviteToken = () => crypto.randomBytes(24).toString('base64url');
+
+// The account email, only when Clerk has verified it: an unverified address is
+// whatever someone typed, and it must not become the email other people see on an
+// accountability invite or that Pro is linked to.
+export function verifiedPrimaryEmail(emailAddresses, primaryId) {
+  const list = emailAddresses || [];
+  const verified = (e) => e?.verification?.status === 'verified';
+  const pick = list.find((e) => e.id === primaryId && verified(e)) || list.find(verified);
+  return pick?.emailAddress ?? pick?.email_address ?? null;
+}

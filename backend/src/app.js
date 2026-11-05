@@ -21,6 +21,22 @@ export function createApp() {
   // whoever's actually misbehaving. `1` trusts only that one hop's
   // X-Forwarded-For entry, not an arbitrary client-supplied header.
   app.set('trust proxy', 1);
+  app.disable('x-powered-by');
+
+  // This is a JSON API, never a page: say so, so a browser doesn't sniff, frame,
+  // cache or leak the address of anything it returns.
+  app.use((req, res, next) => {
+    res.set({
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+      'Cache-Control': 'no-store',
+      'Cross-Origin-Resource-Policy': 'same-site',
+      'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+      'Strict-Transport-Security': 'max-age=15552000; includeSubDomains',
+    });
+    next();
+  });
 
   // The native app shell (Capacitor) has no server config of its own, so it
   // runs its WebView on Capacitor's own default origins rather than
@@ -37,10 +53,10 @@ export function createApp() {
   app.use(
     cors({
       origin(origin, callback) {
-        // FRONTEND_URL not set yet (e.g. still being configured) — same
-        // permissive fallback the old `origin: ... || true` had, rather
-        // than the native app's origins being the only ones that work.
-        if (!process.env.FRONTEND_URL) return callback(null, true);
+        // FRONTEND_URL not set: allow any origin only outside production (local
+        // development). In production an unset value means only the native app's
+        // own origins work, never "anyone", and the startup warning says why.
+        if (!process.env.FRONTEND_URL && process.env.NODE_ENV !== 'production') return callback(null, true);
         // No Origin header at all (native non-WebView clients, curl, server-
         // to-server) — nothing to check against, so let it through.
         if (!origin || ALLOWED_ORIGINS.has(origin)) return callback(null, true);
@@ -89,7 +105,8 @@ export function createApp() {
     // A body over the limit is the caller's doing, not a server fault.
     if (err?.type === 'entity.too.large') return res.status(413).json({ error: 'Request body is too large.' });
     if (err?.type === 'entity.parse.failed') return res.status(400).json({ error: 'Request body is not valid JSON.' });
-    console.error(err);
+    // Name and code only: a full error object can carry request or query values.
+    console.error('[error]', req.method, req.path, err?.name, err?.code || '');
     res.status(500).json({ error: 'Internal server error' });
   });
 
