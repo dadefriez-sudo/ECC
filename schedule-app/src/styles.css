@@ -8574,6 +8574,98 @@ body[data-assistant='on'] .conflict-list {
 .canvas-class-row { display: flex; align-items: center; gap: 12px; font-weight: 700; }
 .canvas-class-row input[type='color'] { width: 40px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: none; cursor: pointer; }
 
+/* --- Background themes (Pro) ---------------------------------------------
+   Tinted dark backgrounds (data/backgrounds.js). Only the surfaces, borders
+   and text change; the accent comes from the color theme. Choosing one forces
+   dark mode, so these only ever sit on top of the dark palette. */
+:root[data-theme='dark'][data-bg='navy'] {
+  --bg: #0b1526; --surface: #121f36; --surface-2: #1a2a47; --border: #26385a; --track: #26385a;
+  --text: #e8eef8; --muted: #93a3bd;
+}
+:root[data-theme='dark'][data-bg='maroon'] {
+  --bg: #1a0b0e; --surface: #261317; --surface-2: #331b20; --border: #4a2a31; --track: #4a2a31;
+  --text: #f3e8ea; --muted: #b79aa0;
+}
+:root[data-theme='dark'][data-bg='plum'] {
+  --bg: #140d1f; --surface: #1d1430; --surface-2: #281c42; --border: #3a2a5c; --track: #3a2a5c;
+  --text: #eee8f7; --muted: #a99bc4;
+}
+:root[data-theme='dark'][data-bg='forest'] {
+  --bg: #0a1812; --surface: #10241b; --surface-2: #17332a; --border: #25453a; --track: #25453a;
+  --text: #e7f1ec; --muted: #92b0a2;
+}
+:root[data-theme='dark'][data-bg='graphite'] {
+  --bg: #141414; --surface: #1f1f1f; --surface-2: #2a2a2a; --border: #3a3a3a; --track: #3a3a3a;
+  --text: #ececec; --muted: #a0a0a0;
+}
+:root[data-theme='dark'][data-bg='espresso'] {
+  --bg: #17100c; --surface: #221812; --surface-2: #2e2119; --border: #44322a; --track: #44322a;
+  --text: #f3ebe4; --muted: #b9a496;
+}
+
+/* Settings: the background picker and the grouped color themes. */
+.bg-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 8px;
+}
+.bg-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.bg-tile-art {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  display: grid;
+  place-items: end center;
+  padding: 0 0 8px;
+}
+.bg-tile-art i {
+  display: block;
+  width: 62%;
+  height: 34%;
+  border-radius: 6px;
+}
+.bg-tile--on .bg-tile-art {
+  border-color: var(--accent);
+}
+.bg-tile--on {
+  color: var(--text);
+}
+.bg-tile-lock {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  color: #fff;
+  opacity: 0.85;
+  display: grid;
+}
+.scheme-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scheme-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+
 /* --- Home: Tracker layout ------------------------------------------------ */
 .tracker-card {
   display: flex;

@@ -48,6 +48,7 @@ import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBa
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
 import { validateFeedUrl } from '../data/canvasFeed.js';
 import { syncCanvas, recolorCanvasCourse } from '../data/canvasSync.js';
+import { BACKGROUNDS, activeBackground } from '../data/backgrounds.js';
 import { phoneContactsAvailable, phoneCalendarAvailable } from '../data/nativeBridge.js';
 import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
@@ -114,6 +115,16 @@ const COLOR_SCHEMES = [
   { value: 'apricot', label: 'Apricot', swatch: '#b8703c' },
   { value: 'seafoam', label: 'Seafoam', swatch: '#4e938c' },
 ];
+
+// The color themes grouped by family, so similar colors sit together.
+const SCHEME_GROUPS = [
+  { label: 'Gold & orange', values: ['default', 'apricot', 'sunset', 'clay'] },
+  { label: 'Red & pink', values: ['crimson', 'wine', 'rose', 'berry', 'blush'] },
+  { label: 'Green', values: ['emerald', 'forest', 'olive', 'sage', 'seafoam'] },
+  { label: 'Blue & teal', values: ['teal', 'sky', 'ocean', 'indigo'] },
+  { label: 'Purple', values: ['lavender', 'grape', 'plum'] },
+  { label: 'Neutral', values: ['slate', 'charcoal'] },
+].map((g) => ({ label: g.label, schemes: g.values.map((v) => COLOR_SCHEMES.find((c) => c.value === v)) }));
 
 const PRESET_COLORS = [
   '#2e9e6b',
@@ -706,9 +717,19 @@ export default function MorePage() {
             </button>
           ))}
         </div>
+        <p className="muted small color-scheme-label">Background {!isPro && '· Pro'}</p>
+        <BackgroundRow
+          settings={state.settings}
+          isPro={isPro}
+          onPick={(value, locked) => (locked ? navigate('/pricing') : actions.setSettings({ background: value }))}
+        />
+        {activeBackground(state.settings) !== 'default' && (
+          <p className="muted small">Backgrounds use dark mode, so the Light setting above is paused while one is on.</p>
+        )}
         <p className="muted small color-scheme-label">Color theme {!isPro && '· Pro'}</p>
         <SchemeRow
           schemes={COLOR_SCHEMES}
+          groups={SCHEME_GROUPS}
           isPro={isPro}
           current={state.settings?.colorScheme || 'default'}
           onPick={(v) => requirePro(() => actions.setSettings({ colorScheme: v }))}
@@ -2270,10 +2291,10 @@ function CloudSyncStatus({ cloudSyncOn }) {
 
 // One row of colour-scheme swatches. Shared by the standard and pastel rows
 // so the lock/selection behaviour can't drift between them.
-function SchemeRow({ schemes, isPro, current, onPick }) {
-  return (
+function SchemeRow({ schemes, groups, isPro, current, onPick }) {
+  const dots = (list) => (
     <div className="scheme-grid">
-      {schemes.map((s) => {
+      {list.map((s) => {
         const locked = !isPro && s.value !== 'default';
         const on = current === s.value;
         return (
@@ -2286,6 +2307,50 @@ function SchemeRow({ schemes, isPro, current, onPick }) {
             aria-label={s.label}
           >
             {locked && <LockIcon />}
+          </button>
+        );
+      })}
+    </div>
+  );
+  if (!groups) return dots(schemes);
+  return (
+    <div className="scheme-groups">
+      {groups.map((g) => (
+        <div key={g.label}>
+          <p className="scheme-group-label">{g.label}</p>
+          {dots(g.schemes)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Pro backgrounds: a tile per tinted background, with the standard one first.
+function BackgroundRow({ settings, isPro, onPick }) {
+  const current = activeBackground(settings);
+  return (
+    <div className="bg-grid" role="radiogroup" aria-label="Background">
+      {BACKGROUNDS.map((b) => {
+        const locked = !isPro && b.value !== 'default';
+        const on = current === b.value;
+        return (
+          <button
+            key={b.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            className={`bg-tile${on ? ' bg-tile--on' : ''}`}
+            onClick={() => onPick(b.value, locked)}
+          >
+            <span className="bg-tile-art" style={{ background: b.bg }}>
+              <i style={{ background: b.surface }} />
+              {locked && (
+                <span className="bg-tile-lock">
+                  <LockIcon />
+                </span>
+              )}
+            </span>
+            {b.label}
           </button>
         );
       })}
