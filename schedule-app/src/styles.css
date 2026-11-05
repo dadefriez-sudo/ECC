@@ -8575,9 +8575,13 @@ body[data-assistant='on'] .conflict-list {
 .canvas-class-row input[type='color'] { width: 40px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: none; cursor: pointer; }
 
 /* --- Background themes (Pro) ---------------------------------------------
-   Tinted dark backgrounds (data/backgrounds.js). Only the surfaces, borders
-   and text change; the accent comes from the color theme. Choosing one forces
-   dark mode, so these only ever sit on top of the dark palette. */
+   Tinted backgrounds (data/backgrounds.js). Only the surfaces, borders and
+   text change; the accent comes from the color theme. Each brings its own
+   light or dark mode, so it only ever sits on top of the matching palette. */
+:root[data-theme='light'][data-bg='cream'] {
+  --bg: #f5efe2; --surface: #fffdf8; --surface-2: #efe8d8; --border: #e0d6c0; --track: #e6dcc6;
+  --text: #2a241a; --muted: #6e6552;
+}
 :root[data-theme='dark'][data-bg='navy'] {
   --bg: #0b1526; --surface: #121f36; --surface-2: #1a2a47; --border: #26385a; --track: #26385a;
   --text: #e8eef8; --muted: #93a3bd;

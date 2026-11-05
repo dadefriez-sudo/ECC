@@ -724,7 +724,9 @@ export default function MorePage() {
           onPick={(value, locked) => (locked ? navigate('/pricing') : actions.setSettings({ background: value }))}
         />
         {activeBackground(state.settings) !== 'default' && (
-          <p className="muted small">Backgrounds use dark mode, so the Light setting above is paused while one is on.</p>
+          <p className="muted small">
+            A background sets light or dark mode itself (Cream is light, the rest are dark), so the System / Light / Dark setting above is paused while one is on.
+          </p>
         )}
         <p className="muted small color-scheme-label">Color theme {!isPro && '· Pro'}</p>
         <SchemeRow

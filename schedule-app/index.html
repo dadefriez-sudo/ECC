@@ -35,7 +35,7 @@
         var theme = 'system';
         var bgName = 'default';
         // Colors for the Pro backgrounds; keep in step with src/data/backgrounds.js.
-        var BGS = { navy: '#0b1526', maroon: '#1a0b0e', plum: '#140d1f', forest: '#0a1812', graphite: '#141414', espresso: '#17100c' };
+        var BGS = { cream: '#f5efe2', navy: '#0b1526', maroon: '#1a0b0e', plum: '#140d1f', forest: '#0a1812', graphite: '#141414', espresso: '#17100c' };
         try {
           var raw = localStorage.getItem('compass.data.v1');
           if (raw) {
@@ -47,9 +47,10 @@
           /* unreadable storage — fall through to the system preference */
         }
         var dark =
-          bgName !== 'default' ||
-          theme === 'dark' ||
-          (theme === 'system' &&
+          (bgName !== 'default' && bgName !== 'cream') ||
+          (bgName === 'default' && theme === 'dark') ||
+          (bgName === 'default' &&
+            theme === 'system' &&
             window.matchMedia &&
             window.matchMedia('(prefers-color-scheme: dark)').matches);
         root.dataset.theme = dark ? 'dark' : 'light';
