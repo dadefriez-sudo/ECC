@@ -8591,8 +8591,8 @@ body[data-assistant='on'] .conflict-list {
   --text: #f3e8ea; --muted: #b79aa0;
 }
 :root[data-theme='dark'][data-bg='plum'] {
-  --bg: #140d1f; --surface: #1d1430; --surface-2: #281c42; --border: #3a2a5c; --track: #3a2a5c;
-  --text: #eee8f7; --muted: #a99bc4;
+  --bg: #0d0b17; --surface: #151226; --surface-2: #1e1a36; --border: #2e2951; --track: #2e2951;
+  --text: #ece9f6; --muted: #9f9bbd;
 }
 :root[data-theme='dark'][data-bg='forest'] {
   --bg: #0a1812; --surface: #10241b; --surface-2: #17332a; --border: #25453a; --track: #25453a;
@@ -8656,18 +8656,17 @@ body[data-assistant='on'] .conflict-list {
   opacity: 0.85;
   display: grid;
 }
-.scheme-groups {
+.scheme-columns {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.scheme-column {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
-}
-.scheme-group-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin: 0 0 6px;
 }
 
 /* --- Home: Tracker layout ------------------------------------------------ */

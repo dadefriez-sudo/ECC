@@ -116,7 +116,7 @@ const COLOR_SCHEMES = [
   { value: 'seafoam', label: 'Seafoam', swatch: '#4e938c' },
 ];
 
-// The color themes grouped by family, so similar colors sit together.
+// The color themes by family, one column each, so similar colors sit together.
 const SCHEME_GROUPS = [
   { label: 'Gold & orange', values: ['default', 'apricot', 'sunset', 'clay'] },
   { label: 'Red & pink', values: ['crimson', 'wine', 'rose', 'berry', 'blush'] },
@@ -2294,33 +2294,29 @@ function CloudSyncStatus({ cloudSyncOn }) {
 // One row of colour-scheme swatches. Shared by the standard and pastel rows
 // so the lock/selection behaviour can't drift between them.
 function SchemeRow({ schemes, groups, isPro, current, onPick }) {
-  const dots = (list) => (
-    <div className="scheme-grid">
-      {list.map((s) => {
-        const locked = !isPro && s.value !== 'default';
-        const on = current === s.value;
-        return (
-          <button
-            key={s.value}
-            className={`scheme-dot${on ? ' scheme-dot--on' : ''}${locked ? ' scheme-dot--locked' : ''}`}
-            style={{ background: s.swatch }}
-            onClick={() => onPick(s.value)}
-            title={s.label}
-            aria-label={s.label}
-          >
-            {locked && <LockIcon />}
-          </button>
-        );
-      })}
-    </div>
-  );
-  if (!groups) return dots(schemes);
+  const dot = (s) => {
+    const locked = !isPro && s.value !== 'default';
+    const on = current === s.value;
+    return (
+      <button
+        key={s.value}
+        className={`scheme-dot${on ? ' scheme-dot--on' : ''}${locked ? ' scheme-dot--locked' : ''}`}
+        style={{ background: s.swatch }}
+        onClick={() => onPick(s.value)}
+        title={s.label}
+        aria-label={s.label}
+      >
+        {locked && <LockIcon />}
+      </button>
+    );
+  };
+  if (!groups) return <div className="scheme-grid">{schemes.map(dot)}</div>;
+  // One block, one column per color family.
   return (
-    <div className="scheme-groups">
+    <div className="scheme-columns">
       {groups.map((g) => (
-        <div key={g.label}>
-          <p className="scheme-group-label">{g.label}</p>
-          {dots(g.schemes)}
+        <div className="scheme-column" key={g.label} aria-label={g.label}>
+          {g.schemes.map(dot)}
         </div>
       ))}
     </div>
