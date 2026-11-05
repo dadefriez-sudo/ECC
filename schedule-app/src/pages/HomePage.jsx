@@ -1015,7 +1015,7 @@ export default function HomePage() {
             Pick a layout{isPro ? ', drag blocks to reorder, or toggle them off to hide' : ''}. Tap Done above when finished.
           </p>
           <p className="muted small">Home layout</p>
-          <div className="seg seg--full">
+          <div className="seg seg--wrap">
             {HOME_STYLES.map((o) => (
               <button
                 key={o.value}

@@ -30,7 +30,7 @@
   --warn-ink: #9a5b00;
   --shadow: 0 1px 3px rgba(20, 30, 45, 0.08), 0 4px 16px rgba(20, 30, 45, 0.06);
   --radius: 16px;
-  --tabbar-h: 62px;
+  --tabbar-h: 48px;
   --maxw: 520px;
   /* Prefer the browser-native env() value; Android's WebView only recognizes
      it from Chromium 140 onward (https://issues.chromium.org/issues/40699457),
@@ -2295,6 +2295,19 @@ textarea {
   display: flex;
   width: 100%;
   margin-top: 8px;
+}
+.seg--wrap {
+  /* Five or more choices (the Home layouts): rows of three, so no label runs off the edge. */
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  width: 100%;
+  margin-top: 8px;
+}
+.seg--wrap .seg-btn {
+  padding-left: 6px;
+  padding-right: 6px;
+  white-space: nowrap;
 }
 .seg-btn {
   border: none;

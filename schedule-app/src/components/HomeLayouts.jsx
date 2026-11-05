@@ -334,7 +334,7 @@ export function TrackerView({ h }) {
                   <span className="tracker-person-body">
                     <strong>{c.name}</strong>
                     <span className="muted small">
-                      {c.followUp?.date ? `Follow up ${formatShortDate(c.followUp.date)}` : c.lastContacted ? `Last contact ${daysAgoLabel(c.lastContacted)}` : 'Not contacted yet'}
+                      {c.followUp?.date ? `Follow up ${formatShortDate(c.followUp.date)}` : c.lastContacted ? `Last contact ${daysAgoLabel(c.lastContacted).toLowerCase()}` : 'Not contacted yet'}
                     </span>
                   </span>
                   <Icon name="chevronRight" size={16} />

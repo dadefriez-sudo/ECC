@@ -766,7 +766,7 @@ export default function MorePage() {
           via the pencil icon in its header.
         </p>
         <p className="muted small">Home layout</p>
-        <div className="seg seg--full">
+        <div className="seg seg--wrap">
           {[
             { value: 'today', label: 'Today' },
             { value: 'tracker', label: 'Tracker' },
