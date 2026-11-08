@@ -23,6 +23,7 @@
 export const LOCAL_ONLY_SETTINGS = [
   'phoneCalendarIds',
   'phoneCalendarDays',
+  'mapRememberTiles',
   'canvasFeedUrl',
   'canvasLastSync',
   'canvasLastError',

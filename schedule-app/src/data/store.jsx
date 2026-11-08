@@ -45,6 +45,7 @@ const ENTITLEMENT_SETTINGS = ['isPro', 'isLifetime', 'isBetaTester', 'googleConn
 const DEVICE_SETTINGS = [
   'phoneCalendarIds',
   'phoneCalendarDays',
+  'mapRememberTiles',
   'canvasFeedUrl',
   'canvasLastSync',
   'canvasLastError',

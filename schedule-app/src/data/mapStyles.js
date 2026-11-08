@@ -19,20 +19,28 @@
 // white map inside a dark-themed app is the single most jarring thing about
 // the map page, and matching it automatically is what most people want
 // without having to think about it.
+//
+// `cache: true` styles are kept on the phone as you look at them (see tileCache.js), so
+// those places still show with no signal. Satellite and Hybrid are not: the imagery is
+// many times larger per tile, and always needs a connection. `overlays` are extra tile
+// layers drawn on top of the base (the Hybrid style's roads and place names).
 export const MAP_STYLES = {
   standard: {
+    cache: true,
     label: 'Standard',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors',
   },
   positron: {
+    cache: true,
     label: 'Light',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 16,
     attribution: 'Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
   },
   dark: {
+    cache: true,
     label: 'Dark',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 16,
@@ -43,6 +51,16 @@ export const MAP_STYLES = {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 19,
     attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
+  },
+  hybrid: {
+    label: 'Hybrid',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 19,
+    overlays: [
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    ],
+    attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics, &copy; OpenStreetMap contributors',
   },
 };
 

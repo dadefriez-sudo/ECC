@@ -12,6 +12,7 @@ import { confirmTick, selectTick } from '../data/haptics.js';
 import { geocodeAddress } from '../data/geocode.js';
 import { directionsTarget, openMaps } from '../data/maps.js';
 import { resolveMapStyle, MAP_STYLE_OPTIONS } from '../data/mapStyles.js';
+import { cachedTileLayer } from '../data/tileCache.js';
 import { eventPinIdentity } from '../data/pinLabel.js';
 import { ROUTE_PLANNER_ENABLED } from '../data/routePlannerConfig.js';
 import { geoAvailable, getCurrentPosition, isLocationGranted, watchPosition } from '../data/geo.js';
@@ -78,6 +79,7 @@ export default function MapPage() {
   const isPro = !!state.settings?.isPro;
   const emojiSizePct = state.settings?.mapEmojiSize ?? 100;
   const mapStyleSetting = state.settings?.mapStyle || 'auto';
+  const rememberTiles = state.settings?.mapRememberTiles ?? true;
   const showPinNames = state.settings?.mapShowPinNames ?? false;
   // Whether the app is painting its dark palette right now — App.jsx has
   // already resolved system-vs-explicit onto the root element, so read that
@@ -448,7 +450,7 @@ export default function MapPage() {
     const map = mapRef.current;
     if (!map) return;
     const style = resolveMapStyle(mapStyleSetting, isDarkTheme);
-    const layer = L.tileLayer(style.url, {
+    const tileOptions = {
       maxZoom: style.maxZoom,
       attribution: style.attribution,
       // Keep loading tiles while a pan is under way (Leaflet waits for the
@@ -458,17 +460,26 @@ export default function MapPage() {
       updateWhenIdle: false,
       updateWhenZooming: false,
       keepBuffer: 4,
-    });
+    };
+    const keep = rememberTiles && style.cache;
+    const layer = keep
+      ? cachedTileLayer(L, style.url, { ...tileOptions, zIndex: 1 })
+      : L.tileLayer(style.url, { ...tileOptions, zIndex: 1 });
     layer.addTo(map);
+    // Road and place names over the photo (Hybrid): extra layers above the base, no attribution of their own.
+    const overlays = (style.overlays || []).map((url, i) =>
+      L.tileLayer(url, { maxZoom: style.maxZoom, updateWhenIdle: false, updateWhenZooming: false, keepBuffer: 4, zIndex: 2 + i }).addTo(map)
+    );
     // Behind the pin layers, which were added first and would otherwise end
     // up underneath a tile layer added later.
     layer.bringToBack();
     baseLayerRef.current = layer;
     return () => {
       map.removeLayer(layer);
+      overlays.forEach((o) => map.removeLayer(o));
       baseLayerRef.current = null;
     };
-  }, [mapStyleSetting, isDarkTheme]);
+  }, [mapStyleSetting, isDarkTheme, rememberTiles]);
 
   // Render / re-render pin markers whenever pins or the selection change.
   // Pins that would overlap on screen at this zoom merge into a numbered

@@ -49,6 +49,7 @@ import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
 import { validateFeedUrl } from '../data/canvasFeed.js';
 import { syncCanvas, recolorCanvasCourse } from '../data/canvasSync.js';
 import { BACKGROUNDS, activeBackground } from '../data/backgrounds.js';
+import { tileCacheStats, clearTileCache } from '../data/tileCache.js';
 import { phoneContactsAvailable, phoneCalendarAvailable } from '../data/nativeBridge.js';
 import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
@@ -1512,6 +1513,11 @@ export default function MorePage() {
           "Match app theme" uses a light or dark basemap to match whichever the app is showing.
           A bright white map inside a dark app is the thing most worth avoiding here.
         </p>
+        <SavedMapsRow
+          on={s.mapRememberTiles ?? true}
+          onToggle={() => actions.setSettings({ mapRememberTiles: !(s.mapRememberTiles ?? true) })}
+          showToast={showToast}
+        />
         <div className="section-head">
           <span>Show contact places</span>
           <button
@@ -2354,6 +2360,54 @@ function BackgroundRow({ settings, isPro, onPick }) {
         );
       })}
     </div>
+  );
+}
+
+// Settings → Map: keep the map pictures you look at, so those places still show offline.
+function SavedMapsRow({ on, onToggle, showToast }) {
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    let live = true;
+    tileCacheStats().then((r) => live && setStats(r));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return (
+    <>
+      <div className="section-head">
+        <span>Remember viewed map areas</span>
+        <button
+          className={`toggle${on ? ' toggle--on' : ''}`}
+          role="switch"
+          aria-label="Remember viewed map areas"
+          aria-checked={on}
+          onClick={onToggle}
+        >
+          <span className="toggle-knob" />
+        </button>
+      </div>
+      <p className="muted small">
+        Keeps the map pictures you look at (Standard, Light and Dark), so those places still show with no
+        signal. Places you haven't opened yet won't. Satellite and Hybrid always need a connection.
+      </p>
+      <div className="section-head">
+        <span className="muted small">
+          {stats ? (stats.tiles ? `Saved: ${stats.tiles} pictures, about ${Math.max(1, stats.approxMB)} MB` : 'Nothing saved yet') : ' '}
+        </span>
+        <button
+          className="btn btn-sm btn-ghost"
+          disabled={!stats?.tiles}
+          onClick={async () => {
+            await clearTileCache();
+            setStats(await tileCacheStats());
+            showToast('Saved maps cleared');
+          }}
+        >
+          Clear saved maps
+        </button>
+      </div>
+    </>
   );
 }
 
