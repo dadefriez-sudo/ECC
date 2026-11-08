@@ -74,7 +74,6 @@ const HOME_STYLES = [
   { value: 'tracker', label: 'Tracker' },
   { value: 'bento', label: 'Bento' },
   { value: 'calm', label: 'Calm' },
-  { value: 'classic', label: 'Classic' },
 ];
 const TASK_REMINDER_OFFSETS = [
   { mins: 15, label: '15 min before' },
@@ -590,7 +589,8 @@ export default function HomePage() {
   // --- Layouts (Settings -> Home screen layout) ---
   // Bento is Pro; without Pro it quietly falls back to Today, same as the
   // Goals Streak layout falls back to Calm.
-  const savedHomeStyle = state.settings?.homeStyle || 'today';
+  // The old Classic stack is gone; anyone still on it gets Today.
+  const savedHomeStyle = state.settings?.homeStyle === 'classic' ? 'today' : state.settings?.homeStyle || 'today';
   const homeStyle = savedHomeStyle === 'bento' && !isPro ? 'today' : savedHomeStyle;
   const openItem = (r) => {
     if (r.kind === 'goal') navigate('/goals', { state: { openGoalId: r.goalId } });

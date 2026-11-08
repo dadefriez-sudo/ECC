@@ -164,7 +164,7 @@ const SETTINGS_INDEX = [
     label: 'Appearance',
     groups: [
       { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
-      { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style home layout today bento calm classic' },
+      { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style home layout today tracker bento calm' },
       { id: 'g23', title: 'Weekly review', keywords: 'weekly review week summary sunday recap report card reminder' },
       { id: 'g22', title: 'Haptic feedback', keywords: 'haptic haptics vibration vibrate buzz feedback tick off quiet' },
       { id: 'g20', title: 'Goals layout', keywords: 'goals habits layout calm streak classic day streak style rest day' },
@@ -799,11 +799,10 @@ export default function MorePage() {
             { value: 'tracker', label: 'Tracker' },
             { value: 'bento', label: 'Bento', pro: true },
             { value: 'calm', label: 'Calm' },
-            { value: 'classic', label: 'Classic' },
           ].map((o) => (
             <button
               key={o.value}
-              className={`seg-btn${(s.homeStyle || 'today') === o.value ? ' seg-btn--on' : ''}`}
+              className={`seg-btn${(s.homeStyle === 'classic' ? 'today' : s.homeStyle || 'today') === o.value ? ' seg-btn--on' : ''}`}
               onClick={() => (o.pro && !isPro ? navigate('/pricing') : actions.setSettings({ homeStyle: o.value }))}
             >
               {o.label} {o.pro && !isPro && <Icon name="lock" size={13} />}
@@ -811,9 +810,7 @@ export default function MorePage() {
           ))}
         </div>
         <p className="muted small">
-          {(s.homeStyle || 'today') === 'classic'
-            ? 'Classic: the original stack of cards.'
-            : (s.homeStyle || 'today') === 'bento' && isPro
+          {(s.homeStyle || 'today') === 'bento' && isPro
             ? 'Bento: a tile grid with your goals ring, what is next, and the week at a glance.'
             : (s.homeStyle || 'today') === 'tracker'
             ? 'Tracker: a grid of your goals with counts and + / −, then the people to follow up, then the rest of your day.'

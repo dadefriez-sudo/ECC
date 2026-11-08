@@ -8809,3 +8809,17 @@ body[data-assistant='on'] .conflict-list {
   flex-direction: column;
   min-width: 0;
 }
+
+/* Calm (Home and Goals): Quicksand set outright, with the weight capped at 700 (the
+   heaviest the bundled font has) so no heavier face is faked over it. */
+:is(.calm-home, .calm, .calm-item, .calm-sec) {
+  font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+:is(.calm-home, .calm, .calm-item, .calm-sec) :is(*, button, input, textarea) {
+  font-family: inherit;
+}
+.calm-date,
+.calm-home .calm-date {
+  font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+}
