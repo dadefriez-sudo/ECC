@@ -379,7 +379,7 @@ export default function MorePage() {
           email: c.email,
           address: c.address,
           photo: '',
-          statusId: state.statuses[0]?.id || '',
+          statusId: '', // no group unless the person picks one
           tags: [],
           notes: c.notes,
           lastContacted: '',
@@ -2201,7 +2201,7 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
           email: c.email,
           address: c.address,
           photo: '',
-          statusId: state.statuses[0]?.id || '',
+          statusId: '', // no group unless the person picks one
           tags: [],
           notes: c.notes,
           lastContacted: '',

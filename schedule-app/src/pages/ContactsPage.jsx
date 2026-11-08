@@ -257,7 +257,7 @@ export default function ContactsPage() {
       addressLat: null,
       addressLng: null,
       photo: '',
-      statusId: state.statuses[0]?.id || '',
+      statusId: '', // no group unless the person picks one
       tagsText: '',
       notes: '',
       favorite: false,
@@ -350,7 +350,7 @@ export default function ContactsPage() {
       email: c.email,
       address: c.address,
       photo: '',
-      statusId: state.statuses[0]?.id || '',
+      statusId: '', // no group unless the person picks one
       tags: [],
       notes: c.notes || '',
       lastContacted: '',
