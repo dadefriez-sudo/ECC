@@ -30,7 +30,7 @@
   --warn-ink: #9a5b00;
   --shadow: 0 1px 3px rgba(20, 30, 45, 0.08), 0 4px 16px rgba(20, 30, 45, 0.06);
   --radius: 16px;
-  --tabbar-h: 48px;
+  --tabbar-h: 42px;
   --maxw: 520px;
   /* Prefer the browser-native env() value; Android's WebView only recognizes
      it from Chromium 140 onward (https://issues.chromium.org/issues/40699457),
@@ -793,8 +793,8 @@ textarea {
   color: var(--accent);
 }
 .tab svg {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
 }
 .tab svg {
   opacity: 0.9;
@@ -5372,7 +5372,7 @@ textarea {
   top: calc(50% - 2px);
   left: 50%;
   width: 44px;
-  height: 34px;
+  height: 30px;
   border-radius: 11px;
   background: var(--accent-soft);
   transform: translate(-50%, -50%) scale(0.55);
