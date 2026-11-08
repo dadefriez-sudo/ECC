@@ -20,7 +20,7 @@
 
 **Prompt used:**
 
-> I'm a college student in Rexburg, Idaho, selling Keystone Pro (a one-time upgrade with extra features and customization for a planner/goals/people app built for returned missionaries) to returned missionaries and college students for $[PRICE]. Using warm outreach (texting people I know), give me the 3 exact steps to get more customers in the next 7 days with almost no money, plus one message or post I can copy. No jargon.
+> I'm a college student in Rexburg, Idaho, selling Keystone Pro (a one-time upgrade with extra features and customization for a planner/goals/people app built for returned missionaries) to returned missionaries and college students for $9.99. Using warm outreach (texting people I know), give me the 3 exact steps to get more customers in the next 7 days with almost no money, plus one message or post I can copy. No jargon.
 
 **3 steps:**
 
@@ -30,7 +30,7 @@
 
 **Example message to copy:**
 
-> Hey [Name]! You said you wanted to try Keystone, the planner I built for returned missionaries (goals, people to follow up with, calendar, widgets, all offline, no ads). Pro is a one-time $[PRICE] with no subscription, and it includes everything I add later. Want me to send you the link to try it? If you like it, you can upgrade this week, and I'm happy to show you around first.
+> Hey [Name]! You said you wanted to try Keystone, the planner I built for returned missionaries (goals, people to follow up with, calendar, widgets, all offline, no ads). Pro is a one-time $9.99 with no subscription, and it includes everything I add later. Want me to send you the link to try it? If you like it, you can upgrade this week, and I'm happy to show you around first.
 
 ## Part 3 — Materials and offer
 
@@ -40,4 +40,4 @@
 
 **Draft offer:**
 
-> I help returned missionaries and college students keep their goals, people and schedule in one place by giving them Keystone Pro, with extra features and customization, for a one-time $[PRICE]. To get started, reply "yes" and I'll text you the download link.
+> I help returned missionaries and college students keep their goals, people and schedule in one place by giving them Keystone Pro, with extra features and customization, for a one-time $9.99. To get started, reply "yes" and I'll text you the download link.
