@@ -36,7 +36,12 @@
 
 **Photos to save (3–5):** home-screen widgets, Planner, Goals rings, a Pro colour theme or background, the People follow-up view.
 
-**First 10 names:** 1. ______ 2. ______ 3. ______ 4. ______ 5. ______ 6. ______ 7. ______ 8. ______ 9. ______ 10. ______ (start with the people already interested)
+**First 10 names:** (the survey was anonymous, so these come from people I know directly)
+
+1. The people I've talked to who said they want to try or buy: ______ ______ ______
+2. Returned-missionary friends and my mission group chat: ______ ______
+3. Ward and YSA friends who use a planner or goals app: ______ ______
+4. BYU-Idaho classmates and roommates: ______ ______
 
 **Draft offer:**
 
