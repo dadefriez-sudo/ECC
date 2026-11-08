@@ -6,11 +6,11 @@
 
 | Step | Count |
 |---|---|
-| Seen (people who saw or heard your offer) | ~25 |
-| Talked (replied, messaged, asked a question) | ~5 (several interested in trying and buying) |
-| Offered (got a specific price and the ask) | ~0 |
+| Seen (people who saw or heard your offer) | 25 |
+| Talked (replied, messaged, asked a question) | ~12 (several interested in trying and buying) |
+| Offered (got a specific price and the ask) | 0 |
 | Bought (paid you) | 0 |
-| Revenue ($) and hours spent | $0 · ~10 hours (mostly building the app and a survey) |
+| Revenue ($) and hours spent | $0 · ___ hours spent selling |
 
 **Where do most people drop off?** After they say they're interested: I haven't given them a specific price and a clear ask, so nobody has bought yet.
 
