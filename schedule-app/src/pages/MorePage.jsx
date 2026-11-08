@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { useAuth, useUser, useClerk, UserButton } from '@clerk/clerk-react';
 import { useStore, useActions } from '../data/store.jsx';
 import Modal from '../components/Modal.jsx';
@@ -223,6 +224,13 @@ const SETTINGS_INDEX = [
 export default function MorePage() {
   const { state } = useStore();
   const actions = useActions();
+  const [appVersion, setAppVersion] = useState('');
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    CapApp.getInfo()
+      .then((info) => setAppVersion(`${info.version} (${info.build})`))
+      .catch(() => {});
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const [editingStatus, setEditingStatus] = useState(null);
@@ -1792,7 +1800,7 @@ export default function MorePage() {
         <p className="muted center-pad">No settings match "{query.trim()}".</p>
       )}
 
-      {!searching && <p className="muted small center-pad">Keystone · works offline · v0.2</p>}
+      {!searching && <p className="muted small center-pad">Keystone · works offline{appVersion ? ` · v${appVersion}` : ''}</p>}
 
       {/* Group editor */}
       <Modal
