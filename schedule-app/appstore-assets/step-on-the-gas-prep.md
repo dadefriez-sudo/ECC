@@ -46,3 +46,17 @@
 **Draft offer:**
 
 > I help returned missionaries and college students keep their goals, people and schedule in one place by giving them Keystone Pro, with extra features and customization, for a one-time $9.99. To get started, reply "yes" and I'll text you the download link.
+
+## Three texts I can send
+
+**1. To people who already said they're interested**
+
+> Hey [Name]! You mentioned you wanted to try Keystone. It's ready. Pro is a one-time $9.99, no subscription, and it includes everything I add later. Want me to send you the link? If you'd like, I can show you around first.
+
+**2. To returned-missionary friends (cold-ish, personal)**
+
+> Hey [Name]! I built a planner app for returned missionaries: goals, a list of people to follow up with, a calendar, and home-screen widgets, all offline with no ads. Pro is a one-time $9.99. Would you try it and tell me what you think? I'll send the link if you say yes.
+
+**3. To classmates and roommates (short and casual)**
+
+> Hey [Name]! I made a planner/goals app for my business class. It keeps your classes, goals and people in one place. Pro is $9.99 one time, and the free version works too. Want to try it? Reply "yes" and I'll text you the link.
