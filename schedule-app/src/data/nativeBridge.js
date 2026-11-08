@@ -3,6 +3,7 @@
 // and taps on the widget. Everywhere else it quietly does nothing.
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { todayISO, formatTime, timeToMinutes, expandEventOnDay, weekKey } from './helpers.js';
+import { widgetGoals, widgetRings, widgetWeek, widgetPeople, widgetMonth, widgetNext } from './widgetData.js';
 
 const available = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
 const Bridge = available ? registerPlugin('KeystoneBridge') : null;
@@ -22,7 +23,7 @@ export function buildWidgetPayload(state, now = new Date()) {
       if (occ.done) continue;
       const start = timeToMinutes(occ.start);
       if (start + 30 < nowMin) continue; // already well under way or over
-      rows.push({ sort: start, t: formatTime(occ.start), n: occ.title || 'Event', k: 'event', i: occ.id });
+      rows.push({ sort: start, t: formatTime(occ.start), n: occ.title || 'Event', k: 'event', i: occ.id, loc: occ.location || '' });
     }
   }
   for (const t of state.tasks || []) {
@@ -53,6 +54,13 @@ export function buildWidgetPayload(state, now = new Date()) {
     day: today,
     items: rows.slice(0, MAX_ROWS).map(({ t, n, k, i }) => ({ t, n, k, i })),
     more: Math.max(0, rows.length - MAX_ROWS),
+    // For the other widgets (see widgetData.js).
+    next: widgetNext(rows, now),
+    goals: widgetGoals(state, now),
+    ...widgetRings(state, now),
+    week: widgetWeek(state, now),
+    people: widgetPeople(state, now),
+    month: widgetMonth(state, now),
   };
 }
 
@@ -130,5 +138,17 @@ export async function openCanvasLink(url) {
     return true;
   } catch {
     return false;
+  }
+}
+
+// Goal taps made on the widget while the app was closed: [{ i: goalId, d: amount }].
+// Reading them clears them, so each one is applied once.
+export async function takeWidgetLogs() {
+  if (!Bridge) return [];
+  try {
+    const { logs } = await Bridge.takeWidgetLogs();
+    return Array.isArray(logs) ? logs : [];
+  } catch {
+    return [];
   }
 }

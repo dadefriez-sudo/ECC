@@ -50,11 +50,14 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li>
-          <b>Home screen widget (Android).</b> The widget shows the next few things in your day.
-          To draw it, Keystone saves a short summary (the titles and times of those items) in
-          the app's private storage. Those titles appear on your home screen, so anyone who can
-          see your unlocked screen can read them. Remove the widget if you would rather they did
-          not.
+          <b>Home screen widgets (Android).</b> Keystone&apos;s widgets show the next things in your
+          day, your goals and streak, the week and month, and the people you planned to follow up
+          with. To draw them, Keystone saves a short summary (item titles and times, goal names
+          and progress, and the names and phone numbers of those people) in the app&apos;s private
+          storage on your device. Those details appear on your home screen, so anyone who can see
+          your unlocked screen can read them. Remove the widgets if you would rather they did not.
+          Tapping a call or message button on a widget opens your phone&apos;s own dialer or
+          messaging app; Keystone does not see or store the call or message.
         </li>
         <li>
           <b>Reminders and notification buttons.</b> Reminders are scheduled on your device and

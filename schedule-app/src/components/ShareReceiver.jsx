@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Modal from './Modal.jsx';
 import { useStore, useActions } from '../data/store.jsx';
 import { useToast } from '../data/toast.jsx';
-import { listenForNativeEvents } from '../data/nativeBridge.js';
+import { listenForNativeEvents, takeWidgetLogs } from '../data/nativeBridge.js';
+import { App as CapApp } from '@capacitor/app';
+import { goalKey } from '../data/helpers.js';
 import { geocodeAddress } from '../data/geocode.js';
 import { todayISO } from '../data/helpers.js';
 
@@ -27,6 +29,17 @@ export default function ShareReceiver() {
         },
         onAction: (action, d) => {
           if (action === 'newTask') navigate('/tasks', { state: { quickNewTask: true } });
+          else if (action === 'newEvent') navigate('/planner', { state: { quickNewEvent: true } });
+          else if (action === 'newNote') navigate('/', { state: { quickNewNote: true } });
+          else if (action === 'newPerson') navigate('/contacts', { state: { quickNewContact: true } });
+          else if (action === 'openGoals') navigate('/goals');
+          else if (action === 'openPeople') navigate('/contacts');
+          else if (action === 'openPlanner') {
+            // id: a date to show in Day view, "month" for the month, empty for the planner as it was.
+            if (d?.id === 'month') navigate('/planner', { state: { openMonth: true } });
+            else if (d?.id) navigate('/planner', { state: { openDate: d.id } });
+            else navigate('/planner');
+          } else if (action === 'openContact' && d?.id) navigate(`/contacts/${d.id}`);
           else if (action === 'openItem' && d?.id) {
             // Same destinations Home's own rows use.
             if (d.kind === 'goal') navigate('/goals', { state: { openGoalId: d.id } });
@@ -38,6 +51,36 @@ export default function ShareReceiver() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
+
+  // Goal taps made on the widget while the app was closed: apply each once, now and
+  // whenever the app comes back to the front.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  useEffect(() => {
+    let live = true;
+    const apply = async () => {
+      const logs = await takeWidgetLogs();
+      if (!live || !logs.length) return;
+      const byGoal = new Map();
+      for (const l of logs) byGoal.set(l.i, (byGoal.get(l.i) || 0) + (Number(l.d) || 0));
+      for (const [id, delta] of byGoal) {
+        const g = stateRef.current.goals.find((x) => x.id === id);
+        if (!g) continue;
+        const key = goalKey(g.period || 'weekly', new Date());
+        actions.setGoalProgress(id, key, Math.max(0, (g.progress?.[key] || 0) + delta));
+      }
+    };
+    apply();
+    let handle;
+    CapApp.addListener('appStateChange', ({ isActive }) => isActive && apply())
+      .then((h) => (live ? (handle = h) : h.remove()))
+      .catch(() => {});
+    return () => {
+      live = false;
+      handle?.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!shared) return null;
   const firstLine = (shared.subject || shared.text.split('\n')[0]).slice(0, 120);

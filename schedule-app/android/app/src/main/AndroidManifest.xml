@@ -36,7 +36,8 @@
         <!-- Home screen widget: today's next items and a + to add a task. -->
         <receiver
             android:name=".KeystoneWidgetProvider"
-            android:exported="false">
+            android:exported="false"
+            android:label="@string/widget_label_today">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -44,6 +45,119 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/keystone_widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".KeystoneQuickAddBarWidget"
+            android:exported="false"
+            android:label="@string/widget_label_quickadd_bar">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_quickadd_bar_info" />
+        </receiver>
+
+        <receiver
+            android:name=".KeystoneQuickAddDuoWidget"
+            android:exported="false"
+            android:label="@string/widget_label_quickadd_duo">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_quickadd_duo_info" />
+        </receiver>
+
+        <receiver
+            android:name=".KeystoneQuickEventWidget"
+            android:exported="false"
+            android:label="@string/widget_label_quickevent">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_quickevent_info" />
+        </receiver>
+
+        <receiver
+            android:name=".KeystoneNextUpWidget"
+            android:exported="false"
+            android:label="@string/widget_label_nextup">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_nextup_info" />
+        </receiver>
+
+        <receiver
+            android:name=".KeystoneGoalLogWidget"
+            android:exported="false"
+            android:label="@string/widget_label_goallog">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_goallog_info" />
+        </receiver>
+
+        <receiver
+            android:name=".KeystoneStreakWidget"
+            android:exported="false"
+            android:label="@string/widget_label_streak">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_streak_info" />
+        </receiver>
+
+        <receiver
+            android:name=".KeystoneWeekWidget"
+            android:exported="false"
+            android:label="@string/widget_label_week">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_week_info" />
+        </receiver>
+
+        <receiver
+            android:name=".KeystonePeopleWidget"
+            android:exported="false"
+            android:label="@string/widget_label_people">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_people_info" />
+        </receiver>
+
+        <receiver
+            android:name=".KeystoneMonthWidget"
+            android:exported="false"
+            android:label="@string/widget_label_month">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_month_info" />
+        </receiver>
+
+        <!-- A goal's + on the Goals widget: recorded for the app, no screen opens. -->
+        <receiver
+            android:name=".WidgetActionReceiver"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

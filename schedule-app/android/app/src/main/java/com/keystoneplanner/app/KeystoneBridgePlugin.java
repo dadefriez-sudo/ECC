@@ -234,6 +234,18 @@ public class KeystoneBridgePlugin extends Plugin {
 
     // --- The phone's calendar (read only) -------------------------------------
 
+    /** Goal taps made on the home-screen widget since the app last looked; clears them. */
+    @PluginMethod
+    public void takeWidgetLogs(PluginCall call) {
+        JSObject result = new JSObject();
+        try {
+            result.put("logs", new JSArray(WidgetKit.takeLogs(getContext())));
+        } catch (Exception e) {
+            result.put("logs", new JSArray());
+        }
+        call.resolve(result);
+    }
+
     /** Which calendars are on the phone, so the person can choose what to import. */
     @PluginMethod
     public void readCalendars(PluginCall call) {

@@ -356,6 +356,21 @@ export default function PlannerPage() {
       window.history.replaceState({}, '');
       return;
     }
+    // From the home screen widgets: a date to show in Day view, or the month.
+    if (location.state?.openDate) {
+      manualNavRef.current = true;
+      setCursor(location.state.openDate);
+      setMode('day');
+      window.history.replaceState({}, '');
+      return;
+    }
+    if (location.state?.openMonth) {
+      manualNavRef.current = true;
+      setCursor(todayISO());
+      setMode('month');
+      window.history.replaceState({}, '');
+      return;
+    }
     if (location.state?.openEventId) {
       const iso = location.state.openEventDate || todayISO();
       const occ = occurrencesFor(state.events, iso).find((o) => o.id === location.state.openEventId);

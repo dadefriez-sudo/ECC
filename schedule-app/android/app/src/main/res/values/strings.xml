@@ -5,4 +5,23 @@
     <string name="package_name">com.keystoneplanner.app</string>
     <string name="custom_url_scheme">com.keystoneplanner.app</string>
     <string name="widget_description">The next things on your day, with a quick way to add a task.</string>
+    <string name="widget_label_today">Keystone Today</string>
+    <string name="widget_label_quickadd_bar">Keystone Quick Add</string>
+    <string name="widget_label_quickadd_duo">Keystone Quick Add (small)</string>
+    <string name="widget_label_quickevent">Keystone New Event</string>
+    <string name="widget_label_nextup">Keystone Next Up</string>
+    <string name="widget_label_goallog">Keystone Goals</string>
+    <string name="widget_label_streak">Keystone Streak</string>
+    <string name="widget_label_week">Keystone Week</string>
+    <string name="widget_label_people">Keystone People</string>
+    <string name="widget_label_month">Keystone Month</string>
+    <string name="widget_desc_quickadd_bar">Add an event, task, note or person in one tap.</string>
+    <string name="widget_desc_quickadd_duo">Two buttons: new event and new task.</string>
+    <string name="widget_desc_quickevent">One tap to start a new event.</string>
+    <string name="widget_desc_nextup">What is next, and how long until it.</string>
+    <string name="widget_desc_goallog">Tap + to log a goal without opening the app.</string>
+    <string name="widget_desc_streak">Today and weekly progress, and your streak.</string>
+    <string name="widget_desc_week">The week at a glance, with a dot for each event.</string>
+    <string name="widget_desc_people">People you are due to follow up, with call and message buttons.</string>
+    <string name="widget_desc_month">The month, with the next things on your day.</string>
 </resources>

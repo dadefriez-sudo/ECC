@@ -43,6 +43,8 @@ public class KeystoneWidgetProvider extends AppWidgetProvider {
         for (int id : ids) {
             manager.updateAppWidget(id, build(context));
         }
+        // The other Keystone widgets read the same summary.
+        WidgetKit.refreshAll(context);
     }
 
     @Override
