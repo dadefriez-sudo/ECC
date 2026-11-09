@@ -23,7 +23,7 @@ export function makeSeed() {
       statusId: 'st_close',
       tags: ['family'],
       lastContacted: toISODate(addDays(today, -2)),
-      notes: 'Sister. Loves hiking — plan a trail day this month.',
+      notes: 'Old friend. Loves hiking — plan a trail day this month.',
       createdAt: today,
     },
     {
@@ -89,7 +89,7 @@ export function makeSeed() {
       statusId: 'st_close',
       tags: ['family'],
       lastContacted: toISODate(addDays(today, -1)),
-      notes: "Sister-in-law. Hosting Thanksgiving this year.",
+      notes: 'Family friend. Hosting Thanksgiving this year.',
       createdAt: today,
     },
     {
