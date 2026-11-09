@@ -177,10 +177,10 @@ const SETTINGS_INDEX = [
   {
     label: 'Calendar',
     groups: [
+      { id: 'g24', title: 'Canvas calendar', keywords: 'canvas school class classes assignment assignments homework due dates student course lms instructure university college feed' },
       { id: 'g8', title: 'Calendar settings', keywords: 'day start end hour zoom week 24 templates duration reminder default' },
       { id: 'g15', title: 'Event types', keywords: 'call text in person travel email other category colour color custom add create new reorder remove drag' },
       { id: 'g3', title: 'Calendar import / export', keywords: 'ics subscribe google apple outlook download' },
-      { id: 'g24', title: 'Canvas calendar', keywords: 'canvas school class classes assignment assignments homework due dates student course lms instructure university college feed' },
     ],
   },
   {
@@ -1023,6 +1023,158 @@ export default function MorePage() {
       </SettingsGroup>
 
       <SettingsSection label="Calendar" hidden={!sectionShown('Calendar')} />
+      <SettingsGroup {...grp('g24')} featured>
+        <div className="canvas-head">
+          <span className="canvas-head-icon" aria-hidden="true">
+            <Icon name="calendar" size={20} />
+          </span>
+          <span className="canvas-head-text">
+            <span className="detail-label">Canvas calendar</span>
+            <span className="canvas-head-sub">
+              {!isPro
+                ? 'Pro · see assignments and due dates here'
+                : s.canvasFeedUrl
+                  ? s.canvasLastSync
+                    ? `Connected · synced ${describeSyncedAt(new Date(s.canvasLastSync).getTime())}`
+                    : 'Connected · not synced yet'
+                  : 'Link your school calendar'}
+            </span>
+          </span>
+          <span className={`canvas-head-pill${s.canvasFeedUrl ? ' canvas-head-pill--on' : ''}`}>
+            {!isPro ? 'Pro' : s.canvasFeedUrl ? 'Connected' : 'Set up'}
+          </span>
+        </div>
+        <p className="muted small">
+          Show your assignments and class dates from Canvas on your Keystone calendar.
+        </p>
+        <p className="muted small">
+          <strong>How it works:</strong> Canvas gives you a private calendar link. It already holds the
+          key to your calendar, so Keystone doesn't need your school login or password, and you sign in
+          to Canvas the usual way only to copy it. In Canvas, open Calendar, choose Calendar Feed, and
+          copy the link. Paste it below.
+        </p>
+        <p className="muted small">
+          <strong>Keep it private:</strong> anyone with the link can see your Canvas calendar, so
+          Keystone keeps it on this phone only. It is never sent to Keystone's servers or included in
+          backups or sync.
+        </p>
+        {!isPro ? (
+          <button className="btn btn-primary full" onClick={() => navigate('/pricing')}>
+            <Icon name="lock" size={14} /> Unlock Canvas calendar with Pro
+          </button>
+        ) : s.canvasFeedUrl ? (
+          <>
+            <p className="muted small">
+              Connected.{' '}
+              {s.canvasLastSync ? `Last synced ${describeSyncedAt(new Date(s.canvasLastSync).getTime())}.` : 'Not synced yet.'}
+            </p>
+            {s.canvasLastError && <p className="partner-error" role="alert">{s.canvasLastError}</p>}
+            {canvasMsg && <p className="muted small" role="status">{canvasMsg}</p>}
+            {Object.keys(s.canvasCourseColors || {}).length > 0 && (
+              <div className="canvas-classes">
+                <span className="detail-label">Class colors</span>
+                {Object.entries(s.canvasCourseColors)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([course, color]) => (
+                    <label className="canvas-class-row" key={course}>
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => recolorCanvasCourse(state, actions, course, e.target.value)}
+                        aria-label={`Color for ${course}`}
+                      />
+                      <span>{course}</span>
+                    </label>
+                  ))}
+                <p className="muted small">Each class gets its own color automatically. Tap a color to change it.</p>
+              </div>
+            )}
+            <div className="stack-btns">
+              <button
+                className="btn btn-ghost full"
+                disabled={canvasBusy}
+                onClick={async () => {
+                  setCanvasBusy(true);
+                  setCanvasMsg('');
+                  try {
+                    const r = await syncCanvas(state, actions);
+                    actions.setSettings({ canvasLastSync: new Date().toISOString(), canvasLastError: '' });
+                    setCanvasMsg(`Synced: ${r.added} added, ${r.updated} updated, ${r.removed} removed.`);
+                  } catch (err) {
+                    actions.setSettings({ canvasLastError: err.message });
+                  } finally {
+                    setCanvasBusy(false);
+                  }
+                }}
+              >
+                {canvasBusy ? 'Syncing…' : 'Sync now'}
+              </button>
+              <button
+                className="btn btn-danger-ghost full"
+                onClick={() => {
+                  const imported = (state.events || []).filter((e) => e.source === 'canvas');
+                  imported.forEach((e) => actions.deleteEvent(e.id));
+                  actions.setSettings({ canvasFeedUrl: '', canvasLastSync: '', canvasLastError: '' });
+                  setCanvasMsg('');
+                  showToast('Canvas disconnected', imported.length ? 'Undo' : undefined, imported.length ? () => {
+                    imported.forEach((e) => actions.addEvent(e));
+                    actions.setSettings({ canvasFeedUrl: s.canvasFeedUrl });
+                  } : undefined);
+                }}
+              >
+                Disconnect and remove its events
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label className="field">
+              <span>Calendar Feed link</span>
+              <input
+                value={canvasLink}
+                onChange={(e) => {
+                  setCanvasLink(e.target.value);
+                  setCanvasMsg('');
+                }}
+                placeholder="https://yourschool.instructure.com/feeds/calendars/user_….ics"
+                inputMode="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                aria-label="Canvas calendar feed link"
+              />
+            </label>
+            {canvasMsg && <p className="partner-error" role="alert">{canvasMsg}</p>}
+            <button
+              className="btn btn-primary full"
+              disabled={canvasBusy || !canvasLink.trim()}
+              onClick={async () => {
+                const checked = validateFeedUrl(canvasLink);
+                if (!checked.ok) return setCanvasMsg(checked.error);
+                setCanvasBusy(true);
+                setCanvasMsg('');
+                try {
+                  const next = { ...state, settings: { ...state.settings, canvasFeedUrl: checked.url } };
+                  const r = await syncCanvas(next, actions);
+                  actions.setSettings({ canvasFeedUrl: checked.url, canvasLastSync: new Date().toISOString(), canvasLastError: '' });
+                  setCanvasLink('');
+                  showToast(`Canvas connected: ${r.added} item${r.added === 1 ? '' : 's'} added`);
+                } catch (err) {
+                  setCanvasMsg(err.message);
+                } finally {
+                  setCanvasBusy(false);
+                }
+              }}
+            >
+              {canvasBusy ? 'Connecting…' : 'Connect Canvas'}
+            </button>
+          </>
+        )}
+        <p className="muted small">
+          Items from Canvas show in orange and refresh about once an hour while the app is open, and a toast tells you when new deadlines arrive. Changes
+          are one-way: edit them in Canvas. Items you delete here come back at the next sync.
+        </p>
+      </SettingsGroup>
+
       <SettingsGroup {...grp('g8')}>
         <span className="detail-label">Calendar settings</span>
 
@@ -1245,138 +1397,6 @@ export default function MorePage() {
         </div>
       </SettingsGroup>
 
-      <SettingsGroup {...grp('g24')}>
-        <span className="detail-label">Canvas calendar {!isPro && '· Pro'}</span>
-        <p className="muted small">
-          Show your assignments and class dates from Canvas on your Keystone calendar.
-        </p>
-        <p className="muted small">
-          <strong>How it works:</strong> Canvas gives you a private calendar link. It already holds the
-          key to your calendar, so Keystone doesn't need your school login or password, and you sign in
-          to Canvas the usual way only to copy it. In Canvas, open Calendar, choose Calendar Feed, and
-          copy the link. Paste it below.
-        </p>
-        <p className="muted small">
-          <strong>Keep it private:</strong> anyone with the link can see your Canvas calendar, so
-          Keystone keeps it on this phone only. It is never sent to Keystone's servers or included in
-          backups or sync.
-        </p>
-        {!isPro ? (
-          <button className="btn btn-primary full" onClick={() => navigate('/pricing')}>
-            <Icon name="lock" size={14} /> Unlock Canvas calendar with Pro
-          </button>
-        ) : s.canvasFeedUrl ? (
-          <>
-            <p className="muted small">
-              Connected.{' '}
-              {s.canvasLastSync ? `Last synced ${describeSyncedAt(new Date(s.canvasLastSync).getTime())}.` : 'Not synced yet.'}
-            </p>
-            {s.canvasLastError && <p className="partner-error" role="alert">{s.canvasLastError}</p>}
-            {canvasMsg && <p className="muted small" role="status">{canvasMsg}</p>}
-            {Object.keys(s.canvasCourseColors || {}).length > 0 && (
-              <div className="canvas-classes">
-                <span className="detail-label">Class colors</span>
-                {Object.entries(s.canvasCourseColors)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([course, color]) => (
-                    <label className="canvas-class-row" key={course}>
-                      <input
-                        type="color"
-                        value={color}
-                        onChange={(e) => recolorCanvasCourse(state, actions, course, e.target.value)}
-                        aria-label={`Color for ${course}`}
-                      />
-                      <span>{course}</span>
-                    </label>
-                  ))}
-                <p className="muted small">Each class gets its own color automatically. Tap a color to change it.</p>
-              </div>
-            )}
-            <div className="stack-btns">
-              <button
-                className="btn btn-ghost full"
-                disabled={canvasBusy}
-                onClick={async () => {
-                  setCanvasBusy(true);
-                  setCanvasMsg('');
-                  try {
-                    const r = await syncCanvas(state, actions);
-                    actions.setSettings({ canvasLastSync: new Date().toISOString(), canvasLastError: '' });
-                    setCanvasMsg(`Synced: ${r.added} added, ${r.updated} updated, ${r.removed} removed.`);
-                  } catch (err) {
-                    actions.setSettings({ canvasLastError: err.message });
-                  } finally {
-                    setCanvasBusy(false);
-                  }
-                }}
-              >
-                {canvasBusy ? 'Syncing…' : 'Sync now'}
-              </button>
-              <button
-                className="btn btn-danger-ghost full"
-                onClick={() => {
-                  const imported = (state.events || []).filter((e) => e.source === 'canvas');
-                  imported.forEach((e) => actions.deleteEvent(e.id));
-                  actions.setSettings({ canvasFeedUrl: '', canvasLastSync: '', canvasLastError: '' });
-                  setCanvasMsg('');
-                  showToast('Canvas disconnected', imported.length ? 'Undo' : undefined, imported.length ? () => {
-                    imported.forEach((e) => actions.addEvent(e));
-                    actions.setSettings({ canvasFeedUrl: s.canvasFeedUrl });
-                  } : undefined);
-                }}
-              >
-                Disconnect and remove its events
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <label className="field">
-              <span>Calendar Feed link</span>
-              <input
-                value={canvasLink}
-                onChange={(e) => {
-                  setCanvasLink(e.target.value);
-                  setCanvasMsg('');
-                }}
-                placeholder="https://yourschool.instructure.com/feeds/calendars/user_….ics"
-                inputMode="url"
-                autoCapitalize="none"
-                autoCorrect="off"
-                aria-label="Canvas calendar feed link"
-              />
-            </label>
-            {canvasMsg && <p className="partner-error" role="alert">{canvasMsg}</p>}
-            <button
-              className="btn btn-primary full"
-              disabled={canvasBusy || !canvasLink.trim()}
-              onClick={async () => {
-                const checked = validateFeedUrl(canvasLink);
-                if (!checked.ok) return setCanvasMsg(checked.error);
-                setCanvasBusy(true);
-                setCanvasMsg('');
-                try {
-                  const next = { ...state, settings: { ...state.settings, canvasFeedUrl: checked.url } };
-                  const r = await syncCanvas(next, actions);
-                  actions.setSettings({ canvasFeedUrl: checked.url, canvasLastSync: new Date().toISOString(), canvasLastError: '' });
-                  setCanvasLink('');
-                  showToast(`Canvas connected: ${r.added} item${r.added === 1 ? '' : 's'} added`);
-                } catch (err) {
-                  setCanvasMsg(err.message);
-                } finally {
-                  setCanvasBusy(false);
-                }
-              }}
-            >
-              {canvasBusy ? 'Connecting…' : 'Connect Canvas'}
-            </button>
-          </>
-        )}
-        <p className="muted small">
-          Items from Canvas show in orange and refresh about once an hour while the app is open, and a toast tells you when new deadlines arrive. Changes
-          are one-way: edit them in Canvas. Items you delete here come back at the next sync.
-        </p>
-      </SettingsGroup>
 
       <SettingsSection label="People" hidden={!sectionShown('People')} />
       <SettingsGroup {...grp('g14')}>

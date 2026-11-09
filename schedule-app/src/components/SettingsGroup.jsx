@@ -16,14 +16,14 @@ import Icon from './Icon.jsx';
 // Taking the first child verbatim means both keep working untouched, and
 // a toggle that lives in a heading stays reachable while collapsed —
 // flipping notifications off shouldn't require expanding anything.
-export default function SettingsGroup({ id, open, onToggle, hidden, children }) {
+export default function SettingsGroup({ id, open, onToggle, hidden, featured, children }) {
   const kids = Children.toArray(children);
   const [head, ...body] = kids;
 
   if (hidden) return null;
 
   return (
-    <section className={`detail-section settings-group${open ? ' settings-group--open' : ''}`}>
+    <section className={`detail-section settings-group${open ? ' settings-group--open' : ''}${featured ? ' settings-group--featured' : ''}`}>
       <div
         className="settings-group-head"
         role="button"
