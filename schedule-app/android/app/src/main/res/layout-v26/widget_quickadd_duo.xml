@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/duo_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <TextView
+        android:fontFamily="@font/quicksand"
+        android:id="@+id/duo_event"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_margin="3dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_btn_gold"
+        android:gravity="center"
+        android:maxLines="1"
+        android:text="+ Event"
+        android:textColor="#16130A"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:fontFamily="@font/quicksand"
+        android:id="@+id/duo_task"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_margin="3dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_btn_card"
+        android:gravity="center"
+        android:maxLines="1"
+        android:text="+ Task"
+        android:textColor="#F3EDE0"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+</LinearLayout>

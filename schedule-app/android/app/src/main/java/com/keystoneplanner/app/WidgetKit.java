@@ -11,7 +11,10 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.graphics.Path;
 import android.net.Uri;
+
+import androidx.core.content.res.ResourcesCompat;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -156,6 +159,17 @@ final class WidgetKit {
 
     // --- Pictures -----------------------------------------------------------
 
+    /** Quicksand, the app's own font, falling back to the system one if it cannot be loaded. */
+    static Typeface font(Context context, boolean bold) {
+        Typeface face = null;
+        try {
+            face = ResourcesCompat.getFont(context, bold ? R.font.quicksand_bold : R.font.quicksand_medium);
+        } catch (Exception ignored) {
+            // fall through to the system font
+        }
+        return face != null ? face : (bold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+    }
+
     private static Paint paint(int color) {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setColor(color);
@@ -164,6 +178,11 @@ final class WidgetKit {
 
     /** A progress ring with the percentage inside. */
     static Bitmap ring(Context context, int percent, int sizeDp) {
+        return ring(context, percent, sizeDp, false);
+    }
+
+    /** The same ring; with `check` a finished one shows a check mark instead of 100%. */
+    static Bitmap ring(Context context, int percent, int sizeDp, boolean check) {
         float density = context.getResources().getDisplayMetrics().density;
         int size = Math.max(16, Math.round(sizeDp * density));
         Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
@@ -179,9 +198,22 @@ final class WidgetKit {
         arc.setStrokeWidth(stroke);
         arc.setStrokeCap(Paint.Cap.ROUND);
         canvas.drawArc(box, -90, 360f * Math.max(0, Math.min(100, percent)) / 100f, false, arc);
+        if (check && percent >= 100) {
+            Paint tick = paint(GOLD);
+            tick.setStyle(Paint.Style.STROKE);
+            tick.setStrokeWidth(size * 0.1f);
+            tick.setStrokeCap(Paint.Cap.ROUND);
+            tick.setStrokeJoin(Paint.Join.ROUND);
+            Path path = new Path();
+            path.moveTo(size * 0.32f, size * 0.52f);
+            path.lineTo(size * 0.45f, size * 0.65f);
+            path.lineTo(size * 0.69f, size * 0.37f);
+            canvas.drawPath(path, tick);
+            return bitmap;
+        }
         Paint text = paint(INK);
         text.setTextAlign(Paint.Align.CENTER);
-        text.setTypeface(Typeface.DEFAULT_BOLD);
+        text.setTypeface(font(context, true));
         text.setTextSize(size * 0.27f);
         canvas.drawText(percent + "%", size / 2f, size / 2f + text.getTextSize() * 0.35f, text);
         return bitmap;
@@ -196,7 +228,7 @@ final class WidgetKit {
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint(color));
         Paint text = paint(0xFFFFFFFF);
         text.setTextAlign(Paint.Align.CENTER);
-        text.setTypeface(Typeface.DEFAULT_BOLD);
+        text.setTypeface(font(context, true));
         text.setTextSize(size * 0.38f);
         canvas.drawText(initials(name), size / 2f, size / 2f + text.getTextSize() * 0.35f, text);
         return bitmap;
@@ -242,7 +274,7 @@ final class WidgetKit {
 
         Paint head = paint(MUTED);
         head.setTextAlign(Paint.Align.CENTER);
-        head.setTypeface(Typeface.DEFAULT_BOLD);
+        head.setTypeface(font(context, true));
         head.setTextSize(Math.min(cellH * 0.5f, 11 * density));
         for (int c = 0; c < 7; c++) {
             String letter = heads != null && c < heads.length() ? heads.optString(c, "") : "";
@@ -251,7 +283,7 @@ final class WidgetKit {
 
         Paint num = paint(INK);
         num.setTextAlign(Paint.Align.CENTER);
-        num.setTypeface(Typeface.DEFAULT_BOLD);
+        num.setTypeface(font(context, true));
         num.setTextSize(Math.min(cellH * 0.55f, 13 * density));
         Paint ring = paint(GOLD);
         Paint dot = paint(GOLD);
@@ -269,9 +301,17 @@ final class WidgetKit {
                 num.setColor(INK);
             }
             canvas.drawText(String.valueOf(d), cx, cy + num.getTextSize() * 0.3f, num);
-            if (counts != null && d - 1 < counts.length() && counts.optInt(d - 1, 0) > 0) {
+            int count = counts != null && d - 1 < counts.length() ? counts.optInt(d - 1, 0) : 0;
+            if (count > 0) {
+                // One dot per event, up to three, centred under the date.
+                int dots = Math.min(3, count);
+                float r = Math.max(1.5f * density, cellH * 0.055f);
+                float gap = r * 2.8f;
+                float start = cx - gap * (dots - 1) / 2f;
                 dot.setColor(isToday ? 0xFF16130A : GOLD);
-                canvas.drawCircle(cx, cy + cellH * 0.36f, Math.max(1.5f * density, cellH * 0.06f), dot);
+                for (int k = 0; k < dots; k++) {
+                    canvas.drawCircle(start + gap * k, cy + cellH * 0.38f, r, dot);
+                }
             }
         }
         return bitmap;

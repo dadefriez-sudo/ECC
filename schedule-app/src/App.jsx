@@ -789,7 +789,12 @@ export default function App() {
     };
     scan();
     const id = setInterval(scan, 30000);
-    const onVisible = () => document.visibilityState === 'visible' && scan();
+    // Going to the background suspends the page, so a change made a moment before leaving
+    // must reach the widget now, not on a timer that may never fire.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') scan();
+      else pushWidget(stateRef.current);
+    };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearInterval(id);
@@ -1155,7 +1160,7 @@ export default function App() {
   // Keep the Android home screen widget current after edits (the 30 second
   // scan covers the passing of time; this makes changes show up quickly).
   useEffect(() => {
-    const id = setTimeout(() => pushWidget(state), 1500);
+    const id = setTimeout(() => pushWidget(state), 200);
     return () => clearTimeout(id);
   }, [state.events, state.tasks, state.goals]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

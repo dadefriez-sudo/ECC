@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/nx_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingLeft="14dp"
+    android:paddingRight="14dp">
+
+    <TextView
+        android:fontFamily="@font/quicksand"
+        android:id="@+id/nx_eyebrow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:textColor="#93A0AD"
+        android:textSize="10sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:fontFamily="@font/quicksand"
+        android:id="@+id/nx_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="#F3EDE0"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:fontFamily="@font/quicksand"
+        android:id="@+id/nx_sub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="#93A0AD"
+        android:textSize="12sp" />
+</LinearLayout>

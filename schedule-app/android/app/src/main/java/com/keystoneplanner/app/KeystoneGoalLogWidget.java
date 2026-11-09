@@ -33,10 +33,13 @@ public class KeystoneGoalLogWidget extends KeystoneWidgetBase {
             int target = Math.max(1, g.optInt("g", 1));
             int step = Math.max(1, g.optInt("s", 1));
             boolean done = value >= target;
-            views.setImageViewBitmap(rings[i], WidgetKit.ring(context, Math.min(100, value * 100 / target), 34));
+            views.setImageViewBitmap(rings[i], WidgetKit.ring(context, Math.min(100, value * 100 / target), 34, true));
             views.setTextViewText(names[i], g.optString("n", ""));
             views.setTextViewText(subs[i], done ? "Done" : value + " of " + target);
             views.setTextViewText(pluses[i], done ? "✓" : "+");
+            // Finished goals go quiet (dark button, gold check); open ones keep the gold +.
+            views.setInt(pluses[i], "setBackgroundResource", done ? R.drawable.widget_circle_card : R.drawable.widget_add_bg);
+            views.setTextColor(pluses[i], done ? WidgetKit.GOLD : 0xFF1A212A);
             if (!done) {
                 views.setOnClickPendingIntent(
                     pluses[i], WidgetKit.logGoal(context, 241 + i, g.optString("i", ""), step));
