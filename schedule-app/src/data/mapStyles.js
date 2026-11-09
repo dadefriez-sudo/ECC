@@ -53,6 +53,7 @@ export const MAP_STYLES = {
     attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
   },
   hybrid: {
+    pro: true,
     label: 'Hybrid',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 19,
@@ -66,13 +67,16 @@ export const MAP_STYLES = {
 
 export const MAP_STYLE_OPTIONS = [
   { value: 'auto', label: 'Match app theme' },
-  ...Object.entries(MAP_STYLES).map(([value, s]) => ({ value, label: s.label })),
+  ...Object.entries(MAP_STYLES).map(([value, s]) => ({ value, label: s.label, pro: !!s.pro })),
 ];
 
 // `dark` is whether the app is currently rendering its dark palette — the
 // caller knows this (it's already resolving system vs explicit theme), so
 // this stays a pure function rather than reading the DOM itself.
-export function resolveMapStyle(setting, dark) {
+// `isPro` gates the Pro-only styles (Hybrid): someone who picked one and then lost
+// Pro, or who is signed out, falls back to plain Satellite instead of a locked map.
+export function resolveMapStyle(setting, dark, isPro = true) {
   if (!setting || setting === 'auto') return MAP_STYLES[dark ? 'dark' : 'positron'];
-  return MAP_STYLES[setting] || MAP_STYLES.standard;
+  const style = MAP_STYLES[setting] || MAP_STYLES.standard;
+  return style.pro && !isPro ? MAP_STYLES.satellite : style;
 }

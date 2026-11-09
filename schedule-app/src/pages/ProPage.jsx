@@ -22,6 +22,12 @@ const FEATURES = [
     to: '/more?q=background',
   },
   {
+    icon: 'pin',
+    title: 'Hybrid map',
+    desc: 'Satellite photos with road and place names on top',
+    to: '/more?q=map',
+  },
+  {
     icon: 'calendar',
     title: 'Canvas calendar',
     desc: 'Assignments and class dates from Canvas, with a colour for each class',

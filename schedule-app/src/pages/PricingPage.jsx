@@ -25,6 +25,7 @@ const FEATURES = [
   { label: 'Day & week templates', free: false, pro: true },
   { label: 'Color themes (26, incl. pastels)', free: false, pro: true },
   { label: 'Pro backgrounds (Cream, Navy, Maroon, Midnight purple, Forest, Graphite, Cocoa)', free: false, pro: true },
+  { label: 'Hybrid map (satellite with road and place names)', free: false, pro: true },
   { label: 'Smart add (type it, Keystone fills it in)', free: false, pro: true },
   { label: 'Event block opacity', free: false, pro: true },
   { label: 'Accountability partners (1 free, more with Pro)', free: true, pro: true },

@@ -449,7 +449,7 @@ export default function MapPage() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const style = resolveMapStyle(mapStyleSetting, isDarkTheme);
+    const style = resolveMapStyle(mapStyleSetting, isDarkTheme, isPro);
     const tileOptions = {
       maxZoom: style.maxZoom,
       attribution: style.attribution,
@@ -479,7 +479,7 @@ export default function MapPage() {
       overlays.forEach((o) => map.removeLayer(o));
       baseLayerRef.current = null;
     };
-  }, [mapStyleSetting, isDarkTheme, rememberTiles]);
+  }, [mapStyleSetting, isDarkTheme, rememberTiles, isPro]);
 
   // Render / re-render pin markers whenever pins or the selection change.
   // Pins that would overlap on screen at this zoom merge into a numbered
@@ -893,12 +893,14 @@ export default function MapPage() {
               className={`map-filter-row${mapStyleSetting === o.value ? ' map-filter-row--on' : ''}`}
               onClick={() => {
                 selectTick();
+                if (o.pro && !isPro) return navigate('/pricing');
                 actions.setSettings({ mapStyle: o.value });
                 setLayersOpen(false);
               }}
             >
-              <span className="map-filter-label">{o.label}</span>
-              {mapStyleSetting === o.value && <Icon name="check" size={16} />}
+              <span className="map-filter-label">{o.label}{o.pro && !isPro ? ' · Pro' : ''}</span>
+              {o.pro && !isPro && <Icon name="lock" size={14} />}
+              {mapStyleSetting === o.value && (!o.pro || isPro) && <Icon name="check" size={16} />}
             </button>
           ))}
         </div>

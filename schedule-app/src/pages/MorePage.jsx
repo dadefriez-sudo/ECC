@@ -329,7 +329,8 @@ export default function MorePage() {
   // and the toggle must show the same "on" that the sync is acting on.
   const cloudSyncOn = state.settings?.cloudSync !== false;
 
-  const requirePro = (fn) => (isPro ? fn() : navigate('/pricing'));
+  // `needed` lets one handler guard only some choices (a Pro map style among free ones).
+  const requirePro = (fn, needed = true) => (isPro || !needed ? fn() : navigate('/pricing'));
 
   const exportICS = () => downloadICS(state.events, state.contacts);
   const importICS = (e) => {
@@ -1534,8 +1535,8 @@ export default function MorePage() {
         <p className="muted small">Map style</p>
         <Select
           value={s.mapStyle || 'auto'}
-          onChange={(v) => actions.setSettings({ mapStyle: v })}
-          options={MAP_STYLE_OPTIONS}
+          onChange={(v) => requirePro(() => actions.setSettings({ mapStyle: v }), MAP_STYLE_OPTIONS.find((o) => o.value === v)?.pro)}
+          options={MAP_STYLE_OPTIONS.map((o) => (o.pro && !isPro ? { ...o, label: `${o.label} · Pro` } : o))}
         />
         <p className="muted small">
           "Match app theme" uses a light or dark basemap to match whichever the app is showing.

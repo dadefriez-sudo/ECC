@@ -19,3 +19,11 @@ test('Hybrid is in the picker, and picking it resolves to it', () => {
   assert.equal(resolveMapStyle('hybrid', true), MAP_STYLES.hybrid);
   assert.equal(resolveMapStyle('auto', true), MAP_STYLES.dark);
 });
+
+test('Hybrid is Pro: without Pro it falls back to plain Satellite', () => {
+  assert.equal(MAP_STYLES.hybrid.pro, true);
+  assert.equal(resolveMapStyle('hybrid', false, false), MAP_STYLES.satellite);
+  assert.equal(resolveMapStyle('hybrid', false, true), MAP_STYLES.hybrid);
+  assert.equal(resolveMapStyle('satellite', false, false), MAP_STYLES.satellite);
+  assert.equal(MAP_STYLE_OPTIONS.find((o) => o.value === 'hybrid').pro, true);
+});
