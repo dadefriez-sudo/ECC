@@ -8846,3 +8846,39 @@ body[data-assistant='on'] .conflict-list {
   background: var(--accent); color: var(--on-accent, #fff);
 }
 .canvas-head-pill--on { background: var(--good); }
+
+/* Map credits: a small (i) that opens the attribution the tile providers require,
+   in place of Leaflet's always-visible white bar. */
+.map-credit {
+  position: absolute;
+  left: 58px;
+  bottom: calc(var(--tabbar-h) + var(--saib) + 10px);
+  z-index: 500;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: calc(100% - 58px - 84px);
+}
+.map-credit-btn {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--muted);
+  font: italic 700 14px/1 Georgia, serif;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.map-credit-card {
+  order: 2;
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  box-shadow: var(--shadow);
+}

@@ -101,6 +101,9 @@ export default function MapPage() {
   const [query, setQuery] = useState('');
   const [searchingAddress, setSearchingAddress] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
+  // Map credits live behind a small (i) button instead of a permanent white bar across the map.
+  const [credit, setCredit] = useState('');
+  const [creditOpen, setCreditOpen] = useState(false);
   const toggleFilter = (k) => {
     selectTick();
     setFilters((f) => {
@@ -352,7 +355,7 @@ export default function MapPage() {
 
   // Initialise the Leaflet map once.
   useEffect(() => {
-    const map = L.map(containerRef.current, { zoomControl: false, attributionControl: true });
+    const map = L.map(containerRef.current, { zoomControl: false, attributionControl: false });
     // Bottom-left, so the search bar can own the top edge.
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
     // The basemap is swapped in its own effect below rather than created
@@ -450,6 +453,7 @@ export default function MapPage() {
     const map = mapRef.current;
     if (!map) return;
     const style = resolveMapStyle(mapStyleSetting, isDarkTheme, isPro);
+    setCredit(style.attribution || '');
     const tileOptions = {
       maxZoom: style.maxZoom,
       attribution: style.attribution,
@@ -882,6 +886,25 @@ export default function MapPage() {
               <NavIcon />
             </button>
           )}
+        </div>
+      )}
+
+      {!pickMode && !moving && (
+        <div className="map-credit">
+          {creditOpen && (
+            <div className="map-credit-card" role="note">
+              <span dangerouslySetInnerHTML={{ __html: `${credit} · Leaflet` }} />
+            </div>
+          )}
+          <button
+            className="map-credit-btn"
+            onClick={() => setCreditOpen((v) => !v)}
+            aria-label="Map credits"
+            aria-expanded={creditOpen}
+            title="Map credits"
+          >
+            i
+          </button>
         </div>
       )}
 
