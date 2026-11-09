@@ -23,12 +23,13 @@ const FEATURES = [
   { label: 'Goal history and heatmaps', free: false, pro: true },
   { label: 'People status groups', free: false, pro: true },
   { label: 'Day & week templates', free: false, pro: true },
-  { label: 'Color themes (22, incl. pastels)', free: false, pro: true },
+  { label: 'Color themes (26, incl. pastels)', free: false, pro: true },
+  { label: 'Pro backgrounds (Cream, Navy, Maroon, Midnight purple, Forest, Graphite, Cocoa)', free: false, pro: true },
+  { label: 'Smart add (type it, Keystone fills it in)', free: false, pro: true },
+  { label: 'Event block opacity', free: false, pro: true },
   { label: 'Accountability partners (1 free, more with Pro)', free: true, pro: true },
-  { label: 'Google account sync', free: false, pro: true },
   { label: 'Import/export to other calendars', free: false, pro: true },
   { label: 'Canvas calendar (assignments and class dates)', free: false, pro: true },
-  { label: 'Cloud backup across devices', free: false, pro: true },
 ];
 
 export default function PricingPage() {
@@ -50,7 +51,7 @@ export default function PricingPage() {
       <section className="pricing-hero">
         <div className="pricing-crown"><Icon name="crown" size={40} /></div>
         <h1>Keystone Pro</h1>
-        <p className="muted">Unlock contact timelines, status groups, sharing, sync, and more.</p>
+        <p className="muted">Unlock contact timelines, status groups, themes and backgrounds, Canvas, and more.</p>
       </section>
 
       <div className="pricing-onetime">

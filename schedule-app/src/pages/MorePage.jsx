@@ -165,7 +165,7 @@ const SETTINGS_INDEX = [
   {
     label: 'Appearance',
     groups: [
-      { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
+      { id: 'g4', title: 'Theme & colors', keywords: 'appearance theme background backgrounds cream navy maroon purple forest graphite cocoa dark light mode colour scheme text size icon size font haptic daily challenge prompt' },
       { id: 'g5', title: 'Home screen', keywords: 'customize blocks reorder hide sections layout goals rings compact top goals style home layout today tracker bento calm' },
       { id: 'g23', title: 'Weekly review', keywords: 'weekly review week summary sunday recap report card reminder' },
       { id: 'g22', title: 'Haptic feedback', keywords: 'haptic haptics vibration vibrate buzz feedback tick off quiet' },
@@ -178,7 +178,7 @@ const SETTINGS_INDEX = [
     label: 'Calendar',
     groups: [
       { id: 'g24', title: 'Canvas calendar', keywords: 'canvas school class classes assignment assignments homework due dates student course lms instructure university college feed' },
-      { id: 'g8', title: 'Calendar settings', keywords: 'day start end hour zoom week 24 templates duration reminder default' },
+      { id: 'g8', title: 'Calendar settings', keywords: 'day start end hour zoom week 24 templates duration reminder default opacity event block' },
       { id: 'g15', title: 'Event types', keywords: 'call text in person travel email other category colour color custom add create new reorder remove drag' },
       { id: 'g3', title: 'Calendar import / export', keywords: 'ics subscribe google apple outlook download' },
     ],

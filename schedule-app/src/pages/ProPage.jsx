@@ -12,8 +12,38 @@ const FEATURES = [
   {
     icon: 'sparkle',
     title: 'Color themes',
-    desc: '22 themes, including soft pastels',
+    desc: '26 themes, grouped by colour, including soft pastels',
     to: '/more?q=theme',
+  },
+  {
+    icon: 'sparkle',
+    title: 'Pro backgrounds',
+    desc: 'Cream, Navy, Maroon, Midnight purple, Forest, Graphite and Cocoa',
+    to: '/more?q=background',
+  },
+  {
+    icon: 'calendar',
+    title: 'Canvas calendar',
+    desc: 'Assignments and class dates from Canvas, with a colour for each class',
+    to: '/more?q=canvas',
+  },
+  {
+    icon: 'sparkle',
+    title: 'Smart add',
+    desc: 'Type a plain sentence and it fills in the event for you',
+    to: '/more?q=quick-add',
+  },
+  {
+    icon: 'calendar',
+    title: 'Day & week templates',
+    desc: 'Save a routine once and drop it onto any day',
+    to: '/planner',
+  },
+  {
+    icon: 'calendar',
+    title: 'Event block opacity',
+    desc: 'Make calendar blocks softer or bolder',
+    to: '/more?q=opacity',
   },
   {
     icon: 'home',
