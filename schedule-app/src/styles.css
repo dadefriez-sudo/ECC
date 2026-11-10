@@ -8851,13 +8851,15 @@ body[data-assistant='on'] .conflict-list {
    in place of Leaflet's always-visible white bar. */
 .map-credit {
   position: absolute;
-  left: 58px;
-  bottom: calc(var(--tabbar-h) + var(--saib) + 10px);
+  left: 54px;
+  /* The map page already ends at the top of the tab bar, so this lines up with the zoom
+     buttons' own 10px margin (their bottom button is 30px tall, this one 26px). */
+  bottom: 12px;
   z-index: 500;
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  max-width: calc(100% - 58px - 84px);
+  max-width: calc(100% - 54px - 84px);
 }
 .map-credit-btn {
   flex: none;
