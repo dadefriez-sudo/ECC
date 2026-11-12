@@ -38,6 +38,7 @@ import { QUICK_ADD_TYPES, normalizeQuickAdd } from '../data/quickAdd.js';
 import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
 import { AI_ENABLED } from '../data/aiConfig.js';
 import { MAP_STYLE_OPTIONS } from '../data/mapStyles.js';
+import { CLOUD_SYNC_ENABLED } from '../data/features.js';
 import {
   CONTACT_SWIPE_OPTIONS,
   DEFAULT_CONTACT_SWIPE_LEFT,
@@ -159,7 +160,7 @@ const SETTINGS_INDEX = [
     label: 'Account',
     groups: [
       { id: 'g0', title: 'Profile', keywords: 'name photo picture avatar you' },
-      { id: 'g1', title: 'Account & sync', keywords: 'sign in log out cloud backup device' },
+      ...(CLOUD_SYNC_ENABLED ? [{ id: 'g1', title: 'Account & sync', keywords: 'sign in log out cloud backup device' }] : []),
       { id: 'g3', title: 'Accountability partners', keywords: 'accountability partner invite goals check in stay on track' },
     ],
   },
@@ -661,54 +662,56 @@ export default function MorePage() {
           </div>
         </div>
       </SettingsGroup>
+      {CLOUD_SYNC_ENABLED && (
       <SettingsGroup {...grp('g1')}>
-        <span className="detail-label">Account & sync</span>
-        <div className="section-head">
-          <span>Cloud sync</span>
-          <button
-            className={`toggle${cloudSyncOn ? ' toggle--on' : ''}`}
-            role="switch"
-            aria-label="Cloud sync"
-            aria-checked={cloudSyncOn}
-            onClick={() => requirePro(() => actions.setSettings({ cloudSync: !cloudSyncOn }))}
-          >
-            <span className="toggle-knob" />
-          </button>
-        </div>
-        {isPro && CLERK_ENABLED && backendConfigured() ? (
-          <CloudSyncStatus cloudSyncOn={cloudSyncOn} />
-        ) : (
+          <span className="detail-label">Account & sync</span>
+          <div className="section-head">
+            <span>Cloud sync</span>
+            <button
+              className={`toggle${cloudSyncOn ? ' toggle--on' : ''}`}
+              role="switch"
+              aria-label="Cloud sync"
+              aria-checked={cloudSyncOn}
+              onClick={() => requirePro(() => actions.setSettings({ cloudSync: !cloudSyncOn }))}
+            >
+              <span className="toggle-knob" />
+            </button>
+          </div>
+          {isPro && CLERK_ENABLED && backendConfigured() ? (
+            <CloudSyncStatus cloudSyncOn={cloudSyncOn} />
+          ) : (
+            <p className="muted small">
+              {isPro
+                ? "Sync isn't connected to a server yet, so flipping this on doesn't move your data anywhere. It's here so the setting is ready once a backend exists."
+                : 'Keep your data synced across devices. Requires Pro.'}
+            </p>
+          )}
+          {CLERK_ENABLED ? (
+            <GoogleSyncButtons
+              isPro={isPro}
+              googleConnected={googleConnected}
+              requirePro={requirePro}
+              actions={actions}
+              showToast={showToast}
+              state={state}
+            />
+          ) : (
+            <button
+              className="btn btn-ghost full"
+              onClick={() =>
+                requirePro(() => alert('Google sign-in requires a backend that is not connected in this build yet.'))
+              }
+            >
+              <GoogleIcon /> Sign in with Google {!isPro && '· Pro'}
+            </button>
+          )}
           <p className="muted small">
-            {isPro
-              ? "Sync isn't connected to a server yet, so flipping this on doesn't move your data anywhere. It's here so the setting is ready once a backend exists."
-              : 'Keep your data synced across devices. Requires Pro.'}
+            {googleConnected
+              ? "Calendar (single events only, not repeating ones) stays synced both ways while Keystone is open. Contacts is a one-time import. Tap \"Import contacts again\" any time for a fresh copy."
+              : 'A personal Keystone login (no Google needed) is free and always available. This is only for connecting your Google Calendar (kept in sync) and Contacts (a one-time import).'}
           </p>
-        )}
-        {CLERK_ENABLED ? (
-          <GoogleSyncButtons
-            isPro={isPro}
-            googleConnected={googleConnected}
-            requirePro={requirePro}
-            actions={actions}
-            showToast={showToast}
-            state={state}
-          />
-        ) : (
-          <button
-            className="btn btn-ghost full"
-            onClick={() =>
-              requirePro(() => alert('Google sign-in requires a backend that is not connected in this build yet.'))
-            }
-          >
-            <GoogleIcon /> Sign in with Google {!isPro && '· Pro'}
-          </button>
-        )}
-        <p className="muted small">
-          {googleConnected
-            ? "Calendar (single events only, not repeating ones) stays synced both ways while Keystone is open. Contacts is a one-time import. Tap \"Import contacts again\" any time for a fresh copy."
-            : 'A personal Keystone login (no Google needed) is free and always available. This is only for connecting your Google Calendar (kept in sync) and Contacts (a one-time import).'}
-        </p>
-      </SettingsGroup>
+        </SettingsGroup>
+      )}
       <SettingsGroup {...grp('g3')}>
         <span className="detail-label">Accountability partners</span>
         <p className="muted small">
@@ -2173,7 +2176,7 @@ function AccountSection() {
       ) : (
         <>
           <p className="muted small">
-            Sign in to buy Pro, sync your data, and keep your purchase across devices.
+            Sign in to buy Pro and keep your purchase across devices.
           </p>
           <button className="btn btn-ghost full" onClick={() => openSignInWithRecovery(clerk)}>
             Sign in

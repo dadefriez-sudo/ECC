@@ -6,3 +6,8 @@
 // security surface for the least benefit to the core planner. The pages and the
 // backend routes are still in place.
 export const SHARED_CALENDARS_ENABLED = false;
+
+// Cloud sync and Google sign-in: hidden until syncing across devices actually works end to
+// end, so nothing in the app promises it. The settings card and its search entry come back
+// when this is true.
+export const CLOUD_SYNC_ENABLED = false;
