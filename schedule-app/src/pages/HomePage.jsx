@@ -35,6 +35,7 @@ import { MiniRing, TodayView, BentoView, CalmView, TrackerView, UpNext } from '.
 import { makeOverdueCheck } from '../data/reconnect.js';
 import WeeklyReviewCard from '../components/WeeklyReviewCard.jsx';
 import WhatsNewCard from '../components/WhatsNewCard.jsx';
+import BackupReminderCard from '../components/BackupReminderCard.jsx';
 import FollowUpCard from '../components/FollowUpCard.jsx';
 
 // Shown when every home block has been toggled off in Customize mode —
@@ -1007,6 +1008,7 @@ export default function HomePage() {
       {!editMode && <FollowUpCard />}
       {!editMode && <WhatsNewCard />}
       {!editMode && <WeeklyReviewCard />}
+      {!editMode && <BackupReminderCard />}
 
       {editMode ? (
         <section className="detail-section">

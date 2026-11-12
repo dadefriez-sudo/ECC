@@ -8884,3 +8884,10 @@ body[data-assistant='on'] .conflict-list {
   line-height: 1.35;
   box-shadow: var(--shadow);
 }
+
+/* Backup reminders: the Home card and the status line in Settings → Your data. */
+.backup-card { border-color: color-mix(in srgb, var(--warn) 55%, var(--border)); box-shadow: inset 4px 0 0 var(--warn), var(--shadow); }
+.backup-status { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; line-height: 1.4; }
+.backup-status span { color: var(--muted); font-size: 12.5px; }
+.backup-status--old { background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
+.backup-status--old strong { color: var(--warn-ink, var(--warn)); }

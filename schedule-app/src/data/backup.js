@@ -113,7 +113,7 @@ export async function maybeAutoBackup(state, actions) {
   if (Date.now() - last < AUTO_BACKUP_INTERVAL_MS) return;
   try {
     await writeBackupNow(state);
-    actions.setSettings({ lastAutoBackupAt: new Date().toISOString() });
+    actions.setSettings({ lastAutoBackupAt: new Date().toISOString(), lastBackupAt: new Date().toISOString() });
   } catch (err) {
     // Best-effort — a failed background backup shouldn't surface as an
     // error to someone who didn't ask for anything just by opening the app.

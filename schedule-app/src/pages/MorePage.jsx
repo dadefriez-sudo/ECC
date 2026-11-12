@@ -46,6 +46,7 @@ import {
 import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disconnectGoogle } from '../data/api.js';
 import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
 import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBackups } from '../data/backup.js';
+import { describeBackupAge, backupAgeDays, REMIND_AFTER_DAYS } from '../data/backupReminder.js';
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
 import { validateFeedUrl } from '../data/canvasFeed.js';
 import { syncCanvas, recolorCanvasCourse } from '../data/canvasSync.js';
@@ -454,6 +455,7 @@ export default function MorePage() {
       if (!hasBackupPassword(state)) return setPwModal({ mode: 'set', then: 'export' });
       try {
         const filename = await writeBackupNow(state);
+        actions.setSettings({ lastBackupAt: new Date().toISOString() });
         showToast(filename ? `Saved ${filename} to Documents` : 'Backup saved to Documents');
       } catch (err) {
         showToast(err.message || 'Could not save the backup.');
@@ -516,6 +518,7 @@ export default function MorePage() {
     if (m.then === 'export') {
       try {
         const filename = await writeBackupNow({ ...state, settings: { ...state.settings, backupPassphrase: password } });
+        actions.setSettings({ lastBackupAt: new Date().toISOString() });
         showToast(filename ? `Saved ${filename} to Documents` : 'Backup saved to Documents');
       } catch (err) {
         showToast(err.message || 'Could not save the backup.');
@@ -1745,6 +1748,19 @@ export default function MorePage() {
           Everything is stored privately on this device. {counts.goals} goals · {counts.events} events ·{' '}
           {counts.contacts} people.
         </p>
+        {backupSupported() && (
+          <div
+            className={`backup-status${(backupAgeDays(state) ?? Infinity) >= REMIND_AFTER_DAYS ? ' backup-status--old' : ''}`}
+            role="status"
+          >
+            <strong>{describeBackupAge(state)}</strong>
+            <span>
+              Uninstalling or reinstalling Keystone erases everything on this phone. Back up first, then after
+              reinstalling use Import backup (it asks for your backup password). Backups are saved in
+              Documents › KeystoneBackups.
+            </span>
+          </div>
+        )}
         {backupSupported() && (
           <div className="section-head">
             <span>Automatic on-device backup</span>
