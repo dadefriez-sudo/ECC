@@ -3,7 +3,7 @@
 // and taps on the widget. Everywhere else it quietly does nothing.
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { todayISO, formatTime, timeToMinutes, expandEventOnDay, weekKey } from './helpers.js';
-import { widgetGoals, widgetRings, widgetWeek, widgetPeople, widgetMonth, widgetNext } from './widgetData.js';
+import { widgetGoals, widgetRings, widgetWeek, widgetPeople, widgetMonth, widgetNext, widgetProductivity } from './widgetData.js';
 
 const available = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
 const Bridge = available ? registerPlugin('KeystoneBridge') : null;
@@ -61,6 +61,7 @@ export function buildWidgetPayload(state, now = new Date()) {
     week: widgetWeek(state, now),
     people: widgetPeople(state, now),
     month: widgetMonth(state, now),
+    prod: widgetProductivity(state, now),
   };
 }
 

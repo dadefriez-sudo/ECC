@@ -8,6 +8,7 @@ import { App as CapApp } from '@capacitor/app';
 import { goalKey } from '../data/helpers.js';
 import { geocodeAddress } from '../data/geocode.js';
 import { todayISO } from '../data/helpers.js';
+import { completeTask } from '../data/taskActions.js';
 
 // Handles what the Android side reports: text shared into Keystone (offers to
 // save it as a task, a note or a map pin) and taps on the widget (the + button
@@ -33,6 +34,7 @@ export default function ShareReceiver() {
           else if (action === 'newNote') navigate('/', { state: { quickNewNote: true } });
           else if (action === 'newPerson') navigate('/contacts', { state: { quickNewContact: true } });
           else if (action === 'openGoals') navigate('/goals');
+          else if (action === 'openTasks') navigate('/tasks');
           else if (action === 'openPeople') navigate('/contacts');
           else if (action === 'openPlanner') {
             // id: a date to show in Day view, "month" for the month, empty for the planner as it was.
@@ -62,12 +64,24 @@ export default function ShareReceiver() {
       const logs = await takeWidgetLogs();
       if (!live || !logs.length) return;
       const byGoal = new Map();
-      for (const l of logs) byGoal.set(l.i, (byGoal.get(l.i) || 0) + (Number(l.d) || 0));
+      const taskIds = [];
+      for (const l of logs) {
+        if (l.k === 'task') taskIds.push(l.i);
+        else byGoal.set(l.i, (byGoal.get(l.i) || 0) + (Number(l.d) || 0));
+      }
       for (const [id, delta] of byGoal) {
         const g = stateRef.current.goals.find((x) => x.id === id);
         if (!g) continue;
         const key = goalKey(g.period || 'weekly', new Date());
         actions.setGoalProgress(id, key, Math.max(0, (g.progress?.[key] || 0) + delta));
+      }
+      // Tasks ticked on the widget. Skipped if the task is already done, or already moved on
+      // (a repeating task finished in the app since), so nothing is counted twice.
+      const today = todayISO();
+      for (const id of new Set(taskIds)) {
+        const t = stateRef.current.tasks.find((x) => x.id === id);
+        if (!t || t.done || !t.dueDate || t.dueDate > today) continue;
+        actions.updateTask(completeTask(t, today));
       }
     };
     apply();

@@ -53,7 +53,7 @@ export default function PrivacyPage() {
           <b>Home screen widgets (Android).</b> Keystone&apos;s widgets show the next things in your
           day, your goals and streak, the week and month, and the people you planned to follow up
           with. To draw them, Keystone saves a short summary (item titles and times, goal names
-          and progress, and the names and phone numbers of those people) in the app&apos;s private
+          and progress, task titles, and the names and phone numbers of those people) in the app&apos;s private
           storage on your device. Those details appear on your home screen, so anyone who can see
           your unlocked screen can read them. Remove the widgets if you would rather they did not.
           Tapping a call or message button on a widget opens your phone&apos;s own dialer or

@@ -64,3 +64,48 @@ test('people: a due follow-up comes first, with a phone number for the row', () 
   assert.equal(p[0].i, 'c2');
   assert.equal(p[1].p, '5550102000');
 });
+
+import { widgetProductivity } from '../src/data/widgetData.js';
+import { completeTask } from '../src/data/taskActions.js';
+
+test('Productivity: counts done today, open tasks due, week bars and the streak', () => {
+  const now = new Date('2026-11-12T10:00:00'); // a Thursday
+  const state = {
+    tasks: [
+      { id: 'a', title: 'Renew car registration', dueDate: '2026-11-12', done: false },
+      { id: 'b', title: 'Pick up dry cleaning', dueDate: '2026-11-12', dueTime: '17:00', done: false },
+      { id: 'c', title: 'Overdue thing', dueDate: '2026-11-10', done: false },
+      { id: 'd', title: 'Later', dueDate: '2026-11-20', done: false },
+      { id: 'e', title: 'Email the proposal', dueDate: '2026-11-12', done: true, completedDates: ['2026-11-12'] },
+      { id: 'f', title: 'Water plants', repeat: 'daily', dueDate: '2026-11-13', done: false, completedDates: ['2026-11-11', '2026-11-12'] },
+    ],
+  };
+  const p = widgetProductivity(state, now);
+  assert.equal(p.n, 2); // e, and f (a repeating task that rolled forward today)
+  assert.equal(p.l, 3); // a, b and the overdue one; not the one due later
+  assert.equal(p.p, 40);
+  assert.deepEqual(p.top.map((t) => t.i), ['c', 'b', 'a']); // overdue first, then timed, then untimed
+  assert.equal(p.top[0].t, 'Overdue');
+  assert.equal(p.d, 3); // Thursday, with the week starting Monday
+  assert.equal(p.w.reduce((x, y) => x + y, 0), 3);
+  assert.equal(p.w[3], 2);
+  assert.equal(p.s, 2); // finished something on the 11th and the 12th
+});
+
+test('Productivity: no tasks means an empty ring, and a streak can carry from yesterday', () => {
+  const now = new Date('2026-11-12T10:00:00');
+  const p = widgetProductivity({ tasks: [{ id: 'x', title: 'x', dueDate: '2026-11-11', done: true, completedDates: ['2026-11-10', '2026-11-11'] }] }, now);
+  assert.equal(p.p, 0);
+  assert.equal(p.s, 2);
+  assert.equal(widgetProductivity({}, now).top.length, 0);
+});
+
+test('completeTask logs today and rolls a repeating task forward', () => {
+  const once = completeTask({ id: 'a', title: 'a', dueDate: '2026-11-12' }, '2026-11-12');
+  assert.equal(once.done, true);
+  assert.deepEqual(once.completedDates, ['2026-11-12']);
+  const daily = completeTask({ id: 'b', title: 'b', repeat: 'daily', dueDate: '2026-11-12' }, '2026-11-12');
+  assert.equal(daily.done, false);
+  assert.equal(daily.dueDate, '2026-11-13');
+  assert.deepEqual(daily.completedDates, ['2026-11-12']);
+});

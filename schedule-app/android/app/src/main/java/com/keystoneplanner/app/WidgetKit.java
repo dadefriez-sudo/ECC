@@ -58,6 +58,7 @@ final class WidgetKit {
             new KeystoneWeekWidget(),
             new KeystonePeopleWidget(),
             new KeystoneMonthWidget(),
+            new KeystoneProductivityWidget(),
         };
     }
 
@@ -124,6 +125,62 @@ final class WidgetKit {
         return PendingIntent.getBroadcast(context, request, intent, FLAGS);
     }
 
+    /** A task's tick box: handled by WidgetActionReceiver without opening the app. */
+    static PendingIntent doneTask(Context context, int request, String taskId) {
+        Intent intent = new Intent(context, WidgetActionReceiver.class);
+        intent.setAction("com.keystoneplanner.app.WIDGET_TASK_" + taskId);
+        intent.putExtra("taskId", taskId);
+        return PendingIntent.getBroadcast(context, request, intent, FLAGS);
+    }
+
+    /**
+     * Remembers a ticked task for the web app and shows it finished now: the task leaves the
+     * list and the day's counts move on, until the app next sends the real numbers.
+     */
+    static void recordTaskDone(Context context, String taskId) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        try {
+            JSONArray logs = new JSONArray(prefs.getString(LOGS, "[]"));
+            logs.put(new JSONObject().put("k", "task").put("i", taskId));
+            SharedPreferences.Editor edit = prefs.edit().putString(LOGS, logs.toString());
+            String json = prefs.getString(KEY, null);
+            if (json != null) {
+                JSONObject data = new JSONObject(json);
+                JSONObject prod = data.optJSONObject("prod");
+                JSONArray top = prod == null ? null : prod.optJSONArray("top");
+                if (prod != null && top != null) {
+                    JSONArray kept = new JSONArray();
+                    boolean found = false;
+                    for (int i = 0; i < top.length(); i++) {
+                        JSONObject t = top.getJSONObject(i);
+                        if (!found && taskId.equals(t.optString("i"))) {
+                            found = true;
+                        } else {
+                            kept.put(t);
+                        }
+                    }
+                    if (found) {
+                        int done = prod.optInt("n", 0) + 1;
+                        int left = Math.max(0, prod.optInt("l", 0) - 1);
+                        prod.put("top", kept);
+                        prod.put("n", done);
+                        prod.put("l", left);
+                        prod.put("p", Math.round(done * 100f / Math.max(1, done + left)));
+                        JSONArray week = prod.optJSONArray("w");
+                        int today = prod.optInt("d", -1);
+                        if (week != null && today >= 0 && today < week.length()) {
+                            week.put(today, week.optInt(today, 0) + 1);
+                        }
+                        edit.putString(KEY, data.toString());
+                    }
+                }
+            }
+            edit.apply();
+        } catch (JSONException ignored) {
+            // A bad value is dropped; the web app's own copy is the source of truth.
+        }
+    }
+
     /** Adds the tap to the list the web app reads next time it opens, and shows it now. */
     static void recordGoalLog(Context context, String goalId, int delta) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -183,6 +240,11 @@ final class WidgetKit {
 
     /** The same ring; with `check` a finished one shows a check mark instead of 100%. */
     static Bitmap ring(Context context, int percent, int sizeDp, boolean check) {
+        return ring(context, percent, sizeDp, check, null);
+    }
+
+    /** As above, with `label` in the middle in place of the percentage (for example "5/8"). */
+    static Bitmap ring(Context context, int percent, int sizeDp, boolean check, String label) {
         float density = context.getResources().getDisplayMetrics().density;
         int size = Math.max(16, Math.round(sizeDp * density));
         Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
@@ -215,7 +277,41 @@ final class WidgetKit {
         text.setTextAlign(Paint.Align.CENTER);
         text.setTypeface(font(context, true));
         text.setTextSize(size * 0.27f);
-        canvas.drawText(percent + "%", size / 2f, size / 2f + text.getTextSize() * 0.35f, text);
+        canvas.drawText(label != null ? label : percent + "%", size / 2f, size / 2f + text.getTextSize() * 0.35f, text);
+        return bitmap;
+    }
+
+    /** Seven small bars (one per day of the week, today in gold) with the day letters beneath. */
+    static Bitmap bars(Context context, JSONArray counts, int todayIndex, JSONArray letters, int widthDp, int heightDp) {
+        float density = context.getResources().getDisplayMetrics().density;
+        int w = Math.max(40, Math.round(widthDp * density));
+        int h = Math.max(20, Math.round(heightDp * density));
+        Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        int n = 7;
+        int max = 1;
+        for (int i = 0; counts != null && i < n && i < counts.length(); i++) {
+            max = Math.max(max, counts.optInt(i, 0));
+        }
+        float labelH = h * 0.32f;
+        float chartH = h - labelH - 2 * density;
+        float slot = w / (float) n;
+        float barW = slot * 0.5f;
+        Paint bar = paint(TRACK);
+        Paint label = paint(MUTED);
+        label.setTextAlign(Paint.Align.CENTER);
+        label.setTypeface(font(context, true));
+        label.setTextSize(labelH * 0.95f);
+        for (int i = 0; i < n; i++) {
+            int c = counts != null && i < counts.length() ? counts.optInt(i, 0) : 0;
+            float cx = slot * (i + 0.5f);
+            float bh = c <= 0 ? 2 * density : Math.max(3 * density, chartH * c / (float) max);
+            bar.setColor(i == todayIndex ? GOLD : (c > 0 ? 0xFF5B6B7C : TRACK));
+            canvas.drawRoundRect(new RectF(cx - barW / 2, chartH - bh, cx + barW / 2, chartH), barW / 3, barW / 3, bar);
+            label.setColor(i == todayIndex ? GOLD : MUTED);
+            String letter = letters != null && i < letters.length() ? letters.optString(i, "") : "";
+            canvas.drawText(letter, cx, h - 1 * density, label);
+        }
         return bitmap;
     }
 

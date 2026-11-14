@@ -119,4 +119,43 @@ export function widgetNext(rows, now) {
   };
 }
 
+// The Productivity widget: how today's list is going, the next few tasks to tick off,
+// this week's finished tasks per day, and the run of days with something finished.
+// Finished tasks come from each task's completedDates (a repeating task that rolled
+// forward counts too), the same numbers the Tasks page uses.
+export function widgetProductivity(state, now, maxTasks = 6) {
+  const today = toISODate(now);
+  const tasks = state.tasks || [];
+  const finishedOn = new Map();
+  for (const t of tasks) for (const d of t.completedDates || []) finishedOn.set(d, (finishedOn.get(d) || 0) + 1);
+  const done = tasks.filter((t) => {
+    const last = (t.completedDates || [])[(t.completedDates || []).length - 1];
+    return last === today && (t.done || (t.repeat && t.repeat !== 'none'));
+  }).length;
+  const open = tasks
+    .filter((t) => !t.done && t.dueDate && t.dueDate <= today)
+    .sort((a, b) => (a.dueDate + (a.dueTime || '99:99')).localeCompare(b.dueDate + (b.dueTime || '99:99')));
+  const left = open.length;
+  const total = done + left;
+  const days = weekDays(startOfWeek(now));
+  const w = days.map((d) => finishedOn.get(toISODate(d)) || 0);
+  let streak = 0;
+  const cursor = new Date(now);
+  if (!finishedOn.get(today)) cursor.setDate(cursor.getDate() - 1); // today may not have started yet
+  while (finishedOn.get(toISODate(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return {
+    n: done,
+    l: left,
+    p: total ? Math.round((done / total) * 100) : 0,
+    top: open.slice(0, maxTasks).map((t) => ({ i: t.id, n: t.title, t: t.dueDate < today ? 'Overdue' : t.dueTime || '' })),
+    w,
+    d: days.findIndex((d) => toISODate(d) === today),
+    h: days.map((d) => LETTERS[d.getDay()]),
+    s: streak,
+  };
+}
+
 export { todayISO, fromISODate };

@@ -95,6 +95,18 @@
         </receiver>
 
         <receiver
+            android:name=".KeystoneProductivityWidget"
+            android:exported="false"
+            android:label="@string/widget_label_productivity">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/keystone_widget_productivity_info" />
+        </receiver>
+
+        <receiver
             android:name=".KeystoneGoalLogWidget"
             android:exported="false"
             android:label="@string/widget_label_goallog">
