@@ -8952,3 +8952,8 @@ body[data-assistant='on'] .conflict-list {
 .color-slider input[type='range'] { -webkit-appearance: none; appearance: none; height: 14px; border-radius: 99px; border: 1px solid var(--border); padding: 0; }
 .color-slider input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #333; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
 .color-slider input[type='range']::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #333; }
+
+/* Map memory row: the size on the left, a short Clear button that never wraps on the right. */
+.saved-maps-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.saved-maps-row > span { flex: 1; min-width: 0; }
+.saved-maps-row .btn { flex: none; white-space: nowrap; }

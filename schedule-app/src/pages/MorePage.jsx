@@ -2453,12 +2453,13 @@ function SavedMapsRow({ on, onToggle, showToast }) {
         Keeps the map pictures you look at (Standard, Light and Dark), so those places still show with no
         signal. Places you haven't opened yet won't. Satellite and Hybrid always need a connection.
       </p>
-      <div className="section-head">
+      <div className="saved-maps-row">
         <span className="muted small">
-          {stats ? (stats.tiles ? `Saved: ${stats.tiles} pictures, about ${Math.max(1, stats.approxMB)} MB` : 'Nothing saved yet') : ' '}
+          {stats ? (stats.tiles ? `${stats.tiles} pictures saved · about ${Math.max(1, stats.approxMB)} MB` : 'Nothing saved yet') : ' '}
         </span>
         <button
           className="btn btn-sm btn-ghost"
+          aria-label="Clear saved maps"
           disabled={!stats?.tiles}
           onClick={async () => {
             await clearTileCache();
@@ -2466,7 +2467,7 @@ function SavedMapsRow({ on, onToggle, showToast }) {
             showToast('Saved maps cleared');
           }}
         >
-          Clear saved maps
+          Clear
         </button>
       </div>
     </>
