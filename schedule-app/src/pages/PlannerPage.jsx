@@ -173,6 +173,8 @@ export default function PlannerPage() {
   const [editing, setEditing] = useState(null); // draft being edited
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState(() => new Set()); // "id:recDate"
+  // Events copied from the select bar, ready to paste onto whichever day is on screen.
+  const [clipboard, setClipboard] = useState([]);
   // Selecting is a Day view tool; leaving it clears any selection in progress.
   useEffect(() => {
     if (mode !== 'day') {
@@ -689,6 +691,87 @@ export default function PlannerPage() {
     }
   };
 
+  // Copy: remember each selected occurrence as a plain one-off event (a repeating event copies
+  // as the single occurrence that was picked), then paste it onto any day.
+  const copySelected = () => {
+    const occs = resolveSelectedOccurrences();
+    if (!occs.length) return;
+    const copies = occs.map((occ) => {
+      const master = state.events.find((e) => e.id === occ.id) || {};
+      const {
+        id, overrides, skipDates, doneDates, done, repeat, repeatUntil, linkKind, linkId, ...rest
+      } = master; // eslint-disable-line no-unused-vars
+      return {
+        ...rest,
+        title: occ.title,
+        start: occ.start,
+        end: occ.end,
+        location: occ.location || '',
+        notes: occ.notes || '',
+        contactIds: eventContactIds(occ),
+        repeat: 'none',
+        done: false,
+      };
+    });
+    setClipboard(copies);
+    setSelected(new Set());
+    setSelectedDay(null);
+    setSelectMode(false);
+    confirmTick();
+    showToast(`Copied ${copies.length} event${copies.length === 1 ? '' : 's'}. Open a day and tap Paste.`);
+  };
+
+  const pasteClipboard = () => {
+    if (!clipboard.length) return;
+    const added = clipboard.map((c) => ({ ...c, id: uid('e'), date: cursor }));
+    added.forEach((e) => actions.addEvent(e));
+    confirmTick();
+    showToast(
+      `Pasted ${added.length} event${added.length === 1 ? '' : 's'} on ${formatDayLabel(cursor)}`,
+      'Undo',
+      () => added.forEach((e) => actions.deleteEvent(e.id))
+    );
+  };
+
+  // Delete: a one-off event is removed; a repeating one only loses the picked day (the same thing
+  // "skip this one" does), so the rest of the series stays. Undo puts everything back as it was.
+  const deleteSelected = () => {
+    const occs = resolveSelectedOccurrences();
+    if (!occs.length) return;
+    const before = new Map();
+    for (const occ of occs) {
+      const master = state.events.find((e) => e.id === occ.id);
+      if (master && !before.has(master.id)) before.set(master.id, master);
+    }
+    const staged = new Map();
+    for (const occ of occs) {
+      const master = staged.get(occ.id) || state.events.find((e) => e.id === occ.id);
+      if (!master) continue;
+      if ((master.repeat || 'none') === 'none') {
+        staged.set(occ.id, null);
+      } else {
+        const overrides = { ...(master.overrides || {}) };
+        delete overrides[occ.recDate];
+        staged.set(occ.id, { ...master, skipDates: [...(master.skipDates || []), occ.recDate], overrides });
+      }
+    }
+    for (const [id, next] of staged) {
+      if (next === null) actions.deleteEvent(id);
+      else actions.updateEvent(next);
+    }
+    warnTick();
+    setSelected(new Set());
+    setSelectedDay(null);
+    setSelectMode(false);
+    const n = occs.length;
+    showToast(`Deleted ${n} event${n === 1 ? '' : 's'}`, 'Undo', () => {
+      for (const master of before.values()) {
+        if (state.events.some((e) => e.id === master.id)) actions.updateEvent(master);
+        else actions.addEvent(master);
+      }
+    });
+  };
+
   // Multi-select is confined to one day. Moving a set of events keeps their
   // times and shifts them together, which only means anything when they
   // started on the same day — a mixed-day selection would silently do
@@ -903,7 +986,7 @@ export default function PlannerPage() {
             <Chevron dir="right" />
           </button>
         </div>
-        <div className="select-toggle-row">
+        <div className={`select-toggle-row${selectMode ? ' select-toggle-row--select' : ''}`}>
           {mode === 'day' && (
             <>
               <button
@@ -914,12 +997,22 @@ export default function PlannerPage() {
                   setSelectedDay(null);
                 }}
               >
-                {selectMode ? 'Cancel select' : 'Select'}
+                {selectMode ? 'Cancel' : 'Select'}
               </button>
-              {selectMode && <span className="muted small">{selected.size} selected</span>}
+              {selectMode && <span className="muted small select-count">{selected.size} selected</span>}
             </>
           )}
-          {mode !== 'month' && state.settings?.showDayTemplates !== false && (
+          {!selectMode && mode === 'day' && clipboard.length > 0 && (
+            <span className="paste-chip">
+              <button className="btn btn-sm btn-ghost" onClick={pasteClipboard}>
+                Paste {clipboard.length}
+              </button>
+              <button className="icon-btn" onClick={() => setClipboard([])} aria-label="Clear copied events">
+                <Icon name="close" size={14} />
+              </button>
+            </span>
+          )}
+          {!selectMode && mode !== 'month' && state.settings?.showDayTemplates !== false && (
             <button
               className="btn btn-sm btn-ghost"
               onClick={() => (isPro ? setTemplatesOpen(true) : navigate('/pricing'))}
@@ -927,7 +1020,7 @@ export default function PlannerPage() {
               Templates {!isPro && <Icon name="lock" size={14} />}
             </button>
           )}
-          {phoneCalendarAvailable() && (
+          {!selectMode && phoneCalendarAvailable() && (
             <button className="btn btn-sm btn-ghost" onClick={() => setPhoneCalOpen(true)}>
               Import
             </button>
@@ -1041,9 +1134,15 @@ export default function PlannerPage() {
       )}
 
       {selectMode && selected.size > 0 && (
-        <div className="select-bar">
+        <div className="select-bar select-bar--wrap">
           <span>{selected.size} selected</span>
           <div className="select-bar-actions">
+            <button className="btn btn-ghost btn-sm" data-haptic="none" onClick={copySelected}>
+              Copy
+            </button>
+            <button className="btn btn-ghost btn-sm danger-text" data-haptic="none" onClick={deleteSelected}>
+              Delete
+            </button>
             <button className="btn btn-ghost btn-sm" data-haptic="none" onClick={() => moveSelected({ dayOffset: 1 })}>
               +1 day
             </button>

@@ -8891,3 +8891,23 @@ body[data-assistant='on'] .conflict-list {
 .backup-status span { color: var(--muted); font-size: 12.5px; }
 .backup-status--old { background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
 .backup-status--old strong { color: var(--warn-ink, var(--warn)); }
+
+/* Planner select mode: the row keeps one line and one height whether or not Select is on, so
+   switching modes no longer pushes the timeline down. */
+.select-toggle-row .btn,
+.select-toggle-row .select-count {
+  white-space: nowrap;
+  flex: none;
+}
+.select-toggle-row {
+  min-height: 38px;
+}
+.select-toggle-row .today-btn {
+  margin-left: auto;
+}
+.paste-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
