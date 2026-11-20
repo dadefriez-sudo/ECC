@@ -56,6 +56,7 @@ import { tileCacheStats, clearTileCache } from '../data/tileCache.js';
 import { phoneContactsAvailable, phoneCalendarAvailable } from '../data/nativeBridge.js';
 import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
 import QuickGroupSort from '../components/QuickGroupSort.jsx';
+import ColorPicker from '../components/ColorPicker.jsx';
 import { ungroupedContacts } from '../data/ungrouped.js';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
 import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js';
@@ -1086,15 +1087,15 @@ export default function MorePage() {
                 {Object.entries(s.canvasCourseColors)
                   .sort(([a], [b]) => a.localeCompare(b))
                   .map(([course, color]) => (
-                    <label className="canvas-class-row" key={course}>
-                      <input
-                        type="color"
+                    <div className="canvas-class-row" key={course}>
+                      <ColorPicker
                         value={color}
-                        onChange={(e) => recolorCanvasCourse(state, actions, course, e.target.value)}
-                        aria-label={`Color for ${course}`}
+                        onChange={(c) => recolorCanvasCourse(state, actions, course, c)}
+                        label={`Color for ${course}`}
+                        title={`Color for ${course}`}
                       />
                       <span>{course}</span>
-                    </label>
+                    </div>
                   ))}
                 <p className="muted small">Each class gets its own color automatically. Tap a color to change it.</p>
               </div>
