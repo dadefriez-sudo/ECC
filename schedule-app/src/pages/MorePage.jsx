@@ -38,7 +38,7 @@ import { QUICK_ADD_TYPES, normalizeQuickAdd } from '../data/quickAdd.js';
 import { CLERK_ENABLED, openSignInWithRecovery } from '../data/clerkConfig.js';
 import { AI_ENABLED } from '../data/aiConfig.js';
 import { MAP_STYLE_OPTIONS } from '../data/mapStyles.js';
-import { CLOUD_SYNC_ENABLED } from '../data/features.js';
+import { CLOUD_SYNC_ENABLED, GOOGLE_CONNECT_ENABLED } from '../data/features.js';
 import {
   CONTACT_SWIPE_OPTIONS,
   DEFAULT_CONTACT_SWIPE_LEFT,
@@ -690,30 +690,34 @@ export default function MorePage() {
                 : 'Keep your data synced across devices. Requires Pro.'}
             </p>
           )}
-          {CLERK_ENABLED ? (
-            <GoogleSyncButtons
-              isPro={isPro}
-              googleConnected={googleConnected}
-              requirePro={requirePro}
-              actions={actions}
-              showToast={showToast}
-              state={state}
-            />
-          ) : (
-            <button
-              className="btn btn-ghost full"
-              onClick={() =>
-                requirePro(() => alert('Google sign-in requires a backend that is not connected in this build yet.'))
-              }
-            >
-              <GoogleIcon /> Sign in with Google {!isPro && '· Pro'}
-            </button>
+          {GOOGLE_CONNECT_ENABLED && (
+            <>
+            {CLERK_ENABLED ? (
+              <GoogleSyncButtons
+                isPro={isPro}
+                googleConnected={googleConnected}
+                requirePro={requirePro}
+                actions={actions}
+                showToast={showToast}
+                state={state}
+              />
+            ) : (
+              <button
+                className="btn btn-ghost full"
+                onClick={() =>
+                  requirePro(() => alert('Google sign-in requires a backend that is not connected in this build yet.'))
+                }
+              >
+                <GoogleIcon /> Sign in with Google {!isPro && '· Pro'}
+              </button>
+            )}
+            <p className="muted small">
+              {googleConnected
+                ? "Calendar (single events only, not repeating ones) stays synced both ways while Keystone is open. Contacts is a one-time import. Tap \"Import contacts again\" any time for a fresh copy."
+                : 'A personal Keystone login (no Google needed) is free and always available. This is only for connecting your Google Calendar (kept in sync) and Contacts (a one-time import).'}
+            </p>
+            </>
           )}
-          <p className="muted small">
-            {googleConnected
-              ? "Calendar (single events only, not repeating ones) stays synced both ways while Keystone is open. Contacts is a one-time import. Tap \"Import contacts again\" any time for a fresh copy."
-              : 'A personal Keystone login (no Google needed) is free and always available. This is only for connecting your Google Calendar (kept in sync) and Contacts (a one-time import).'}
-          </p>
         </SettingsGroup>
       )}
       <SettingsGroup {...grp('g3')}>

@@ -11,3 +11,7 @@ export const SHARED_CALENDARS_ENABLED = false;
 // end, so nothing in the app promises it. The settings card and its search entry come back
 // when this is true.
 export const CLOUD_SYNC_ENABLED = false;
+
+// The "Sign in with Google" tile (connecting Google Calendar and Contacts). Off for good unless
+// it is wanted again; separate from cloud sync so bringing that card back never brings this back.
+export const GOOGLE_CONNECT_ENABLED = false;
