@@ -55,6 +55,8 @@ import { BACKGROUNDS, activeBackground } from '../data/backgrounds.js';
 import { tileCacheStats, clearTileCache } from '../data/tileCache.js';
 import { phoneContactsAvailable, phoneCalendarAvailable } from '../data/nativeBridge.js';
 import PhoneCalendarImport from '../components/PhoneCalendarImport.jsx';
+import QuickGroupSort from '../components/QuickGroupSort.jsx';
+import { ungroupedContacts } from '../data/ungrouped.js';
 import BackupPasswordModal from '../components/BackupPasswordModal.jsx';
 import { updateCheckSupported, openPlayStoreListing } from '../data/appUpdate.js';
 import { useToast } from '../data/toast.jsx';
@@ -188,7 +190,7 @@ const SETTINGS_INDEX = [
   {
     label: 'People',
     groups: [
-      { id: 'g14', title: 'People groups', keywords: 'contacts status label category colour color' },
+      { id: 'g14', title: 'People groups', keywords: 'contacts status label category colour color sort ungrouped quick assign' },
       { id: 'gswipe', title: 'People swipe actions', keywords: 'contacts gesture log schedule call text delete' },
       { id: 'g19', title: 'Contact import / export', keywords: 'vcf vcard contacts address book download backup google apple outlook' },
       { id: 'g13', title: 'Contact notifications', keywords: 'contacts dates special yearly birthdays anniversaries overdue reconnect touch base nudge' },
@@ -310,6 +312,7 @@ export default function MorePage() {
   const fileRef = useRef(null);
   // Canvas calendar link box (the saved link itself lives in settings, on this device only).
   const [phoneCalOpen, setPhoneCalOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [canvasLink, setCanvasLink] = useState('');
   const [canvasBusy, setCanvasBusy] = useState(false);
   const [canvasMsg, setCanvasMsg] = useState('');
@@ -1431,6 +1434,16 @@ export default function MorePage() {
           ))}
           {state.statuses.length === 0 && <li className="muted small">No statuses yet.</li>}
         </ul>
+        <button
+          className="btn btn-ghost full"
+          disabled={state.statuses.length > 0 && ungroupedContacts(state).length === 0}
+          onClick={() => requirePro(() => setSortOpen(true))}
+        >
+          {ungroupedContacts(state).length > 0
+            ? `Sort ungrouped people (${ungroupedContacts(state).length})`
+            : 'Everyone is in a group'}
+        </button>
+        <QuickGroupSort open={sortOpen} onClose={() => setSortOpen(false)} />
       </SettingsGroup>
       <SettingsGroup {...grp('gswipe')}>
         <span className="detail-label">People swipe actions</span>
