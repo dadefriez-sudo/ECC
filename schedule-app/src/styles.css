@@ -8957,3 +8957,12 @@ body[data-assistant='on'] .conflict-list {
 .saved-maps-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .saved-maps-row > span { flex: 1; min-width: 0; }
 .saved-maps-row .btn { flex: none; white-space: nowrap; }
+
+/* Cloud sync checklist in Settings. */
+.sync-panel { display: flex; flex-direction: column; gap: 10px; }
+.sync-checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sync-checklist li { display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 32px; }
+.sync-checklist li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sync-checklist .sync-ok svg { color: var(--good); }
+.sync-checklist .sync-bad svg { color: var(--warn); }
+.sync-checklist .btn { flex: none; white-space: nowrap; }

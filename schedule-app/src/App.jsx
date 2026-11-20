@@ -40,7 +40,7 @@ import { buildAccountabilitySnapshot } from './data/accountabilitySnapshot.js';
 import { runGoogleCalendarSync } from './data/googleCalendarSync.js';
 import { CLERK_ENABLED } from './data/clerkConfig.js';
 import { AI_ENABLED } from './data/aiConfig.js';
-import { setSyncStatus } from './data/syncStatus.js';
+import { setSyncStatus, onSyncRequest } from './data/syncStatus.js';
 import { useToast } from './data/toast.jsx';
 import { useStore, useActions } from './data/store.jsx';
 import { hasActiveBackHandler } from './data/useBackDismiss.js';
@@ -408,6 +408,7 @@ function DataSync() {
     }
     seenAtRef.current = loadSyncBase(userId)?.updatedAt ?? null;
     sync({ poll: true });
+    const stopListening = onSyncRequest(() => sync({ poll: true })); // Settings → Sync now
     const poll = () => sync({ poll: true });
     const timer = setInterval(poll, PULL_INTERVAL_MS);
     const onVisible = () => {
@@ -416,6 +417,7 @@ function DataSync() {
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', poll);
     return () => {
+      stopListening();
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', poll);

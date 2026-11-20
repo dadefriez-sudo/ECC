@@ -45,7 +45,7 @@ import {
   DEFAULT_CONTACT_SWIPE_RIGHT,
 } from '../data/contactSwipe.js';
 import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disconnectGoogle } from '../data/api.js';
-import { useSyncStatus, describeSyncedAt } from '../data/syncStatus.js';
+import { useSyncStatus, describeSyncedAt, requestSync, syncReadiness } from '../data/syncStatus.js';
 import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBackups } from '../data/backup.js';
 import { describeBackupAge, backupAgeDays, REMIND_AFTER_DAYS } from '../data/backupReminder.js';
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
@@ -681,14 +681,10 @@ export default function MorePage() {
               <span className="toggle-knob" />
             </button>
           </div>
-          {isPro && CLERK_ENABLED && backendConfigured() ? (
-            <CloudSyncStatus cloudSyncOn={cloudSyncOn} />
+          {CLERK_ENABLED ? (
+            <CloudSyncPanel cloudSyncOn={cloudSyncOn} isPro={isPro} />
           ) : (
-            <p className="muted small">
-              {isPro
-                ? "Sync isn't connected to a server yet, so flipping this on doesn't move your data anywhere. It's here so the setting is ready once a backend exists."
-                : 'Keep your data synced across devices. Requires Pro.'}
-            </p>
+            <p className="muted small">Cloud sync needs a build with accounts set up.</p>
           )}
           {GOOGLE_CONNECT_ENABLED && (
             <>
@@ -2332,35 +2328,64 @@ function GoogleSyncButtons({ isPro, googleConnected, requirePro, actions, showTo
 // "Your data syncs automatically" is a claim; "Last synced 2 min ago" is
 // evidence, and when something is wrong it's the difference between noticing
 // and not.
-function CloudSyncStatus({ cloudSyncOn }) {
+function CloudSyncPanel({ cloudSyncOn, isPro }) {
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
+  const clerk = useClerk();
+  const navigate = useNavigate();
   const status = useSyncStatus();
-  // Re-render on a slow tick so "3 min ago" doesn't sit there saying "just
-  // now" for the rest of the session.
+  // Re-render on a slow tick so "3 min ago" doesn't sit there saying "just now".
   const [, tick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 30000);
     return () => clearInterval(t);
   }, []);
 
-  if (!cloudSyncOn) {
-    return <p className="muted small">Keep your data synced across devices.</p>;
-  }
-  if (!isSignedIn) {
-    return <p className="muted small">Sign in above to start syncing your data to your account.</p>;
-  }
-  if (status.phase === 'error') {
-    return (
-      <p className="muted small">
-        Couldn't reach the server. Changes are saved on this device and will sync when it's back.
-      </p>
-    );
-  }
+  const { items, ready, line } = syncReadiness(
+    {
+      isSignedIn,
+      email: user?.primaryEmailAddress?.emailAddress,
+      isPro,
+      serverConfigured: backendConfigured(),
+      cloudSyncOn,
+    },
+    status
+  );
+  const actions = {
+    account: (
+      <button className="btn btn-sm btn-primary" onClick={() => openSignInWithRecovery(clerk)}>
+        Sign in
+      </button>
+    ),
+    pro: (
+      <button className="btn btn-sm btn-ghost" onClick={() => navigate('/pricing')}>
+        See Pro
+      </button>
+    ),
+  };
+
   return (
-    <p className="muted small">
-      {status.phase === 'syncing' ? 'Syncing…' : `Last synced ${describeSyncedAt(status.at)}`} · every
-      device you're signed in on stays in step.
-    </p>
+    <div className="sync-panel">
+      <ul className="sync-checklist">
+        {items.map((r) => (
+          <li key={r.key} className={r.ok ? 'sync-ok' : 'sync-bad'}>
+            <Icon name={r.ok ? 'check' : 'warning'} size={16} />
+            <span>{r.text}</span>
+            {!r.ok && actions[r.key]}
+          </li>
+        ))}
+      </ul>
+      <div className="saved-maps-row">
+        <span className="muted small" role="status">{line}</span>
+        <button className="btn btn-sm btn-ghost" disabled={!ready || status.phase === 'syncing'} onClick={() => requestSync()}>
+          Sync now
+        </button>
+      </div>
+      <p className="muted small">
+        With this on, a copy of your data is kept on your Keystone account so it can follow you to another device and be
+        restored on a new phone. Delete your account any time to remove it.
+      </p>
+    </div>
   );
 }
 
