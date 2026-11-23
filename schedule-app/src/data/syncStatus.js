@@ -71,3 +71,22 @@ export function syncReadiness({ isSignedIn, email, isPro, serverConfigured, clou
   } else line = `Last synced ${describeSyncedAt(status?.at, now)}`;
   return { items, ready, line };
 }
+
+// One line saying what the server holds, from /api/data/summary. `summary` is null until it has
+// been fetched, or when it could not be.
+export function describeCloudCopy(summary, now = Date.now()) {
+  if (!summary) return null;
+  if (!summary.exists) return 'Cloud copy: none yet';
+  const c = summary.counts || {};
+  const parts = [
+    [c.contacts, 'person', 'people'],
+    [c.events, 'event', 'events'],
+    [c.goals, 'goal', 'goals'],
+    [c.tasks, 'task', 'tasks'],
+    [c.notes, 'note', 'notes'],
+  ]
+    .filter(([n]) => n > 0)
+    .map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
+  const when = summary.updatedAt ? ` · saved ${describeSyncedAt(Date.parse(summary.updatedAt), now)}` : '';
+  return `Cloud copy: ${parts.length ? parts.join(', ') : 'empty'}${when}`;
+}

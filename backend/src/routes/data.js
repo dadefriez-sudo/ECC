@@ -44,6 +44,24 @@ router.get('/', requireUser, requirePro, async (req, res, next) => {
   }
 });
 
+// What the server is holding for this account: counts only, never the contents. The sync card in
+// Settings shows it so someone can see that a copy really exists (for example before a reinstall).
+router.get('/summary', requireUser, requirePro, async (req, res, next) => {
+  try {
+    const row = await prisma.userData.findUnique({ where: { userId: req.dbUser.id } });
+    if (!row) return res.json({ exists: false, updatedAt: null, counts: {} });
+    const d = row.data && typeof row.data === 'object' ? row.data : {};
+    const count = (k) => (Array.isArray(d[k]) ? d[k].length : 0);
+    res.json({
+      exists: true,
+      updatedAt: row.updatedAt,
+      counts: { events: count('events'), tasks: count('tasks'), goals: count('goals'), contacts: count('contacts'), notes: count('notes'), pins: count('pins') },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.put('/', requireUser, requirePro, putLimiter, bigJson, async (req, res, next) => {
   const { data, baseUpdatedAt } = req.body || {};
   if (!data || typeof data !== 'object' || Array.isArray(data)) {

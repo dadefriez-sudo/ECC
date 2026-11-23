@@ -44,8 +44,8 @@ import {
   DEFAULT_CONTACT_SWIPE_LEFT,
   DEFAULT_CONTACT_SWIPE_RIGHT,
 } from '../data/contactSwipe.js';
-import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disconnectGoogle } from '../data/api.js';
-import { useSyncStatus, describeSyncedAt, requestSync, syncReadiness } from '../data/syncStatus.js';
+import { backendConfigured, deleteAccount, googleAuthUrl, importGoogleData, disconnectGoogle, fetchSyncSummary } from '../data/api.js';
+import { useSyncStatus, describeSyncedAt, requestSync, syncReadiness, describeCloudCopy } from '../data/syncStatus.js';
 import { backupSupported, writeBackupNow, hasBackupPassword, removeUnencryptedBackups } from '../data/backup.js';
 import { describeBackupAge, backupAgeDays, REMIND_AFTER_DAYS } from '../data/backupReminder.js';
 import { decryptBackup, isEncryptedBackup } from '../data/backupCrypto.js';
@@ -2341,6 +2341,22 @@ function CloudSyncPanel({ cloudSyncOn, isPro }) {
     return () => clearInterval(t);
   }, []);
 
+  // What the server holds, so a copy can be seen to exist. Refreshed when a sync round finishes.
+  const { getToken } = useAuth();
+  const [cloud, setCloud] = useState(null);
+  const ready0 = isSignedIn && isPro && backendConfigured() && cloudSyncOn;
+  useEffect(() => {
+    if (!ready0 || status.phase === 'syncing') return undefined;
+    let live = true;
+    fetchSyncSummary(getToken)
+      .then((r) => live && setCloud(r))
+      .catch(() => live && setCloud(null));
+    return () => {
+      live = false;
+    };
+  }, [ready0, status.phase, status.at]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cloudLine = ready0 ? describeCloudCopy(cloud) : null;
+
   const { items, ready, line } = syncReadiness(
     {
       isSignedIn,
@@ -2376,7 +2392,7 @@ function CloudSyncPanel({ cloudSyncOn, isPro }) {
         ))}
       </ul>
       <div className="saved-maps-row">
-        <span className="muted small" role="status">{line}</span>
+        <span className="muted small" role="status">{line}{cloudLine ? <><br />{cloudLine}</> : null}</span>
         <button className="btn btn-sm btn-ghost" disabled={!ready || status.phase === 'syncing'} onClick={() => requestSync()}>
           Sync now
         </button>

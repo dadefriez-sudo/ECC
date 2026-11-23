@@ -168,6 +168,8 @@ r = await call(S, 'GET', '/data');
 ok('data: the refused write changed nothing', r.j?.data?.tasks?.length === 2, JSON.stringify(r));
 r = await call(S, 'PUT', '/data', { data: { tasks: [{ id: 'old-client' }] } });
 ok('data: a write with no base still overwrites (older app versions)', r.s === 200, JSON.stringify(r));
+r = await call(S, 'GET', '/data/summary');
+ok('data: summary reports what is stored, as counts only', r.s === 200 && r.j?.exists === true && r.j?.counts?.tasks === 1 && r.j?.counts?.events === 0 && r.j?.data === undefined && !!r.j?.updatedAt, JSON.stringify(r));
 r = await call(S, 'PUT', '/data', { data: {}, baseUpdatedAt: 'not a date' });
 ok('data: a malformed base is rejected', r.s === 400, JSON.stringify(r));
 const cur = (await call(S, 'GET', '/data')).j.updatedAt;

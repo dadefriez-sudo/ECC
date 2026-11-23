@@ -116,3 +116,45 @@ test('merging twice from opposite sides converges', () => {
 test('a key holding undefined matches a missing key', () => {
   assert.ok(sameState({ a: 1, b: undefined }, JSON.parse('{"a":1}')));
 });
+
+import { mergeStates as mergeNew, sameState as sameNew } from '../src/data/syncMerge.js';
+
+test('a new phone that has never synced keeps the account data and its own sample data', () => {
+  const remote = {
+    contacts: [{ id: 'c1', name: 'Real Person', _u: '2026-11-01T10:00:00Z' }],
+    goals: [{ id: 'g1', title: 'My real goal', progress: { '2026-11-01': 2 }, _u: '2026-11-01T10:00:00Z' }],
+    events: [],
+    settings: { colorScheme: 'sage', isPro: false },
+  };
+  const local = {
+    contacts: [{ id: 'sample-1', name: 'Maria Alvarez' }],
+    goals: [],
+    events: [],
+    settings: { tutorialSeen: true, isPro: true, backupPassphrase: 'device-secret' },
+  };
+  const merged = mergeNew(null, local, remote);
+  assert.deepEqual(merged.contacts.map((c) => c.id).sort(), ['c1', 'sample-1']);
+  assert.equal(merged.goals[0].title, 'My real goal');
+  assert.equal(merged.settings.colorScheme, 'sage'); // shared settings come from the account
+  assert.equal(merged.settings.isPro, true); // device and account flags stay local
+  assert.equal(merged.settings.backupPassphrase, 'device-secret');
+});
+
+test('merging twice with the same data changes nothing (no sync loop)', () => {
+  const a = { contacts: [{ id: 'c1', name: 'A', _u: '2026-11-01T00:00:00Z' }], settings: { tutorialSeen: true } };
+  const once = mergeNew(null, a, a);
+  assert.ok(sameNew(once, a));
+  assert.ok(sameNew(mergeNew(a, once, a), a));
+});
+
+test('an empty phone never deletes the account data', () => {
+  const remote = { contacts: [{ id: 'c1', name: 'Kept' }], goals: [{ id: 'g1', title: 'Kept too' }], settings: {} };
+  const empty = { contacts: [], goals: [], settings: { tutorialSeen: true } };
+  const merged = mergeNew(null, empty, remote);
+  assert.equal(merged.contacts.length, 1);
+  assert.equal(merged.goals.length, 1);
+  // even when an older base says it was there, an edit-free empty phone is treated as "deleted here"
+  const base = { contacts: [{ id: 'c1', name: 'Kept' }], goals: [{ id: 'g1', title: 'Kept too' }], settings: {} };
+  const afterDelete = mergeNew(base, empty, remote);
+  assert.equal(afterDelete.contacts.length, 0); // a deliberate delete on this phone does win when nothing else changed
+});

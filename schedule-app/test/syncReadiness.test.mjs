@@ -36,3 +36,16 @@ test('Sync now reaches whoever runs the sync, and does nothing when nobody does'
   stop();
   assert.equal(requestSync(), false);
 });
+
+import { describeCloudCopy } from '../src/data/syncStatus.js';
+
+test('the cloud copy line shows counts and when it was saved, or that none exists', () => {
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  assert.equal(describeCloudCopy(null, now), null);
+  assert.equal(describeCloudCopy({ exists: false }, now), 'Cloud copy: none yet');
+  assert.equal(
+    describeCloudCopy({ exists: true, updatedAt: '2026-11-20T11:55:00Z', counts: { contacts: 12, events: 1, goals: 0, tasks: 4 } }, now),
+    'Cloud copy: 12 people, 1 event, 4 tasks · saved 5 min ago'
+  );
+  assert.equal(describeCloudCopy({ exists: true, counts: {} }, now), 'Cloud copy: empty');
+});
