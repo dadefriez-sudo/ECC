@@ -19,7 +19,9 @@ const config: CapacitorConfig = {
     // development-instance publishable key (pk_test_...); a production
     // instance on a custom domain (see Clerk Dashboard once one's set up)
     // needs that domain added here too.
-    allowNavigation: ['*.clerk.accounts.dev'],
+    // The second entry is the production Clerk instance on keystonedailyplanner.com (its sign-in
+    // pages live on clerk. and accounts. subdomains of it).
+    allowNavigation: ['*.clerk.accounts.dev', '*.keystonedailyplanner.com', 'keystonedailyplanner.com'],
   },
   plugins: {
     SplashScreen: {
