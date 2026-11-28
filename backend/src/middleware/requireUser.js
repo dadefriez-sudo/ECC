@@ -1,6 +1,7 @@
 import { getAuth, clerkClient } from '@clerk/express';
 import { prisma } from '../db.js';
 import { verifiedPrimaryEmail } from '../lib/validate.js';
+import { provisionUser } from '../lib/provisionUser.js';
 
 // Loads (or lazily provisions) the app's User row for the authenticated
 // Clerk session and attaches it as req.dbUser. Lazy provisioning covers the
@@ -15,11 +16,7 @@ export async function requireUser(req, res, next) {
       const clerkUser = await clerkClient.users.getUser(userId);
       const email = verifiedPrimaryEmail(clerkUser.emailAddresses, clerkUser.primaryEmailAddressId);
       if (!email) return res.status(403).json({ error: 'Verify your email address to use this feature.' });
-      user = await prisma.user.upsert({
-        where: { clerkId: userId },
-        update: {},
-        create: { clerkId: userId, email },
-      });
+      user = await provisionUser({ clerkId: userId, email });
     }
     req.dbUser = user;
     next();

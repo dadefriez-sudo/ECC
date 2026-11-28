@@ -2,6 +2,7 @@ import { Router, raw } from 'express';
 import { verifyWebhook } from '@clerk/express/webhooks';
 import { prisma } from '../db.js';
 import { verifiedPrimaryEmail } from '../lib/validate.js';
+import { provisionUser } from '../lib/provisionUser.js';
 
 const router = Router();
 
@@ -21,11 +22,8 @@ router.post('/', raw({ type: 'application/json' }), async (req, res) => {
       case 'user.created': {
         const email = verifiedPrimaryEmail(evt.data.email_addresses, evt.data.primary_email_address_id);
         if (email) {
-          await prisma.user.upsert({
-            where: { clerkId: evt.data.id },
-            update: { email },
-            create: { clerkId: evt.data.id, email },
-          });
+          const user = await provisionUser({ clerkId: evt.data.id, email });
+          if (user.email !== email) await prisma.user.update({ where: { id: user.id }, data: { email } });
         }
         break;
       }
